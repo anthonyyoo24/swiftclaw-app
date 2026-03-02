@@ -1,13 +1,48 @@
 "use client";
 
 import { useState } from "react";
-import { Cpu, ChevronDown, Key, Info, ArrowRight, ArrowLeft } from "lucide-react";
+import { Cpu, Key, Info, ArrowRight, ArrowLeft, Brain, Sparkles, Zap as ZapIcon } from "lucide-react";
+import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
 
 interface StepProps {
     onNext: () => void;
     onBack: () => void;
     onComplete: () => void;
 }
+
+const PROVIDER_OPTIONS: DropdownOption[] = [
+    {
+        id: "anthropic",
+        label: "Anthropic",
+        icon: <div className="w-5 h-5 rounded-full bg-[#D97757] flex items-center justify-center text-[10px] text-white font-bold">A</div>
+    },
+    {
+        id: "openai",
+        label: "OpenAI",
+        icon: <div className="w-5 h-5 rounded-full bg-[#10A37F] flex items-center justify-center"><ZapIcon className="w-3 h-3 text-white" /></div>
+    },
+    {
+        id: "google",
+        label: "Google",
+        icon: <div className="w-5 h-5 rounded-full bg-[#4285F4] flex items-center justify-center text-[10px] text-white font-bold">G</div>
+    },
+];
+
+const MODEL_OPTIONS: Record<string, DropdownOption[]> = {
+    anthropic: [
+        { id: "claude-3-5-sonnet", label: "Claude 3.5 Sonnet", icon: <Sparkles className="w-4 h-4 text-orange-500" /> },
+        { id: "claude-3-opus", label: "Claude 3 Opus", icon: <Brain className="w-4 h-4 text-orange-600" /> },
+        { id: "claude-3-haiku", label: "Claude 3 Haiku", icon: <ZapIcon className="w-4 h-4 text-orange-400" /> },
+    ],
+    openai: [
+        { id: "gpt-4o", label: "GPT-4o", icon: <Sparkles className="w-4 h-4 text-emerald-500" /> },
+        { id: "gpt-4-turbo", label: "GPT-4 Turbo", icon: <Brain className="w-4 h-4 text-emerald-600" /> },
+    ],
+    google: [
+        { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", icon: <Sparkles className="w-4 h-4 text-blue-500" /> },
+        { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash", icon: <ZapIcon className="w-4 h-4 text-blue-400" /> },
+    ],
+};
 
 export function AIBrainStep({ onNext, onBack }: StepProps) {
     const [provider, setProvider] = useState("anthropic");
@@ -17,6 +52,14 @@ export function AIBrainStep({ onNext, onBack }: StepProps) {
     const handleNext = () => {
         // In a real app, save to context/store here
         onNext();
+    };
+
+    const handleProviderChange = (newProvider: string) => {
+        setProvider(newProvider);
+        // Reset model to first available for new provider
+        if (MODEL_OPTIONS[newProvider]) {
+            setModel(MODEL_OPTIONS[newProvider][0].id);
+        }
     };
 
     return (
@@ -37,60 +80,22 @@ export function AIBrainStep({ onNext, onBack }: StepProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Provider Dropdown */}
                     <div className="space-y-2.5">
-                        <label className="block text-sm font-medium text-gray-900">
-                            LLM Provider <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                            <select
-                                value={provider}
-                                onChange={(e) => setProvider(e.target.value)}
-                                className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-4 pr-10 py-2.5 text-base text-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-900/5 focus:border-gray-400 transition-all cursor-pointer"
-                            >
-                                <option value="anthropic">Anthropic</option>
-                                <option value="openai">OpenAI</option>
-                                <option value="google">Google</option>
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-                                <ChevronDown className="w-4 h-4" strokeWidth={1.5} />
-                            </div>
-                        </div>
+                        <CustomDropdown
+                            label="LLM Provider *"
+                            options={PROVIDER_OPTIONS}
+                            value={provider}
+                            onChange={handleProviderChange}
+                        />
                     </div>
 
                     {/* Model Dropdown */}
                     <div className="space-y-2.5">
-                        <label className="block text-sm font-medium text-gray-900">
-                            Model Version <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                            <select
-                                value={model}
-                                onChange={(e) => setModel(e.target.value)}
-                                className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-4 pr-10 py-2.5 text-base text-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-900/5 focus:border-gray-400 transition-all cursor-pointer"
-                            >
-                                {provider === "anthropic" && (
-                                    <>
-                                        <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-                                        <option value="claude-3-opus">Claude 3 Opus</option>
-                                        <option value="claude-3-haiku">Claude 3 Haiku</option>
-                                    </>
-                                )}
-                                {provider === "openai" && (
-                                    <>
-                                        <option value="gpt-4o">GPT-4o</option>
-                                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                                    </>
-                                )}
-                                {provider === "google" && (
-                                    <>
-                                        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                                    </>
-                                )}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-                                <ChevronDown className="w-4 h-4" strokeWidth={1.5} />
-                            </div>
-                        </div>
+                        <CustomDropdown
+                            label="Model Version *"
+                            options={MODEL_OPTIONS[provider] || []}
+                            value={model}
+                            onChange={setModel}
+                        />
                     </div>
                 </div>
 
