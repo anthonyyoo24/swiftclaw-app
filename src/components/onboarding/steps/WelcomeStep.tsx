@@ -1,41 +1,37 @@
-import { Button } from "@/components/ui/button";
+import { Zap, ArrowRight } from "lucide-react";
 
 interface StepProps {
     onNext: () => void;
     onBack: () => void;
-    onSkip: () => void;
+    onComplete: () => void;
 }
 
 export function WelcomeStep({ onNext }: StepProps) {
     return (
-        <div className="flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="space-y-4">
-                {/* Placeholder for Logo */}
-                <div className="w-24 h-24 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="w-12 h-12 text-primary"
-                    >
-                        <path d="M12 2v20" />
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                    </svg>
+        <div className="flex-1 flex flex-col items-center justify-center text-center animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
+            <div className="flex flex-col items-center max-w-lg mx-auto space-y-8 my-auto">
+                <div className="w-20 h-20 rounded-2xl bg-gray-900 flex items-center justify-center text-white shadow-md">
+                    <Zap className="w-10 h-10" strokeWidth={1.5} />
                 </div>
-                <h1 className="text-4xl font-bold tracking-tight">Welcome to SwiftClaw</h1>
-                <p className="text-muted-foreground text-lg max-w-md mx-auto">
-                    Your Digital Twin, Crafted in Minutes. Let's set up your premium AI workspace.
-                </p>
-            </div>
 
-            <div className="pt-8">
-                <Button size="lg" onClick={onNext} className="h-12 px-8 text-md shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:-translate-y-0.5">
-                    Get Started
-                </Button>
+                <div className="space-y-4">
+                    <h1 className="text-4xl font-semibold tracking-tight text-gray-900">
+                        Welcome to SwiftClaw
+                    </h1>
+                    <p className="text-lg text-gray-500 leading-relaxed">
+                        Your Digital Twin, Crafted in Minutes. Let's set up your premium AI workspace and connect it to your communication channels.
+                    </p>
+                </div>
+
+                <div className="pt-4">
+                    <button
+                        onClick={onNext}
+                        className="bg-gray-900 text-white px-8 py-3.5 rounded-xl text-lg font-medium hover:bg-gray-800 focus:outline-none focus:ring-4 focus:ring-gray-900/10 transition-all flex items-center gap-2 shadow-sm"
+                    >
+                        Get Started
+                        <ArrowRight className="w-5 h-5" strokeWidth={1.5} />
+                    </button>
+                </div>
             </div>
         </div>
     );
