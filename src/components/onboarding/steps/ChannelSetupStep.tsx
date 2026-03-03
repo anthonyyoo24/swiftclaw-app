@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, PhoneCall, Send, Key, Info, ArrowRight, ArrowLeft } from "lucide-react";
+import { MessageSquare, Key, Info, ArrowRight, ArrowLeft } from "lucide-react";
+import { Discord, Telegram, WhatsApp } from "@/components/ui/ChannelIcons";
 
 interface StepProps {
     onNext: () => void;
@@ -13,20 +14,29 @@ const CHANNELS = [
     {
         id: "discord",
         name: "Discord",
-        icon: MessageSquare,
+        icon: Discord,
         tokenLabel: "Bot Token",
+        iconColor: "text-[#5865F2]",
+        activeBg: "bg-[#5865F2]",
+        activeBorder: "border-[#5865F2]",
     },
     {
         id: "telegram",
         name: "Telegram",
-        icon: Send,
+        icon: Telegram,
         tokenLabel: "Bot API Token",
+        iconColor: "text-[#2AABEE]",
+        activeBg: "bg-[#2AABEE]",
+        activeBorder: "border-[#2AABEE]",
     },
     {
         id: "whatsapp",
         name: "WhatsApp",
-        icon: PhoneCall,
+        icon: WhatsApp,
         tokenLabel: "API Key",
+        iconColor: "text-[#25D366]",
+        activeBg: "bg-[#25D366]",
+        activeBorder: "border-[#25D366]",
     },
 ];
 
@@ -69,15 +79,15 @@ export function ChannelSetupStep({ onNext, onBack }: StepProps) {
                                     setToken(""); // Reset token on change
                                 }}
                                 className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${isSelected
-                                    ? "border-gray-900 bg-gray-50 shadow-sm"
+                                    ? `${channel.activeBorder} bg-gray-50 shadow-sm`
                                     : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50"
                                     }`}
                             >
                                 <div
-                                    className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 shrink-0 transition-colors ${isSelected ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500"
+                                    className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 shrink-0 transition-colors ${isSelected ? `${channel.activeBg} text-white` : `bg-gray-100 ${channel.iconColor}`
                                         }`}
                                 >
-                                    <Icon size={24} strokeWidth={1.5} />
+                                    <Icon width={24} height={24} strokeWidth={1.5} />
                                 </div>
                                 <span className="font-medium text-base text-gray-900">{channel.name}</span>
                             </button>
