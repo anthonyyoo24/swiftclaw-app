@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Cpu, Key, Info, ArrowRight, ArrowLeft, Brain, Sparkles, Zap as ZapIcon } from "lucide-react";
+
+import { Cpu, Key, Info, ArrowRight, ArrowLeft } from "lucide-react";
 import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
+import { Anthropic, OpenAI, Google } from "@lobehub/icons";
 
 interface StepProps {
     onNext: () => void;
@@ -14,33 +16,33 @@ const PROVIDER_OPTIONS: DropdownOption[] = [
     {
         id: "anthropic",
         label: "Anthropic",
-        icon: <div className="w-5 h-5 rounded-full bg-[#D97757] flex items-center justify-center text-[10px] text-white font-bold">A</div>
+        icon: <Anthropic size={20} className="w-5 h-5 text-[#D97757]" />
     },
     {
         id: "openai",
         label: "OpenAI",
-        icon: <div className="w-5 h-5 rounded-full bg-[#10A37F] flex items-center justify-center"><ZapIcon className="w-3 h-3 text-white" /></div>
+        icon: <OpenAI size={20} className="w-5 h-5 text-[#10A37F]" />
     },
     {
         id: "google",
         label: "Google",
-        icon: <div className="w-5 h-5 rounded-full bg-[#4285F4] flex items-center justify-center text-[10px] text-white font-bold">G</div>
+        icon: <Google size={20} className="w-5 h-5 text-[#4285F4]" />
     },
 ];
 
 const MODEL_OPTIONS: Record<string, DropdownOption[]> = {
     anthropic: [
-        { id: "claude-3-5-sonnet", label: "Claude 3.5 Sonnet", icon: <Sparkles className="w-4 h-4 text-orange-500" /> },
-        { id: "claude-3-opus", label: "Claude 3 Opus", icon: <Brain className="w-4 h-4 text-orange-600" /> },
-        { id: "claude-3-haiku", label: "Claude 3 Haiku", icon: <ZapIcon className="w-4 h-4 text-orange-400" /> },
+        { id: "claude-3-5-sonnet", label: "Claude 3.5 Sonnet" },
+        { id: "claude-3-opus", label: "Claude 3 Opus" },
+        { id: "claude-3-haiku", label: "Claude 3 Haiku" },
     ],
     openai: [
-        { id: "gpt-4o", label: "GPT-4o", icon: <Sparkles className="w-4 h-4 text-emerald-500" /> },
-        { id: "gpt-4-turbo", label: "GPT-4 Turbo", icon: <Brain className="w-4 h-4 text-emerald-600" /> },
+        { id: "gpt-4o", label: "GPT-4o" },
+        { id: "gpt-4-turbo", label: "GPT-4 Turbo" },
     ],
     google: [
-        { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", icon: <Sparkles className="w-4 h-4 text-blue-500" /> },
-        { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash", icon: <ZapIcon className="w-4 h-4 text-blue-400" /> },
+        { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+        { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
     ],
 };
 

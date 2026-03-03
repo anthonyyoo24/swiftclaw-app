@@ -75,7 +75,7 @@ export function CustomDropdown({ options, value, onChange, label }: CustomDropdo
             >
                 <div className="flex items-center gap-3">
                     {selectedOption?.icon && (
-                        <div className="shrink-0 grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all">
+                        <div className="shrink-0 transition-all">
                             {selectedOption.icon}
                         </div>
                     )}
@@ -99,14 +99,14 @@ export function CustomDropdown({ options, value, onChange, label }: CustomDropdo
                                 key={option.id}
                                 type="button"
                                 onClick={() => handleSelect(option.id)}
-                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${option.id === value
+                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group ${option.id === value
                                     ? "bg-gray-50 text-gray-900"
                                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
                                     {option.icon && (
-                                        <div className={`shrink-0 ${option.id === value ? "grayscale-0 opacity-100" : "grayscale opacity-70"}`}>
+                                        <div className={`shrink-0 transition-all duration-200 ${option.id === value ? "scale-110" : ""}`}>
                                             {option.icon}
                                         </div>
                                     )}
