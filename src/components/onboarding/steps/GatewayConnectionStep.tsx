@@ -99,8 +99,9 @@ export function GatewayConnectionStep({ onBack, onComplete }: StepProps) {
                 <button
                     onClick={onBack}
                     disabled={isDeploying}
-                    className="text-sm font-medium text-neutral-400 hover:text-white transition-colors focus:outline-none disabled:opacity-50 cursor-pointer"
+                    className="group px-6 py-2.5 rounded-full text-sm font-medium border border-white/10 text-white hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
                 >
+                    <Icon icon="solar:arrow-left-linear" className="text-lg transition-transform group-hover:-translate-x-0.5" />
                     Back
                 </button>
                 <button

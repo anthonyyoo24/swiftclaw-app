@@ -129,8 +129,9 @@ export function AIBrainStep({ onNext, onBack }: StepProps) {
             <div className="mt-auto pt-12 border-t border-white/5 flex justify-between">
                 <button
                     onClick={onBack}
-                    className="text-sm font-medium text-neutral-400 hover:text-white transition-colors focus:outline-none cursor-pointer"
+                    className="group px-6 py-2.5 rounded-full text-sm font-medium border border-white/10 text-white hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer inline-flex items-center gap-2"
                 >
+                    <Icon icon="solar:arrow-left-linear" className="text-lg transition-transform group-hover:-translate-x-0.5" />
                     Back
                 </button>
                 <button

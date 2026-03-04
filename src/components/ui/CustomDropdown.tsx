@@ -103,7 +103,7 @@ export function CustomDropdown({ options, value, onChange, label }: CustomDropdo
                                 key={option.id}
                                 type="button"
                                 onClick={() => handleSelect(option.id)}
-                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group ${option.id === value
+                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group cursor-pointer ${option.id === value
                                     ? "bg-blue-500/10 text-blue-400"
                                     : "text-neutral-400 hover:bg-white/5 hover:text-white"
                                     }`}
