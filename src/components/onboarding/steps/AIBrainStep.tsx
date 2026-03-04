@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Icon } from "@iconify/react";
+import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
+import { Anthropic, OpenAI, Google } from "@lobehub/icons";
 
 interface StepProps {
     onNext: () => void;
@@ -9,13 +11,25 @@ interface StepProps {
     onComplete: () => void;
 }
 
-const PROVIDERS = [
-    { id: "anthropic", label: "Anthropic" },
-    { id: "openai", label: "OpenAI" },
-    { id: "google", label: "Google" },
+const PROVIDER_OPTIONS: DropdownOption[] = [
+    {
+        id: "anthropic",
+        label: "Anthropic",
+        icon: <Anthropic size={20} className="w-5 h-5 text-[#D97757]" />
+    },
+    {
+        id: "openai",
+        label: "OpenAI",
+        icon: <OpenAI size={20} className="w-5 h-5 text-[#10A37F]" />
+    },
+    {
+        id: "google",
+        label: "Google",
+        icon: <Google size={20} className="w-5 h-5 text-[#4285F4]" />
+    },
 ];
 
-const MODELS: Record<string, { id: string; label: string }[]> = {
+const MODEL_OPTIONS: Record<string, DropdownOption[]> = {
     anthropic: [
         { id: "claude-3-5-sonnet", label: "Claude 3.5 Sonnet" },
         { id: "claude-3-opus", label: "Claude 3 Opus" },
@@ -41,11 +55,10 @@ export function AIBrainStep({ onNext, onBack }: StepProps) {
         onNext();
     };
 
-    const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newProvider = e.target.value;
+    const handleProviderChange = (newProvider: string) => {
         setProvider(newProvider);
-        if (MODELS[newProvider] && MODELS[newProvider].length > 0) {
-            setModel(MODELS[newProvider][0].id);
+        if (MODEL_OPTIONS[newProvider] && MODEL_OPTIONS[newProvider].length > 0) {
+            setModel(MODEL_OPTIONS[newProvider][0].id);
         }
     };
 
@@ -67,48 +80,22 @@ export function AIBrainStep({ onNext, onBack }: StepProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Provider Dropdown */}
                     <div className="space-y-3">
-                        <label className="block text-sm font-medium text-neutral-300">
-                            LLM Provider <span className="text-blue-500">*</span>
-                        </label>
-                        <div className="relative group">
-                            <select
-                                value={provider}
-                                onChange={handleProviderChange}
-                                className="w-full bg-[#0a0a0c] border border-white/10 rounded-xl pl-4 pr-10 py-3 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all cursor-pointer shadow-sm appearance-none"
-                            >
-                                {PROVIDERS.map((p) => (
-                                    <option key={p.id} value={p.id} className="bg-[#0a0a0c] text-white">
-                                        {p.label}
-                                    </option>
-                                ))}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-neutral-500 group-hover:text-neutral-300 transition-colors">
-                                <Icon icon="solar:alt-arrow-down-linear" className="text-lg" />
-                            </div>
-                        </div>
+                        <CustomDropdown
+                            label="LLM Provider"
+                            options={PROVIDER_OPTIONS}
+                            value={provider}
+                            onChange={handleProviderChange}
+                        />
                     </div>
 
                     {/* Model Dropdown */}
                     <div className="space-y-3">
-                        <label className="block text-sm font-medium text-neutral-300">
-                            Model Version <span className="text-blue-500">*</span>
-                        </label>
-                        <div className="relative group">
-                            <select
-                                value={model}
-                                onChange={(e) => setModel(e.target.value)}
-                                className="w-full bg-[#0a0a0c] border border-white/10 rounded-xl pl-4 pr-10 py-3 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all cursor-pointer shadow-sm appearance-none"
-                            >
-                                {MODELS[provider]?.map((m) => (
-                                    <option key={m.id} value={m.id} className="bg-[#0a0a0c] text-white">
-                                        {m.label}
-                                    </option>
-                                ))}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-neutral-500 group-hover:text-neutral-300 transition-colors">
-                                <Icon icon="solar:alt-arrow-down-linear" className="text-lg" />
-                            </div>
-                        </div>
+                        <CustomDropdown
+                            label="Model Version"
+                            options={MODEL_OPTIONS[provider] || []}
+                            value={model}
+                            onChange={setModel}
+                        />
                     </div>
                 </div>
 
@@ -142,13 +129,13 @@ export function AIBrainStep({ onNext, onBack }: StepProps) {
             <div className="mt-auto pt-12 border-t border-white/5 flex justify-between">
                 <button
                     onClick={onBack}
-                    className="text-sm font-medium text-neutral-400 hover:text-white transition-colors focus:outline-none"
+                    className="text-sm font-medium text-neutral-400 hover:text-white transition-colors focus:outline-none cursor-pointer"
                 >
                     Back
                 </button>
                 <button
                     onClick={handleNext}
-                    className="group inline-flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all ml-auto"
+                    className="group inline-flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all ml-auto cursor-pointer"
                 >
                     Continue
                     <Icon icon="solar:arrow-right-linear" className="text-lg transition-transform group-hover:translate-x-0.5" />
@@ -157,4 +144,3 @@ export function AIBrainStep({ onNext, onBack }: StepProps) {
         </div>
     );
 }
-

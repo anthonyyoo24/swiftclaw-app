@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ChevronDown, Check } from "lucide-react";
+import { Icon } from "@iconify/react";
 
 export interface DropdownOption {
     id: string;
@@ -62,15 +62,17 @@ export function CustomDropdown({ options, value, onChange, label }: CustomDropdo
     return (
         <div className="relative w-full" ref={dropdownRef}>
             {label && (
-                <label className="block text-sm font-medium text-gray-900 mb-2.5">
-                    {label}
+                <label className="block text-sm font-medium text-neutral-300 mb-3">
+                    {label} <span className="text-blue-500">*</span>
                 </label>
             )}
 
             <button
                 type="button"
                 onClick={toggleDropdown}
-                className={`w-full flex items-center justify-between bg-white border rounded-lg px-4 py-2.5 text-base text-gray-900 hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-900/5 transition-all cursor-pointer ${isOpen ? "border-gray-400 ring-4 ring-gray-900/5" : "border-gray-200"
+                className={`w-full relative flex items-center justify-between border rounded-xl pl-4 pr-10 py-3 text-sm transition-all cursor-pointer shadow-sm focus:outline-none focus:ring-1 focus:border-blue-500/50 focus:ring-blue-500/50 group ${isOpen
+                    ? "bg-white/5 border-blue-500/50 text-white ring-1 ring-blue-500/50"
+                    : "bg-[#0a0a0c] border-white/10 text-white hover:bg-white/5"
                     }`}
             >
                 <div className="flex items-center gap-3">
@@ -81,15 +83,17 @@ export function CustomDropdown({ options, value, onChange, label }: CustomDropdo
                     )}
                     <span className="font-medium">{selectedOption?.label}</span>
                 </div>
-                <ChevronDown
-                    className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-                    strokeWidth={1.5}
-                />
+                <div className="absolute inset-y-0 right-0 flex items-center px-4">
+                    <Icon
+                        icon="solar:alt-arrow-down-linear"
+                        className={`text-lg text-neutral-500 group-hover:text-neutral-300 transition-all duration-200 ${isOpen ? "rotate-180 text-white" : ""}`}
+                    />
+                </div>
             </button>
 
             {/* Dropdown Menu */}
             {shouldRender && (
-                <div className={`absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden origin-top ${isOpen
+                <div className={`absolute z-50 w-full mt-2 bg-[#0a0a0c] border border-white/10 rounded-xl shadow-2xl overflow-hidden origin-top ${isOpen
                     ? "animate-in fade-in zoom-in-95 duration-200"
                     : "animate-out fade-out zoom-out-95 duration-200 fill-mode-forwards"
                     }`}>
@@ -100,8 +104,8 @@ export function CustomDropdown({ options, value, onChange, label }: CustomDropdo
                                 type="button"
                                 onClick={() => handleSelect(option.id)}
                                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group ${option.id === value
-                                    ? "bg-gray-50 text-gray-900"
-                                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                    ? "bg-blue-500/10 text-blue-400"
+                                    : "text-neutral-400 hover:bg-white/5 hover:text-white"
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
@@ -113,7 +117,7 @@ export function CustomDropdown({ options, value, onChange, label }: CustomDropdo
                                     <span>{option.label}</span>
                                 </div>
                                 {option.id === value && (
-                                    <Check className="w-4 h-4 text-gray-900" strokeWidth={2} />
+                                    <Icon icon="solar:check-read-linear" className="text-lg text-blue-400" />
                                 )}
                             </button>
                         ))}

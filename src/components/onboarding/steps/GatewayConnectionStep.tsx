@@ -99,14 +99,14 @@ export function GatewayConnectionStep({ onBack, onComplete }: StepProps) {
                 <button
                     onClick={onBack}
                     disabled={isDeploying}
-                    className="text-sm font-medium text-neutral-400 hover:text-white transition-colors focus:outline-none disabled:opacity-50"
+                    className="text-sm font-medium text-neutral-400 hover:text-white transition-colors focus:outline-none disabled:opacity-50 cursor-pointer"
                 >
                     Back
                 </button>
                 <button
                     onClick={handleDeploy}
                     disabled={isDeploying}
-                    className="group relative inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-3.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all overflow-hidden disabled:opacity-80 disabled:cursor-wait"
+                    className="group relative inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-3.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all overflow-hidden disabled:opacity-80 disabled:cursor-wait cursor-pointer"
                 >
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                     <span className="relative z-10 flex items-center gap-2">
