@@ -76,7 +76,7 @@ export function ChannelSetupStep({ setIsValid }: StepProps) {
                 {selectedChannel && (
                     <div className="space-y-3 animate-in slide-in-from-top-2 duration-300 fade-in">
                         <label className="block text-sm font-medium text-neutral-300">
-                            {activeChannel?.tokenLabel} / API Key
+                            {activeChannel?.tokenLabel}
                             <span className="text-blue-500 pl-1">*</span>
                         </label>
                         <div className="relative group">
