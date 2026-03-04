@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:app\"",
     "dev:web": "next dev",
-    "dev:app": "wait-on http://localhost:3000 && unset ELECTRON_RUN_AS_NODE && electron-vite dev",
+    "dev:app": "wait-on http://localhost:3000 && cross-env ELECTRON_RUN_AS_NODE= electron-vite dev",
     "build": "next build && electron-vite build && electron-builder",
     "build:web": "next build",
     "build:app": "electron-vite build && electron-builder",
@@ -49,6 +49,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
     "electron": "^40.6.1",
     "electron-builder": "^26.8.1",
     "electron-vite": "^5.0.0",
