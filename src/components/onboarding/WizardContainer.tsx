@@ -38,7 +38,7 @@ export function WizardContainer() {
     };
 
     return (
-        <div className="bg-black w-full flex flex-col h-screen text-white font-sans relative overflow-hidden">
+        <div className="bg-[#09090b] w-full flex flex-col h-screen text-white font-sans relative overflow-hidden">
             {/* Background effects from current template style */}
             <div className="pointer-events-none absolute inset-0 -z-10">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black"></div>
@@ -83,8 +83,8 @@ export function WizardContainer() {
 
                                     {/* Step Circle */}
                                     <div className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-medium transition-colors ${isCompleted ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]' :
-                                            isActive ? 'border border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]' :
-                                                'border border-white/10 bg-[#131316] text-neutral-500 group-hover:border-white/30 group-hover:text-neutral-300'
+                                        isActive ? 'border border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]' :
+                                            'border border-white/10 bg-[#131316] text-neutral-500 group-hover:border-white/30 group-hover:text-neutral-300'
                                         }`}>
                                         {isCompleted ? <Icon icon="solar:check-read-linear" className="text-sm" /> : index + 1}
                                     </div>
@@ -92,8 +92,8 @@ export function WizardContainer() {
                                     {/* Step Text */}
                                     <div>
                                         <h3 className={`font-medium text-sm transition-colors ${isCompleted ? 'text-white' :
-                                                isActive ? 'text-white' :
-                                                    'text-neutral-500 group-hover:text-neutral-300'
+                                            isActive ? 'text-white' :
+                                                'text-neutral-500 group-hover:text-neutral-300'
                                             }`}>
                                             {step.title}
                                         </h3>
