@@ -26,6 +26,7 @@
     ]
   },
   "dependencies": {
+    "@iconify/react": "^6.0.2",
     "@lobehub/icons": "^5.0.1",
     "@lobehub/ui": "^5.0.0",
     "class-variance-authority": "^0.7.1",

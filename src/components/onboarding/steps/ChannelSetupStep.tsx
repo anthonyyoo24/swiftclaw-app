@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Key, Info, ArrowRight, ArrowLeft } from "lucide-react";
-import { Discord, Telegram, WhatsApp } from "@/components/ui/ChannelIcons";
+import { Icon } from "@iconify/react";
 
 interface StepProps {
     onNext: () => void;
@@ -12,31 +11,28 @@ interface StepProps {
 
 const CHANNELS = [
     {
-        id: "discord",
-        name: "Discord",
-        icon: Discord,
-        tokenLabel: "Bot Token",
-        iconColor: "text-[#5865F2]",
-        activeBg: "bg-[#5865F2]",
-        activeBorder: "border-[#5865F2]",
-    },
-    {
         id: "telegram",
         name: "Telegram",
-        icon: Telegram,
+        description: "Connect via BotFather",
+        icon: "mdi:telegram",
+        colorClass: "bg-[#229ED9]/10 text-[#229ED9]",
         tokenLabel: "Bot API Token",
-        iconColor: "text-[#2AABEE]",
-        activeBg: "bg-[#2AABEE]",
-        activeBorder: "border-[#2AABEE]",
+    },
+    {
+        id: "discord",
+        name: "Discord",
+        description: "Developer Portal",
+        icon: "mdi:discord",
+        colorClass: "bg-[#5865F2]/10 text-[#5865F2]",
+        tokenLabel: "Bot Token",
     },
     {
         id: "whatsapp",
         name: "WhatsApp",
-        icon: WhatsApp,
+        description: "Business API Setup",
+        icon: "mdi:whatsapp",
+        colorClass: "bg-[#25D366]/10 text-[#25D366]",
         tokenLabel: "API Key",
-        iconColor: "text-[#25D366]",
-        activeBg: "bg-[#25D366]",
-        activeBorder: "border-[#25D366]",
     },
 ];
 
@@ -54,68 +50,74 @@ export function ChannelSetupStep({ onNext, onBack }: StepProps) {
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
             {/* Content Header */}
-            <div className="mb-10">
-                <div className="w-10 h-10 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-center mb-6">
-                    <MessageSquare className="w-5 h-5 text-gray-700" strokeWidth={1.5} />
+            <div className="mb-12">
+                <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center mb-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                    <Icon icon="solar:chat-round-line-linear" className="text-2xl text-neutral-300" />
                 </div>
-                <h1 className="text-3xl font-semibold tracking-tight text-gray-900 mb-3">Communication Channel</h1>
-                <p className="text-base text-gray-500 leading-relaxed">
-                    Select the platform you want to use to communicate with your SwiftClaw agent.
+                <h1 className="text-3xl font-semibold tracking-tight text-white mb-3">Communication Channel</h1>
+                <p className="text-sm sm:text-base text-neutral-400 leading-relaxed">
+                    Select the platform where your SwiftClaw agent will interact
+                    with users and provide the necessary credentials to connect.
                 </p>
             </div>
 
             {/* Form Fields */}
             <div className="space-y-8 flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {CHANNELS.map((channel) => {
-                        const Icon = channel.icon;
-                        const isSelected = selectedChannel === channel.id;
-
-                        return (
-                            <button
-                                key={channel.id}
-                                onClick={() => {
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {CHANNELS.map((channel) => (
+                        <label key={channel.id} className="cursor-pointer group relative">
+                            <input
+                                type="radio"
+                                name="channel"
+                                className="peer sr-only"
+                                checked={selectedChannel === channel.id}
+                                onChange={() => {
                                     setSelectedChannel(channel.id);
                                     setToken(""); // Reset token on change
                                 }}
-                                className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${isSelected
-                                    ? `${channel.activeBorder} bg-gray-50 shadow-sm`
-                                    : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50"
-                                    }`}
-                            >
-                                <div
-                                    className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 shrink-0 transition-colors ${isSelected ? `${channel.activeBg} text-white` : `bg-gray-100 ${channel.iconColor}`
-                                        }`}
-                                >
-                                    <Icon width={24} height={24} strokeWidth={1.5} />
+                            />
+                            <div className="h-full border border-white/10 rounded-2xl p-5 bg-[#0a0a0c] hover:bg-white/5 peer-checked:border-blue-500/50 peer-checked:bg-blue-500/5 transition-all">
+                                <div className="absolute top-4 right-4 w-4 h-4 rounded-full border border-white/20 peer-checked:border-blue-500 peer-checked:bg-blue-500 flex items-center justify-center">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity">
+                                    </div>
                                 </div>
-                                <span className="font-medium text-base text-gray-900">{channel.name}</span>
-                            </button>
-                        );
-                    })}
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${channel.colorClass}`}>
+                                    <Icon icon={channel.icon} className="text-2xl" />
+                                </div>
+                                <h3 className="font-medium text-sm text-white mb-1">
+                                    {channel.name}
+                                </h3>
+                                <p className="text-xs text-neutral-500">
+                                    {channel.description}
+                                </p>
+                            </div>
+                        </label>
+                    ))}
                 </div>
 
                 {selectedChannel && (
-                    <div className="space-y-2.5 animate-in slide-in-from-top-2 duration-300 fade-in">
-                        <label className="block text-sm font-medium text-gray-900">
-                            {CHANNELS.find((c) => c.id === selectedChannel)?.tokenLabel} <span className="text-red-500">*</span>
+                    <div className="space-y-3 animate-in slide-in-from-top-2 duration-300 fade-in">
+                        <label className="block text-sm font-medium text-neutral-300">
+                            {CHANNELS.find((c) => c.id === selectedChannel)?.tokenLabel} / API Key
+                            <span className="text-blue-500 pl-1">*</span>
                         </label>
                         <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-gray-600 transition-colors">
-                                <Key className="w-4 h-4" strokeWidth={1.5} />
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-neutral-500 group-focus-within:text-blue-400 transition-colors">
+                                <Icon icon="solar:key-linear" className="text-lg" />
                             </div>
                             <input
                                 type="password"
-                                placeholder="Enter your token..."
+                                placeholder="Enter your platform token..."
                                 value={token}
                                 onChange={(e) => setToken(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-gray-900/5 focus:border-gray-400 transition-all"
+                                className="w-full pl-11 pr-4 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
                             />
                         </div>
-                        <div className="flex items-start gap-2 mt-2">
-                            <Info className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" strokeWidth={1.5} />
-                            <p className="text-sm text-gray-500">
-                                This token allows SwiftClaw to connect to {CHANNELS.find((c) => c.id === selectedChannel)?.name}.
+                        <div className="flex items-start gap-2.5 mt-3 px-1">
+                            <Icon icon="solar:shield-check-linear" className="text-neutral-500 mt-0.5 shrink-0 text-lg" />
+                            <p className="text-xs text-neutral-500 leading-relaxed">
+                                Your tokens are securely encrypted. SwiftClaw uses this to
+                                authenticate with your selected platform.
                             </p>
                         </div>
                     </div>
@@ -123,23 +125,23 @@ export function ChannelSetupStep({ onNext, onBack }: StepProps) {
             </div>
 
             {/* Bottom Action */}
-            <div className="mt-auto pt-10 flex justify-between">
+            <div className="mt-auto pt-12 border-t border-white/5 flex justify-between">
                 <button
                     onClick={onBack}
-                    className="text-gray-600 hover:text-gray-900 px-5 py-2.5 rounded-lg text-base font-medium transition-colors flex items-center gap-2"
+                    className="text-sm font-medium text-neutral-400 hover:text-white transition-colors focus:outline-none"
                 >
-                    <ArrowLeft className="w-4 h-4" strokeWidth={1.5} />
                     Back
                 </button>
                 <button
                     onClick={handleNext}
                     disabled={!selectedChannel || !token}
-                    className="disabled:opacity-50 disabled:cursor-not-allowed bg-gray-900 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-gray-800 focus:outline-none focus:ring-4 focus:ring-gray-900/10 transition-all flex items-center gap-2 shadow-sm"
+                    className="disabled:opacity-50 disabled:cursor-not-allowed group inline-flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all ml-auto"
                 >
                     Continue
-                    <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
+                    <Icon icon="solar:arrow-right-linear" className="text-lg transition-transform group-hover:translate-x-0.5" />
                 </button>
             </div>
         </div>
     );
 }
+

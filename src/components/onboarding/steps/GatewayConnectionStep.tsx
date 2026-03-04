@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, CheckCircle, Wifi, AlertCircle, ArrowLeft, ArrowRight } from "lucide-react";
+import { Icon } from "@iconify/react";
 
 interface StepProps {
     onNext: () => void;
@@ -9,106 +9,116 @@ interface StepProps {
     onComplete: () => void;
 }
 
-type ConnectionStatus = "idle" | "connecting" | "success" | "error";
+export function GatewayConnectionStep({ onBack, onComplete }: StepProps) {
+    const [isDeploying, setIsDeploying] = useState(false);
 
-export function GatewayConnectionStep({ onComplete, onBack }: StepProps) {
-    const [status, setStatus] = useState<ConnectionStatus>("idle");
-
-    const handleConnect = () => {
-        setStatus("connecting");
-        // Simulate connection to Gateway
+    const handleDeploy = () => {
+        setIsDeploying(true);
+        // Simulate deployment delay
         setTimeout(() => {
-            // In a real app, this would be an actual WS connection attempt
-            const success = Math.random() > 0.3; // 70% chance of success for testing
-            setStatus(success ? "success" : "error");
-
-            if (success) {
-                setTimeout(() => {
-                    onComplete(); // Redirect to dashboard on success
-                }, 1500);
-            }
+            onComplete();
         }, 2000);
     };
 
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
             {/* Content Header */}
-            <div className="mb-10">
-                <div className="w-10 h-10 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-center mb-6">
-                    <Wifi className="w-5 h-5 text-gray-700" strokeWidth={1.5} />
+            <div className="mb-12">
+                <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center mb-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                    <Icon icon="solar:rocket-linear" className="text-2xl text-neutral-300" />
                 </div>
-                <h1 className="text-3xl font-semibold tracking-tight text-gray-900 mb-3">Connect to Gateway</h1>
-                <p className="text-base text-gray-500 leading-relaxed">
-                    SwiftClaw connects locally to the OpenClaw engine. Ensure your gateway is running on port 18789.
+                <h1 className="text-3xl font-semibold tracking-tight text-white mb-3">
+                    Ready to Deploy
+                </h1>
+                <p className="text-sm sm:text-base text-neutral-400 leading-relaxed">
+                    Your SwiftClaw agent is configured and ready. Review your settings below before initiating
+                    the deployment process.
                 </p>
             </div>
 
-            {/* Connection Status Area */}
-            <div className="flex-1 flex flex-col items-center justify-center space-y-8">
-                <div className="relative">
-                    {/* Pulsing background effect when connecting */}
-                    {status === "connecting" && (
-                        <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping duration-1000 scale-150"></div>
-                    )}
+            {/* Configuration Summary */}
+            <div className="space-y-6 flex-1">
+                <div className="bg-[#0a0a0c] border border-white/10 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="p-4 border-b border-white/5 bg-white/[0.02]">
+                        <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                            <Icon icon="solar:document-text-linear" className="text-neutral-400 text-lg" />
+                            Configuration Summary
+                        </h3>
+                    </div>
+                    <div className="p-5 space-y-4">
+                        {/* AI Brain Summary */}
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0 mt-0.5">
+                                    <Icon icon="solar:cpu-linear" className="text-neutral-400" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-white mb-0.5">AI Brain</p>
+                                    <p className="text-xs text-neutral-400">Anthropic Claude 3.5 Sonnet</p>
+                                </div>
+                            </div>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
+                                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></span>
+                                Ready
+                            </span>
+                        </div>
 
-                    <div className={`relative w-32 h-32 rounded-full flex items-center justify-center shadow-sm border-4 transition-colors duration-500 ${status === "idle" ? "bg-gray-50 border-gray-100" :
-                        status === "connecting" ? "bg-blue-50 border-blue-100" :
-                            status === "success" ? "bg-green-50 border-green-100" :
-                                "bg-red-50 border-red-100"
-                        }`}>
-                        {status === "idle" && <Wifi className="w-12 h-12 text-gray-400" strokeWidth={1.5} />}
-                        {status === "connecting" && <Loader2 className="w-12 h-12 text-blue-500 animate-spin" strokeWidth={1.5} />}
-                        {status === "success" && <CheckCircle className="w-16 h-16 text-green-500 animate-in zoom-in duration-300" strokeWidth={1.5} />}
-                        {status === "error" && <AlertCircle className="w-12 h-12 text-red-500 animate-in shake duration-300" strokeWidth={1.5} />}
+                        <div className="h-px w-full bg-white/5"></div>
+
+                        {/* Communication Channel Summary */}
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-[#229ED9]/10 flex items-center justify-center shrink-0 mt-0.5">
+                                    <Icon icon="mdi:telegram" className="text-[#229ED9] text-base" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-white mb-0.5">Communication Channel</p>
+                                    <p className="text-xs text-neutral-400">Telegram Bot Integration</p>
+                                </div>
+                            </div>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
+                                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></span>
+                                Ready
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="text-center space-y-2 h-16">
-                    {status === "idle" && <p className="text-lg font-medium text-gray-900">Ready to connect</p>}
-                    {status === "connecting" && <p className="text-lg font-medium text-blue-600 animate-pulse">Establishing secure connection...</p>}
-                    {status === "success" && <p className="text-lg font-medium text-green-600">Connected successfully!</p>}
-                    {status === "error" && <p className="text-lg font-medium text-red-600">Connection failed</p>}
-
-                    {status === "error" && (
-                        <p className="text-sm text-red-500 max-w-sm">
-                            Could not reach <code className="bg-red-50 px-1 py-0.5 rounded text-red-700">ws://localhost:18789</code>. Is OpenClaw running?
-                        </p>
-                    )}
+                {/* System Status */}
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
+                    <Icon icon="solar:info-circle-linear" className="text-blue-400 text-lg shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-200/70 leading-relaxed">
+                        Deployment typically takes 1-2 minutes. We will provision your secure environment and
+                        establish encrypted connections to your chosen services.
+                    </p>
                 </div>
             </div>
 
             {/* Bottom Action */}
-            <div className="mt-auto pt-10 flex justify-between items-center">
+            <div className="mt-auto pt-12 border-t border-white/5 flex justify-between items-center">
                 <button
                     onClick={onBack}
-                    disabled={status === "connecting" || status === "success"}
-                    className="disabled:opacity-50 text-gray-600 hover:text-gray-900 px-5 py-2.5 rounded-lg text-base font-medium transition-colors flex items-center gap-2"
+                    disabled={isDeploying}
+                    className="text-sm font-medium text-neutral-400 hover:text-white transition-colors focus:outline-none disabled:opacity-50"
                 >
-                    <ArrowLeft className="w-4 h-4" strokeWidth={1.5} />
                     Back
                 </button>
-
-                <div className="flex gap-4">
-                    <button
-                        onClick={handleConnect}
-                        disabled={status === "connecting" || status === "success"}
-                        className={`px-6 py-2.5 rounded-lg text-base font-medium focus:outline-none focus:ring-4 transition-all flex items-center gap-2 shadow-sm ${status === "success"
-                            ? "bg-green-600 text-white hover:bg-green-700 focus:ring-green-600/10"
-                            : status === "error"
-                                ? "bg-gray-900 text-white hover:bg-gray-800 focus:ring-gray-900/10"
-                                : "bg-gray-900 text-white hover:bg-gray-800 focus:ring-gray-900/10"
-                            }`}
-                    >
-                        {status === "idle" && "Connect Now"}
-                        {status === "connecting" && "Connecting..."}
-                        {status === "success" && "Connected"}
-                        {status === "error" && "Retry Connection"}
-
-                        {(status === "idle" || status === "error") && <ArrowRight className="w-4 h-4" strokeWidth={1.5} />}
-                        {status === "success" && <CheckCircle className="w-4 h-4" strokeWidth={1.5} />}
-                        {status === "connecting" && <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />}
-                    </button>
-                </div>
+                <button
+                    onClick={handleDeploy}
+                    disabled={isDeploying}
+                    className="group relative inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-3.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all overflow-hidden disabled:opacity-80 disabled:cursor-wait"
+                >
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                    <span className="relative z-10 flex items-center gap-2">
+                        {isDeploying ? "Deploying..." : "Deploy Agent"}
+                        {!isDeploying && (
+                            <Icon icon="solar:rocket-linear" className="text-lg transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                        )}
+                        {isDeploying && (
+                            <Icon icon="solar:refresh-linear" className="text-lg animate-spin" />
+                        )}
+                    </span>
+                </button>
             </div>
         </div>
     );
