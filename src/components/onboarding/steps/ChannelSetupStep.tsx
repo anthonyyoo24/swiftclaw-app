@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useFormContext, Controller } from "react-hook-form";
 import { Icon } from "@iconify/react";
 import { StepHeader } from "@/components/onboarding/StepHeader";
 import { ChannelOptionCard, ChannelOption } from "./ChannelOptionCard";
+import type { OnboardingFormValues } from "@/components/onboarding/schema";
 
 export const CHANNELS: ChannelOption[] = [
     {
@@ -32,30 +34,18 @@ export const CHANNELS: ChannelOption[] = [
     },
 ];
 
-interface StepProps {
-    setIsValid?: (isValid: boolean) => void;
-    selectedChannel: string | null;
-    token: string;
-    onChannelChange: (id: string) => void;
-    onTokenChange: (token: string) => void;
-}
-
-export function ChannelSetupStep({ setIsValid, selectedChannel, token, onChannelChange, onTokenChange }: StepProps) {
+export function ChannelSetupStep() {
+    const { control, setValue, watch } = useFormContext<OnboardingFormValues>();
     const [showToken, setShowToken] = useState(false);
-    useEffect(() => {
-        if (setIsValid) {
-            const hasValidChannel = CHANNELS.some((c) => c.id === selectedChannel);
-            const hasValidToken = token?.trim().length > 0;
-            setIsValid(hasValidChannel && hasValidToken);
-        }
-    }, [selectedChannel, token, setIsValid]);
+
+    const selectedChannel = watch("selectedChannel");
+    const activeChannel = CHANNELS.find((c) => c.id === selectedChannel);
 
     const handleChannelSelect = (id: string) => {
-        onChannelChange(id);
-        onTokenChange(""); // Reset token on change
+        setValue("selectedChannel", id, { shouldValidate: true });
+        // Reset token whenever channel changes
+        setValue("channelToken", "", { shouldValidate: true });
     };
-
-    const activeChannel = CHANNELS.find((c) => c.id === selectedChannel);
 
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
@@ -87,14 +77,19 @@ export function ChannelSetupStep({ setIsValid, selectedChannel, token, onChannel
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-neutral-500 group-focus-within:text-blue-400 transition-colors">
                                 <Icon icon="solar:key-linear" className="text-lg" />
                             </div>
-                            <input
-                                type={showToken ? "text" : "password"}
-                                autoComplete="off"
-                                spellCheck={false}
-                                placeholder="Enter your platform token..."
-                                value={token}
-                                onChange={(e) => onTokenChange(e.target.value)}
-                                className="w-full pl-11 pr-12 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
+                            <Controller
+                                name="channelToken"
+                                control={control}
+                                render={({ field }) => (
+                                    <input
+                                        {...field}
+                                        type={showToken ? "text" : "password"}
+                                        autoComplete="off"
+                                        spellCheck={false}
+                                        placeholder="Enter your platform token..."
+                                        className="w-full pl-11 pr-12 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
+                                    />
+                                )}
                             />
                             <button
                                 type="button"

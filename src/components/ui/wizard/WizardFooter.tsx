@@ -3,7 +3,8 @@ import { Icon } from "@iconify/react";
 interface WizardFooterProps {
     currentStepIndex: number;
     totalSteps: number;
-    isValid: boolean;
+    /** Derived from the specific wizard's validation logic — replaces the old `isValid` state. */
+    canProgress: boolean;
     isDeploying: boolean;
     onBack: () => void;
     onNext: () => void;
@@ -12,7 +13,7 @@ interface WizardFooterProps {
 export function WizardFooter({
     currentStepIndex,
     totalSteps,
-    isValid,
+    canProgress,
     isDeploying,
     onBack,
     onNext,
@@ -36,7 +37,7 @@ export function WizardFooter({
 
             <button
                 onClick={onNext}
-                disabled={!isValid || isDeploying}
+                disabled={!canProgress || isDeploying}
                 className={
                     isLastStep
                         ? "group relative inline-flex items-center justify-center gap-2 bg-white text-black px-6 py-2.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus-visible:ring-2 focus:ring-white/20 active:scale-[0.98] active:ring-2 active:ring-white/20 transition-all overflow-hidden disabled:opacity-80 disabled:cursor-wait cursor-pointer ml-auto"

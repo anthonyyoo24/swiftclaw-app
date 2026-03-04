@@ -1,9 +1,10 @@
-import { WizardContainer } from "@/components/onboarding/WizardContainer";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 
 export default function OnboardingPage() {
     return (
         <main className="min-h-screen bg-background text-foreground flex flex-col">
-            <WizardContainer />
+            <OnboardingWizard />
         </main>
     );
 }
+

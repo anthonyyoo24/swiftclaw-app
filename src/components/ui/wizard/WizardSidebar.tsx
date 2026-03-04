@@ -1,6 +1,6 @@
 import { Icon } from "@iconify/react";
 
-interface WizardStep {
+export interface WizardStep {
     title: string;
     description: string;
 }

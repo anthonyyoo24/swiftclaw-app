@@ -1,10 +1,6 @@
 import { Icon } from "@iconify/react";
 
-interface StepProps {
-    setIsValid?: (isValid: boolean) => void;
-}
-
-export function WelcomeStep(_props: StepProps) {
+export function WelcomeStep() {
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
             {/* Content Header */}

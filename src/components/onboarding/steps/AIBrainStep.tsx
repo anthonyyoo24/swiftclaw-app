@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useFormContext, Controller } from "react-hook-form";
 import { Icon } from "@iconify/react";
 import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
 import { Anthropic, OpenAI, Google } from "@lobehub/icons";
 import { StepHeader } from "@/components/onboarding/StepHeader";
+import type { OnboardingFormValues } from "@/components/onboarding/schema";
 
 export const PROVIDER_OPTIONS: DropdownOption[] = [
     {
@@ -40,38 +42,16 @@ export const MODEL_OPTIONS: Record<string, DropdownOption[]> = {
     ],
 };
 
-interface StepProps {
-    setIsValid?: (isValid: boolean) => void;
-    provider: string;
-    model: string;
-    apiKey: string;
-    onProviderChange: (provider: string) => void;
-    onModelChange: (model: string) => void;
-    onApiKeyChange: (apiKey: string) => void;
-}
-
-export function AIBrainStep({
-    setIsValid,
-    provider,
-    model,
-    apiKey,
-    onProviderChange,
-    onModelChange,
-    onApiKeyChange,
-}: StepProps) {
+export function AIBrainStep() {
+    const { control, setValue, watch } = useFormContext<OnboardingFormValues>();
     const [showApiKey, setShowApiKey] = useState(false);
 
-    // Update validity whenever inputs change
-    useEffect(() => {
-        if (setIsValid) {
-            const isStepValid = Boolean(provider && model && apiKey.trim());
-            setIsValid(isStepValid);
-        }
-    }, [provider, model, apiKey, setIsValid]);
+    const provider = watch("aiProvider");
 
     const handleProviderChange = (newProvider: string) => {
-        onProviderChange(newProvider);
-        onModelChange("");
+        setValue("aiProvider", newProvider, { shouldValidate: true });
+        // Reset model when provider changes since models are provider-specific
+        setValue("aiModel", "", { shouldValidate: true });
     };
 
     return (
@@ -84,19 +64,31 @@ export function AIBrainStep({
 
             <div className="space-y-8 flex-1">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <CustomDropdown
-                        label="LLM Provider"
-                        options={PROVIDER_OPTIONS}
-                        value={provider}
-                        onChange={handleProviderChange}
-                        placeholder="Select provider..."
+                    <Controller
+                        name="aiProvider"
+                        control={control}
+                        render={({ field }) => (
+                            <CustomDropdown
+                                label="LLM Provider"
+                                options={PROVIDER_OPTIONS}
+                                value={field.value}
+                                onChange={handleProviderChange}
+                                placeholder="Select provider..."
+                            />
+                        )}
                     />
-                    <CustomDropdown
-                        label="Model Version"
-                        options={MODEL_OPTIONS[provider] || []}
-                        value={model}
-                        onChange={onModelChange}
-                        placeholder="Select model..."
+                    <Controller
+                        name="aiModel"
+                        control={control}
+                        render={({ field }) => (
+                            <CustomDropdown
+                                label="Model Version"
+                                options={MODEL_OPTIONS[provider] || []}
+                                value={field.value}
+                                onChange={(v) => field.onChange(v)}
+                                placeholder="Select model..."
+                            />
+                        )}
                     />
                 </div>
 
@@ -109,14 +101,19 @@ export function AIBrainStep({
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-neutral-500 group-focus-within:text-blue-400 transition-colors">
                             <Icon icon="solar:key-linear" className="text-lg" />
                         </div>
-                        <input
-                            type={showApiKey ? "text" : "password"}
-                            autoComplete="off"
-                            spellCheck={false}
-                            placeholder="sk-ant-..."
-                            value={apiKey}
-                            onChange={(e) => onApiKeyChange(e.target.value)}
-                            className="w-full pl-11 pr-12 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
+                        <Controller
+                            name="aiApiKey"
+                            control={control}
+                            render={({ field }) => (
+                                <input
+                                    {...field}
+                                    type={showApiKey ? "text" : "password"}
+                                    autoComplete="off"
+                                    spellCheck={false}
+                                    placeholder="sk-ant-..."
+                                    className="w-full pl-11 pr-12 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
+                                />
+                            )}
                         />
                         <button
                             type="button"
