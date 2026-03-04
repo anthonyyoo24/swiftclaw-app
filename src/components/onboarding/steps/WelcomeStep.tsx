@@ -1,12 +1,10 @@
 import { Icon } from "@iconify/react";
 
 interface StepProps {
-    onNext: () => void;
-    onBack: () => void;
-    onComplete: () => void;
+    setIsValid?: (isValid: boolean) => void;
 }
 
-export function WelcomeStep({ onNext }: StepProps) {
+export function WelcomeStep(_props: StepProps) {
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
             {/* Content Header */}
@@ -25,16 +23,7 @@ export function WelcomeStep({ onNext }: StepProps) {
                 </p>
             </div>
 
-            {/* Bottom Action */}
-            <div className="mt-auto pt-12 border-t border-white/5 flex">
-                <button
-                    onClick={onNext}
-                    className="group inline-flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all ml-auto cursor-pointer"
-                >
-                    Continue
-                    <Icon icon="solar:arrow-right-linear" className="text-lg transition-transform group-hover:translate-x-0.5" />
-                </button>
-            </div>
+
         </div>
     );
 }

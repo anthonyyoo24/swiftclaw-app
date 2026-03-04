@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 
 interface StepProps {
-    onNext: () => void;
-    onBack: () => void;
-    onComplete: () => void;
+    setIsValid?: (isValid: boolean) => void;
 }
 
 const CHANNELS = [
@@ -36,16 +34,15 @@ const CHANNELS = [
     },
 ];
 
-export function ChannelSetupStep({ onNext, onBack }: StepProps) {
+export function ChannelSetupStep({ setIsValid }: StepProps) {
     const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
     const [token, setToken] = useState("");
 
-    const handleNext = () => {
-        if (selectedChannel && token) {
-            // In a real app, save to context/store here
-            onNext();
+    useEffect(() => {
+        if (setIsValid) {
+            setIsValid(!!(selectedChannel && token));
         }
-    };
+    }, [selectedChannel, token, setIsValid]);
 
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
@@ -124,24 +121,7 @@ export function ChannelSetupStep({ onNext, onBack }: StepProps) {
                 )}
             </div>
 
-            {/* Bottom Action */}
-            <div className="mt-auto pt-12 border-t border-white/5 flex justify-between">
-                <button
-                    onClick={onBack}
-                    className="group px-6 py-2.5 rounded-full text-sm font-medium border border-white/10 text-white hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer inline-flex items-center gap-2"
-                >
-                    <Icon icon="solar:arrow-left-linear" className="text-lg transition-transform group-hover:-translate-x-0.5" />
-                    Back
-                </button>
-                <button
-                    onClick={handleNext}
-                    disabled={!selectedChannel || !token}
-                    className="disabled:opacity-50 disabled:cursor-not-allowed group inline-flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all ml-auto"
-                >
-                    Continue
-                    <Icon icon="solar:arrow-right-linear" className="text-lg transition-transform group-hover:translate-x-0.5" />
-                </button>
-            </div>
+
         </div>
     );
 }

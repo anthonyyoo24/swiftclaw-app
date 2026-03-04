@@ -1,24 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { Icon } from "@iconify/react";
 
 interface StepProps {
-    onNext: () => void;
-    onBack: () => void;
-    onComplete: () => void;
+    setIsValid?: (isValid: boolean) => void;
 }
 
-export function GatewayConnectionStep({ onBack, onComplete }: StepProps) {
-    const [isDeploying, setIsDeploying] = useState(false);
-
-    const handleDeploy = () => {
-        setIsDeploying(true);
-        // Simulate deployment delay
-        setTimeout(() => {
-            onComplete();
-        }, 2000);
-    };
+export function GatewayConnectionStep(_props: StepProps) {
 
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
@@ -94,33 +82,7 @@ export function GatewayConnectionStep({ onBack, onComplete }: StepProps) {
                 </div>
             </div>
 
-            {/* Bottom Action */}
-            <div className="mt-auto pt-12 border-t border-white/5 flex justify-between items-center">
-                <button
-                    onClick={onBack}
-                    disabled={isDeploying}
-                    className="group px-6 py-2.5 rounded-full text-sm font-medium border border-white/10 text-white hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-                >
-                    <Icon icon="solar:arrow-left-linear" className="text-lg transition-transform group-hover:-translate-x-0.5" />
-                    Back
-                </button>
-                <button
-                    onClick={handleDeploy}
-                    disabled={isDeploying}
-                    className="group relative inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-3.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all overflow-hidden disabled:opacity-80 disabled:cursor-wait cursor-pointer"
-                >
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                    <span className="relative z-10 flex items-center gap-2">
-                        {isDeploying ? "Deploying..." : "Deploy Agent"}
-                        {!isDeploying && (
-                            <Icon icon="solar:rocket-linear" className="text-lg transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                        )}
-                        {isDeploying && (
-                            <Icon icon="solar:refresh-linear" className="text-lg animate-spin" />
-                        )}
-                    </span>
-                </button>
-            </div>
+
         </div>
     );
 }

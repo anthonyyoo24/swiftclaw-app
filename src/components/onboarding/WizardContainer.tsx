@@ -16,17 +16,21 @@ const steps = [
 
 export function WizardContainer() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
+    const [isValid, setIsValid] = useState(true);
+    const [isDeploying, setIsDeploying] = useState(false);
 
     const CurrentStep = steps[currentStepIndex].component;
 
     const goNext = () => {
         if (currentStepIndex < steps.length - 1) {
+            setIsValid(true);
             setCurrentStepIndex((prev) => prev + 1);
         }
     };
 
     const goBack = () => {
         if (currentStepIndex > 0) {
+            setIsValid(true);
             setCurrentStepIndex((prev) => prev - 1);
         }
     };
@@ -35,6 +39,18 @@ export function WizardContainer() {
     const completeOnboarding = () => {
         localStorage.setItem("onboardingComplete", "true");
         window.location.href = "/";
+    };
+
+    const handleNextClick = () => {
+        if (!isValid) return;
+        if (currentStepIndex === steps.length - 1) {
+            setIsDeploying(true);
+            setTimeout(() => {
+                completeOnboarding();
+            }, 2000);
+        } else {
+            goNext();
+        }
     };
 
     return (
@@ -110,7 +126,52 @@ export function WizardContainer() {
                 {/* Main Form Area */}
                 <main className="flex-1 p-8 sm:p-12 lg:p-16 overflow-y-auto flex flex-col bg-transparent">
                     <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col relative z-10">
-                        <CurrentStep onNext={goNext} onBack={goBack} onComplete={completeOnboarding} />
+                        <CurrentStep setIsValid={setIsValid} />
+
+                        {/* Centralized Bottom Action */}
+                        <div className="mt-auto pt-12 border-t border-white/5 flex gap-4 items-center justify-between">
+                            {currentStepIndex > 0 ? (
+                                <button
+                                    onClick={goBack}
+                                    disabled={isDeploying}
+                                    className="group px-6 py-2.5 rounded-full text-sm font-medium border border-white/10 text-white hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                                >
+                                    <Icon icon="solar:arrow-left-linear" className="text-lg transition-transform group-hover:-translate-x-0.5" />
+                                    Back
+                                </button>
+                            ) : (
+                                <div></div>
+                            )}
+
+                            <button
+                                onClick={handleNextClick}
+                                disabled={!isValid || isDeploying}
+                                className={currentStepIndex === steps.length - 1
+                                    ? "group relative inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-3.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all overflow-hidden disabled:opacity-80 disabled:cursor-wait cursor-pointer ml-auto"
+                                    : "disabled:opacity-50 disabled:cursor-not-allowed group inline-flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all ml-auto cursor-pointer"
+                                }
+                            >
+                                {currentStepIndex === steps.length - 1 ? (
+                                    <>
+                                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                                        <span className="relative z-10 flex items-center gap-2">
+                                            {isDeploying ? "Deploying..." : "Deploy Agent"}
+                                            {!isDeploying && (
+                                                <Icon icon="solar:rocket-linear" className="text-lg transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                                            )}
+                                            {isDeploying && (
+                                                <Icon icon="solar:refresh-linear" className="text-lg animate-spin" />
+                                            )}
+                                        </span>
+                                    </>
+                                ) : (
+                                    <>
+                                        Continue
+                                        <Icon icon="solar:arrow-right-linear" className="text-lg transition-transform group-hover:translate-x-0.5" />
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </main>
             </div>

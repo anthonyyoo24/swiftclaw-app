@@ -5,11 +5,7 @@ import { Icon } from "@iconify/react";
 import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
 import { Anthropic, OpenAI, Google } from "@lobehub/icons";
 
-interface StepProps {
-    onNext: () => void;
-    onBack: () => void;
-    onComplete: () => void;
-}
+
 
 const PROVIDER_OPTIONS: DropdownOption[] = [
     {
@@ -45,15 +41,16 @@ const MODEL_OPTIONS: Record<string, DropdownOption[]> = {
     ],
 };
 
-export function AIBrainStep({ onNext, onBack }: StepProps) {
+interface StepProps {
+    setIsValid?: (isValid: boolean) => void;
+}
+
+export function AIBrainStep(_props: StepProps) {
     const [provider, setProvider] = useState("anthropic");
     const [model, setModel] = useState("claude-3-5-sonnet");
     const [apiKey, setApiKey] = useState("");
 
-    const handleNext = () => {
-        // In a real app, save to context/store here
-        onNext();
-    };
+
 
     const handleProviderChange = (newProvider: string) => {
         setProvider(newProvider);
@@ -125,23 +122,7 @@ export function AIBrainStep({ onNext, onBack }: StepProps) {
                 </div>
             </div>
 
-            {/* Bottom Action */}
-            <div className="mt-auto pt-12 border-t border-white/5 flex justify-between">
-                <button
-                    onClick={onBack}
-                    className="group px-6 py-2.5 rounded-full text-sm font-medium border border-white/10 text-white hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer inline-flex items-center gap-2"
-                >
-                    <Icon icon="solar:arrow-left-linear" className="text-lg transition-transform group-hover:-translate-x-0.5" />
-                    Back
-                </button>
-                <button
-                    onClick={handleNext}
-                    className="group inline-flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all ml-auto cursor-pointer"
-                >
-                    Continue
-                    <Icon icon="solar:arrow-right-linear" className="text-lg transition-transform group-hover:translate-x-0.5" />
-                </button>
-            </div>
+
         </div>
     );
 }
