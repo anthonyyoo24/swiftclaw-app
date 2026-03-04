@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { StepHeader } from "@/components/onboarding/StepHeader";
 import { ChannelOptionCard, ChannelOption } from "./ChannelOptionCard";
 
-const CHANNELS: ChannelOption[] = [
+export const CHANNELS: ChannelOption[] = [
     {
         id: "telegram",
         name: "Telegram",
@@ -34,12 +34,13 @@ const CHANNELS: ChannelOption[] = [
 
 interface StepProps {
     setIsValid?: (isValid: boolean) => void;
+    selectedChannel: string | null;
+    token: string;
+    onChannelChange: (id: string) => void;
+    onTokenChange: (token: string) => void;
 }
 
-export function ChannelSetupStep({ setIsValid }: StepProps) {
-    const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
-    const [token, setToken] = useState("");
-
+export function ChannelSetupStep({ setIsValid, selectedChannel, token, onChannelChange, onTokenChange }: StepProps) {
     useEffect(() => {
         if (setIsValid) {
             setIsValid(!!(selectedChannel && token));
@@ -47,8 +48,8 @@ export function ChannelSetupStep({ setIsValid }: StepProps) {
     }, [selectedChannel, token, setIsValid]);
 
     const handleChannelSelect = (id: string) => {
-        setSelectedChannel(id);
-        setToken(""); // Reset token on change
+        onChannelChange(id);
+        onTokenChange(""); // Reset token on change
     };
 
     const activeChannel = CHANNELS.find((c) => c.id === selectedChannel);
@@ -87,7 +88,7 @@ export function ChannelSetupStep({ setIsValid }: StepProps) {
                                 type="text"
                                 placeholder="Enter your platform token..."
                                 value={token}
-                                onChange={(e) => setToken(e.target.value)}
+                                onChange={(e) => onTokenChange(e.target.value)}
                                 className="w-full pl-11 pr-4 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
                             />
                         </div>

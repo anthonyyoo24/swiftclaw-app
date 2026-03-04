@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
 import { Anthropic, OpenAI, Google } from "@lobehub/icons";
 import { StepHeader } from "@/components/onboarding/StepHeader";
 
-const PROVIDER_OPTIONS: DropdownOption[] = [
+export const PROVIDER_OPTIONS: DropdownOption[] = [
     {
         id: "anthropic",
         label: "Anthropic",
@@ -24,7 +23,7 @@ const PROVIDER_OPTIONS: DropdownOption[] = [
     },
 ];
 
-const MODEL_OPTIONS: Record<string, DropdownOption[]> = {
+export const MODEL_OPTIONS: Record<string, DropdownOption[]> = {
     anthropic: [
         { id: "claude-3-5-sonnet", label: "Claude 3.5 Sonnet" },
         { id: "claude-3-opus", label: "Claude 3 Opus" },
@@ -42,17 +41,19 @@ const MODEL_OPTIONS: Record<string, DropdownOption[]> = {
 
 interface StepProps {
     setIsValid?: (isValid: boolean) => void;
+    provider: string;
+    model: string;
+    apiKey: string;
+    onProviderChange: (provider: string) => void;
+    onModelChange: (model: string) => void;
+    onApiKeyChange: (apiKey: string) => void;
 }
 
-export function AIBrainStep(_props: StepProps) {
-    const [provider, setProvider] = useState("anthropic");
-    const [model, setModel] = useState("claude-3-5-sonnet");
-    const [apiKey, setApiKey] = useState("");
-
+export function AIBrainStep({ provider, model, apiKey, onProviderChange, onModelChange, onApiKeyChange }: StepProps) {
     const handleProviderChange = (newProvider: string) => {
-        setProvider(newProvider);
+        onProviderChange(newProvider);
         if (MODEL_OPTIONS[newProvider]?.length > 0) {
-            setModel(MODEL_OPTIONS[newProvider][0].id);
+            onModelChange(MODEL_OPTIONS[newProvider][0].id);
         }
     };
 
@@ -76,7 +77,7 @@ export function AIBrainStep(_props: StepProps) {
                         label="Model Version"
                         options={MODEL_OPTIONS[provider] || []}
                         value={model}
-                        onChange={setModel}
+                        onChange={onModelChange}
                     />
                 </div>
 
@@ -93,7 +94,7 @@ export function AIBrainStep(_props: StepProps) {
                             type="text"
                             placeholder="sk-ant-..."
                             value={apiKey}
-                            onChange={(e) => setApiKey(e.target.value)}
+                            onChange={(e) => onApiKeyChange(e.target.value)}
                             className="w-full pl-11 pr-4 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
                         />
                     </div>

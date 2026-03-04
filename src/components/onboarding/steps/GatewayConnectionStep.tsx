@@ -1,9 +1,28 @@
 "use client";
 
 import { Icon } from "@iconify/react";
+import { Anthropic, OpenAI, Google } from "@lobehub/icons";
 import { StepHeader } from "@/components/onboarding/StepHeader";
+import { PROVIDER_OPTIONS, MODEL_OPTIONS } from "./AIBrainStep";
+import { CHANNELS } from "./ChannelSetupStep";
 
-export function GatewayConnectionStep() {
+interface GatewayConnectionStepProps {
+    aiProvider: string;
+    aiModel: string;
+    selectedChannel: string | null;
+}
+
+const PROVIDER_ICONS: Record<string, React.ReactNode> = {
+    anthropic: <Anthropic size={18} className="text-[#D97757]" />,
+    openai: <OpenAI size={18} className="text-[#10A37F]" />,
+    google: <Google size={18} className="text-[#4285F4]" />,
+};
+
+export function GatewayConnectionStep({ aiProvider, aiModel, selectedChannel }: GatewayConnectionStepProps) {
+    const providerOption = PROVIDER_OPTIONS.find((p) => p.id === aiProvider);
+    const modelOption = MODEL_OPTIONS[aiProvider]?.find((m) => m.id === aiModel);
+    const channelOption = CHANNELS.find((c) => c.id === selectedChannel);
+
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
             <StepHeader
@@ -26,11 +45,15 @@ export function GatewayConnectionStep() {
                         <div className="flex items-start justify-between">
                             <div className="flex items-start gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0 mt-0.5">
-                                    <Icon icon="solar:cpu-linear" className="text-neutral-400" />
+                                    {PROVIDER_ICONS[aiProvider] ?? (
+                                        <Icon icon="solar:cpu-linear" className="text-neutral-400" />
+                                    )}
                                 </div>
                                 <div>
                                     <p className="text-sm font-medium text-white mb-0.5">AI Brain</p>
-                                    <p className="text-xs text-neutral-400">Anthropic Claude 3.5 Sonnet</p>
+                                    <p className="text-xs text-neutral-400">
+                                        {providerOption?.label ?? aiProvider} — {modelOption?.label ?? aiModel}
+                                    </p>
                                 </div>
                             </div>
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
@@ -44,12 +67,20 @@ export function GatewayConnectionStep() {
                         {/* Communication Channel Summary */}
                         <div className="flex items-start justify-between">
                             <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-[#229ED9]/10 flex items-center justify-center shrink-0 mt-0.5">
-                                    <Icon icon="mdi:telegram" className="text-[#229ED9] text-base" />
+                                <div
+                                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${channelOption ? channelOption.colorClass : "bg-white/5 text-neutral-400"
+                                        }`}
+                                >
+                                    <Icon
+                                        icon={channelOption?.icon ?? "solar:chat-round-line-linear"}
+                                        className="text-base"
+                                    />
                                 </div>
                                 <div>
                                     <p className="text-sm font-medium text-white mb-0.5">Communication Channel</p>
-                                    <p className="text-xs text-neutral-400">Telegram Bot Integration</p>
+                                    <p className="text-xs text-neutral-400">
+                                        {channelOption ? `${channelOption.name} — ${channelOption.description}` : "Not selected"}
+                                    </p>
                                 </div>
                             </div>
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-500/20">

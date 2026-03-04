@@ -3,17 +3,17 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { WelcomeStep } from "./steps/WelcomeStep";
-import { AIBrainStep } from "./steps/AIBrainStep";
+import { AIBrainStep, MODEL_OPTIONS } from "./steps/AIBrainStep";
 import { ChannelSetupStep } from "./steps/ChannelSetupStep";
 import { GatewayConnectionStep } from "./steps/GatewayConnectionStep";
 import { WizardSidebar } from "./WizardSidebar";
 import { WizardFooter } from "./WizardFooter";
 
 const steps = [
-    { component: WelcomeStep, title: "Welcome", description: "Get started with SwiftClaw" },
-    { component: AIBrainStep, title: "AI Brain Selection", description: "Configure your LLM provider" },
-    { component: ChannelSetupStep, title: "Communication Channel", description: "Setup external platforms" },
-    { component: GatewayConnectionStep, title: "Deploy AI", description: "Start your assistant" },
+    { title: "Welcome", description: "Get started with SwiftClaw" },
+    { title: "AI Brain Selection", description: "Configure your LLM provider" },
+    { title: "Communication Channel", description: "Setup external platforms" },
+    { title: "Deploy AI", description: "Start your assistant" },
 ];
 
 export function WizardContainer() {
@@ -21,7 +21,26 @@ export function WizardContainer() {
     const [isValid, setIsValid] = useState(true);
     const [isDeploying, setIsDeploying] = useState(false);
 
-    const CurrentStep = steps[currentStepIndex].component;
+    // AI Brain state
+    const [aiProvider, setAiProvider] = useState("anthropic");
+    const [aiModel, setAiModel] = useState("claude-3-5-sonnet");
+    const [aiApiKey, setAiApiKey] = useState("");
+
+    // Channel state
+    const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
+    const [channelToken, setChannelToken] = useState("");
+
+    const handleProviderChange = (newProvider: string) => {
+        setAiProvider(newProvider);
+        if (MODEL_OPTIONS[newProvider]?.length > 0) {
+            setAiModel(MODEL_OPTIONS[newProvider][0].id);
+        }
+    };
+
+    const handleChannelChange = (id: string) => {
+        setSelectedChannel(id);
+        setChannelToken("");
+    };
 
     const goNext = () => {
         if (currentStepIndex < steps.length - 1) {
@@ -51,6 +70,45 @@ export function WizardContainer() {
             }, 2000);
         } else {
             goNext();
+        }
+    };
+
+    const renderStep = () => {
+        switch (currentStepIndex) {
+            case 0:
+                return <WelcomeStep setIsValid={setIsValid} />;
+            case 1:
+                return (
+                    <AIBrainStep
+                        setIsValid={setIsValid}
+                        provider={aiProvider}
+                        model={aiModel}
+                        apiKey={aiApiKey}
+                        onProviderChange={handleProviderChange}
+                        onModelChange={setAiModel}
+                        onApiKeyChange={setAiApiKey}
+                    />
+                );
+            case 2:
+                return (
+                    <ChannelSetupStep
+                        setIsValid={setIsValid}
+                        selectedChannel={selectedChannel}
+                        token={channelToken}
+                        onChannelChange={handleChannelChange}
+                        onTokenChange={setChannelToken}
+                    />
+                );
+            case 3:
+                return (
+                    <GatewayConnectionStep
+                        aiProvider={aiProvider}
+                        aiModel={aiModel}
+                        selectedChannel={selectedChannel}
+                    />
+                );
+            default:
+                return null;
         }
     };
 
@@ -88,7 +146,7 @@ export function WizardContainer() {
 
                 <main className="flex-1 p-8 sm:p-12 lg:p-16 overflow-y-auto flex flex-col bg-transparent">
                     <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col relative z-10">
-                        <CurrentStep setIsValid={setIsValid} />
+                        {renderStep()}
 
                         <WizardFooter
                             currentStepIndex={currentStepIndex}
