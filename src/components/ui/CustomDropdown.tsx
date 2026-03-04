@@ -14,15 +14,17 @@ interface CustomDropdownProps {
     value: string;
     onChange: (value: string) => void;
     label?: string;
+    placeholder?: string;
 }
 
-export function CustomDropdown({ options, value, onChange, label }: CustomDropdownProps) {
+export function CustomDropdown({ options, value, onChange, label, placeholder = "Select an option" }: CustomDropdownProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [shouldRender, setShouldRender] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const selectedOption = options.find((opt) => opt.id === value);
+    const displayLabel = selectedOption?.label ?? placeholder;
 
     const closeDropdown = useCallback(() => {
         setIsOpen(false);
@@ -81,7 +83,9 @@ export function CustomDropdown({ options, value, onChange, label }: CustomDropdo
                             {selectedOption.icon}
                         </div>
                     )}
-                    <span className="font-medium">{selectedOption?.label}</span>
+                    <span className={`font-medium ${!selectedOption ? "text-neutral-500" : ""}`}>
+                        {displayLabel}
+                    </span>
                 </div>
                 <div className="absolute inset-y-0 right-0 flex items-center px-4">
                     <Icon

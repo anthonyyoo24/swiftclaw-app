@@ -71,9 +71,7 @@ export function AIBrainStep({
 
     const handleProviderChange = (newProvider: string) => {
         onProviderChange(newProvider);
-        if (MODEL_OPTIONS[newProvider]?.length > 0) {
-            onModelChange(MODEL_OPTIONS[newProvider][0].id);
-        }
+        onModelChange("");
     };
 
     return (
@@ -91,12 +89,14 @@ export function AIBrainStep({
                         options={PROVIDER_OPTIONS}
                         value={provider}
                         onChange={handleProviderChange}
+                        placeholder="Select provider..."
                     />
                     <CustomDropdown
                         label="Model Version"
                         options={MODEL_OPTIONS[provider] || []}
                         value={model}
                         onChange={onModelChange}
+                        placeholder="Select model..."
                     />
                 </div>
 

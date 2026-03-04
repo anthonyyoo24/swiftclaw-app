@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { WelcomeStep } from "./steps/WelcomeStep";
-import { AIBrainStep, MODEL_OPTIONS } from "./steps/AIBrainStep";
+import { AIBrainStep } from "./steps/AIBrainStep";
 import { ChannelSetupStep } from "./steps/ChannelSetupStep";
 import { GatewayConnectionStep } from "./steps/GatewayConnectionStep";
 import { WizardSidebar } from "./WizardSidebar";
@@ -22,8 +22,8 @@ export function WizardContainer() {
     const [isDeploying, setIsDeploying] = useState(false);
 
     // AI Brain state
-    const [aiProvider, setAiProvider] = useState("anthropic");
-    const [aiModel, setAiModel] = useState("claude-3-5-sonnet");
+    const [aiProvider, setAiProvider] = useState("");
+    const [aiModel, setAiModel] = useState("");
     const [aiApiKey, setAiApiKey] = useState("");
 
     // Channel state
@@ -32,9 +32,7 @@ export function WizardContainer() {
 
     const handleProviderChange = (newProvider: string) => {
         setAiProvider(newProvider);
-        if (MODEL_OPTIONS[newProvider]?.length > 0) {
-            setAiModel(MODEL_OPTIONS[newProvider][0].id);
-        }
+        setAiModel("");
     };
 
     const handleChannelChange = (id: string) => {
