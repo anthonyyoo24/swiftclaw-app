@@ -84,7 +84,7 @@ export function ChannelSetupStep({ setIsValid }: StepProps) {
                                 <Icon icon="solar:key-linear" className="text-lg" />
                             </div>
                             <input
-                                type="password"
+                                type="text"
                                 placeholder="Enter your platform token..."
                                 value={token}
                                 onChange={(e) => setToken(e.target.value)}

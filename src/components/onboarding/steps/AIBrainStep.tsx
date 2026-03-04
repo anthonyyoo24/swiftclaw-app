@@ -90,7 +90,7 @@ export function AIBrainStep(_props: StepProps) {
                             <Icon icon="solar:key-linear" className="text-lg" />
                         </div>
                         <input
-                            type="password"
+                            type="text"
                             placeholder="sk-ant-..."
                             value={apiKey}
                             onChange={(e) => setApiKey(e.target.value)}
