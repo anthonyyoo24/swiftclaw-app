@@ -44,7 +44,9 @@ export function ChannelSetupStep({ setIsValid, selectedChannel, token, onChannel
     const [showToken, setShowToken] = useState(false);
     useEffect(() => {
         if (setIsValid) {
-            setIsValid(!!(selectedChannel && token));
+            const hasValidChannel = CHANNELS.some((c) => c.id === selectedChannel);
+            const hasValidToken = token?.trim().length > 0;
+            setIsValid(hasValidChannel && hasValidToken);
         }
     }, [selectedChannel, token, setIsValid]);
 
