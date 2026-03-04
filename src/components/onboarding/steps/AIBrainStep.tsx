@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
 import { Anthropic, OpenAI, Google } from "@lobehub/icons";
@@ -49,7 +50,23 @@ interface StepProps {
     onApiKeyChange: (apiKey: string) => void;
 }
 
-export function AIBrainStep({ provider, model, apiKey, onProviderChange, onModelChange, onApiKeyChange }: StepProps) {
+export function AIBrainStep({
+    setIsValid,
+    provider,
+    model,
+    apiKey,
+    onProviderChange,
+    onModelChange,
+    onApiKeyChange,
+}: StepProps) {
+    // Update validity whenever inputs change
+    useEffect(() => {
+        if (setIsValid) {
+            const isStepValid = Boolean(provider && model && apiKey.trim());
+            setIsValid(isStepValid);
+        }
+    }, [provider, model, apiKey, setIsValid]);
+
     const handleProviderChange = (newProvider: string) => {
         onProviderChange(newProvider);
         if (MODEL_OPTIONS[newProvider]?.length > 0) {
