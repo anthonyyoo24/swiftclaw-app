@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
 import { Anthropic, OpenAI, Google } from "@lobehub/icons";
@@ -59,6 +59,8 @@ export function AIBrainStep({
     onModelChange,
     onApiKeyChange,
 }: StepProps) {
+    const [showApiKey, setShowApiKey] = useState(false);
+
     // Update validity whenever inputs change
     useEffect(() => {
         if (setIsValid) {
@@ -108,12 +110,22 @@ export function AIBrainStep({
                             <Icon icon="solar:key-linear" className="text-lg" />
                         </div>
                         <input
-                            type="text"
+                            type={showApiKey ? "text" : "password"}
+                            autoComplete="off"
+                            spellCheck={false}
                             placeholder="sk-ant-..."
                             value={apiKey}
                             onChange={(e) => onApiKeyChange(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
+                            className="w-full pl-11 pr-12 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowApiKey(!showApiKey)}
+                            className="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer text-neutral-500 hover:text-neutral-300 transition-colors"
+                            aria-label={showApiKey ? "Hide API Key" : "Show API Key"}
+                        >
+                            <Icon icon={showApiKey ? "solar:eye-closed-linear" : "solar:eye-linear"} className="text-lg" />
+                        </button>
                     </div>
                     <div className="flex items-start gap-2.5 mt-3 px-1">
                         <Icon icon="solar:info-circle-linear" className="text-neutral-500 mt-0.5 shrink-0" />

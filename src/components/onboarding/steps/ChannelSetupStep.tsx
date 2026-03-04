@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { StepHeader } from "@/components/onboarding/StepHeader";
 import { ChannelOptionCard, ChannelOption } from "./ChannelOptionCard";
@@ -41,6 +41,7 @@ interface StepProps {
 }
 
 export function ChannelSetupStep({ setIsValid, selectedChannel, token, onChannelChange, onTokenChange }: StepProps) {
+    const [showToken, setShowToken] = useState(false);
     useEffect(() => {
         if (setIsValid) {
             setIsValid(!!(selectedChannel && token));
@@ -85,12 +86,22 @@ export function ChannelSetupStep({ setIsValid, selectedChannel, token, onChannel
                                 <Icon icon="solar:key-linear" className="text-lg" />
                             </div>
                             <input
-                                type="text"
+                                type={showToken ? "text" : "password"}
+                                autoComplete="off"
+                                spellCheck={false}
                                 placeholder="Enter your platform token..."
                                 value={token}
                                 onChange={(e) => onTokenChange(e.target.value)}
-                                className="w-full pl-11 pr-4 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
+                                className="w-full pl-11 pr-12 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowToken(!showToken)}
+                                className="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer text-neutral-500 hover:text-neutral-300 transition-colors"
+                                aria-label={showToken ? "Hide Token" : "Show Token"}
+                            >
+                                <Icon icon={showToken ? "solar:eye-closed-linear" : "solar:eye-linear"} className="text-lg" />
+                            </button>
                         </div>
                         <div className="flex items-start gap-2.5 mt-3 px-1">
                             <Icon icon="solar:shield-check-linear" className="text-neutral-500 mt-0.5 shrink-0 text-lg" />
