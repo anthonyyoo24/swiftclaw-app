@@ -4,24 +4,23 @@ import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
 import { Anthropic, OpenAI, Google } from "@lobehub/icons";
-
-
+import { StepHeader } from "@/components/onboarding/StepHeader";
 
 const PROVIDER_OPTIONS: DropdownOption[] = [
     {
         id: "anthropic",
         label: "Anthropic",
-        icon: <Anthropic size={20} className="w-5 h-5 text-[#D97757]" />
+        icon: <Anthropic size={20} className="w-5 h-5 text-[#D97757]" />,
     },
     {
         id: "openai",
         label: "OpenAI",
-        icon: <OpenAI size={20} className="w-5 h-5 text-[#10A37F]" />
+        icon: <OpenAI size={20} className="w-5 h-5 text-[#10A37F]" />,
     },
     {
         id: "google",
         label: "Google",
-        icon: <Google size={20} className="w-5 h-5 text-[#4285F4]" />
+        icon: <Google size={20} className="w-5 h-5 text-[#4285F4]" />,
     },
 ];
 
@@ -50,50 +49,35 @@ export function AIBrainStep(_props: StepProps) {
     const [model, setModel] = useState("claude-3-5-sonnet");
     const [apiKey, setApiKey] = useState("");
 
-
-
     const handleProviderChange = (newProvider: string) => {
         setProvider(newProvider);
-        if (MODEL_OPTIONS[newProvider] && MODEL_OPTIONS[newProvider].length > 0) {
+        if (MODEL_OPTIONS[newProvider]?.length > 0) {
             setModel(MODEL_OPTIONS[newProvider][0].id);
         }
     };
 
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
-            {/* Content Header */}
-            <div className="mb-12">
-                <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center mb-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                    <Icon icon="solar:cpu-linear" className="text-2xl text-neutral-300" />
-                </div>
-                <h1 className="text-3xl font-semibold tracking-tight text-white mb-3">AI Brain Selection</h1>
-                <p className="text-sm sm:text-base text-neutral-400 leading-relaxed">
-                    This selection defines the core intelligence of your SwiftClaw agent. You can change your provider and model later in the settings.
-                </p>
-            </div>
+            <StepHeader
+                icon="solar:cpu-linear"
+                title="AI Brain Selection"
+                description="This selection defines the core intelligence of your SwiftClaw agent. You can change your provider and model later in the settings."
+            />
 
-            {/* Form Fields */}
             <div className="space-y-8 flex-1">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Provider Dropdown */}
-                    <div className="space-y-3">
-                        <CustomDropdown
-                            label="LLM Provider"
-                            options={PROVIDER_OPTIONS}
-                            value={provider}
-                            onChange={handleProviderChange}
-                        />
-                    </div>
-
-                    {/* Model Dropdown */}
-                    <div className="space-y-3">
-                        <CustomDropdown
-                            label="Model Version"
-                            options={MODEL_OPTIONS[provider] || []}
-                            value={model}
-                            onChange={setModel}
-                        />
-                    </div>
+                    <CustomDropdown
+                        label="LLM Provider"
+                        options={PROVIDER_OPTIONS}
+                        value={provider}
+                        onChange={handleProviderChange}
+                    />
+                    <CustomDropdown
+                        label="Model Version"
+                        options={MODEL_OPTIONS[provider] || []}
+                        value={model}
+                        onChange={setModel}
+                    />
                 </div>
 
                 {/* API Key Input */}
@@ -121,8 +105,6 @@ export function AIBrainStep(_props: StepProps) {
                     </div>
                 </div>
             </div>
-
-
         </div>
     );
 }

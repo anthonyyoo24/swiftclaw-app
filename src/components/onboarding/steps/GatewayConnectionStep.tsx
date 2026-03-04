@@ -1,28 +1,16 @@
 "use client";
 
 import { Icon } from "@iconify/react";
+import { StepHeader } from "@/components/onboarding/StepHeader";
 
-interface StepProps {
-    setIsValid?: (isValid: boolean) => void;
-}
-
-export function GatewayConnectionStep(_props: StepProps) {
-
+export function GatewayConnectionStep() {
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
-            {/* Content Header */}
-            <div className="mb-12">
-                <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center mb-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                    <Icon icon="solar:rocket-linear" className="text-2xl text-neutral-300" />
-                </div>
-                <h1 className="text-3xl font-semibold tracking-tight text-white mb-3">
-                    Ready to Deploy
-                </h1>
-                <p className="text-sm sm:text-base text-neutral-400 leading-relaxed">
-                    Your SwiftClaw agent is configured and ready. Review your settings below before initiating
-                    the deployment process.
-                </p>
-            </div>
+            <StepHeader
+                icon="solar:rocket-linear"
+                title="Ready to Deploy"
+                description="Your SwiftClaw agent is configured and ready. Review your settings below before initiating the deployment process."
+            />
 
             {/* Configuration Summary */}
             <div className="space-y-6 flex-1">
@@ -46,12 +34,12 @@ export function GatewayConnectionStep(_props: StepProps) {
                                 </div>
                             </div>
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
-                                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
                                 Ready
                             </span>
                         </div>
 
-                        <div className="h-px w-full bg-white/5"></div>
+                        <div className="h-px w-full bg-white/5" />
 
                         {/* Communication Channel Summary */}
                         <div className="flex items-start justify-between">
@@ -65,7 +53,7 @@ export function GatewayConnectionStep(_props: StepProps) {
                                 </div>
                             </div>
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
-                                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
                                 Ready
                             </span>
                         </div>
@@ -81,8 +69,6 @@ export function GatewayConnectionStep(_props: StepProps) {
                     </p>
                 </div>
             </div>
-
-
         </div>
     );
 }

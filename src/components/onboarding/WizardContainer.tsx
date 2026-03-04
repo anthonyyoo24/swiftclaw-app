@@ -6,6 +6,8 @@ import { WelcomeStep } from "./steps/WelcomeStep";
 import { AIBrainStep } from "./steps/AIBrainStep";
 import { ChannelSetupStep } from "./steps/ChannelSetupStep";
 import { GatewayConnectionStep } from "./steps/GatewayConnectionStep";
+import { WizardSidebar } from "./WizardSidebar";
+import { WizardFooter } from "./WizardFooter";
 
 const steps = [
     { component: WelcomeStep, title: "Welcome", description: "Get started with SwiftClaw" },
@@ -35,7 +37,6 @@ export function WizardContainer() {
         }
     };
 
-    // Complete wizard and redirect
     const completeOnboarding = () => {
         localStorage.setItem("onboardingComplete", "true");
         window.location.href = "/";
@@ -55,16 +56,16 @@ export function WizardContainer() {
 
     return (
         <div className="bg-[#09090b] w-full flex flex-col h-screen text-white font-sans relative overflow-hidden">
-            {/* Background effects from current template style */}
+            {/* Background effects */}
             <div className="pointer-events-none absolute inset-0 -z-10">
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black"></div>
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black" />
                 <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2">
-                    <div className="w-[50rem] h-[50rem] rounded-full bg-blue-600/10 blur-[120px] mix-blend-screen animate-pulse duration-[4000ms]">
-                    </div>
+                    <div className="w-[50rem] h-[50rem] rounded-full bg-blue-600/10 blur-[120px] mix-blend-screen animate-pulse duration-[4000ms]" />
                 </div>
-                {/* Subtle dot grid */}
-                <div className="absolute inset-0 opacity-[0.15]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}>
-                </div>
+                <div
+                    className="absolute inset-0 opacity-[0.15]"
+                    style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "24px 24px" }}
+                />
             </div>
 
             {/* Header */}
@@ -83,95 +84,20 @@ export function WizardContainer() {
 
             {/* Main Content Split */}
             <div className="flex flex-1 overflow-hidden z-10">
-                {/* Sidebar Navigation */}
-                <aside className="w-[320px] border-r border-white/5 bg-gradient-to-br from-white/[0.02] to-transparent px-10 pt-14 pb-10 hidden lg:block overflow-y-auto shrink-0">
-                    <nav className="relative pt-8">
-                        {steps.map((step, index) => {
-                            const isCompleted = index < currentStepIndex;
-                            const isActive = index === currentStepIndex;
+                <WizardSidebar steps={steps} currentStepIndex={currentStepIndex} />
 
-                            return (
-                                <div key={index} className={`flex gap-4 relative group ${index !== steps.length - 1 ? 'pb-10' : ''}`}>
-                                    {/* Line connecting steps */}
-                                    {index !== steps.length - 1 && (
-                                        <div className={`absolute left-3 top-8 -bottom-2 w-px ${isCompleted ? 'bg-white/10' : 'bg-white/5'}`}></div>
-                                    )}
-
-                                    {/* Step Circle */}
-                                    <div className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-medium transition-colors ${isCompleted ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]' :
-                                        isActive ? 'border border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]' :
-                                            'border border-white/10 bg-[#131316] text-neutral-500 group-hover:border-white/30 group-hover:text-neutral-300'
-                                        }`}>
-                                        {isCompleted ? <Icon icon="solar:check-read-linear" className="text-sm" /> : index + 1}
-                                    </div>
-
-                                    {/* Step Text */}
-                                    <div>
-                                        <h3 className={`font-medium text-sm transition-colors ${isCompleted ? 'text-white' :
-                                            isActive ? 'text-white' :
-                                                'text-neutral-500 group-hover:text-neutral-300'
-                                            }`}>
-                                            {step.title}
-                                        </h3>
-                                        <p className={`text-xs mt-1 ${isCompleted ? 'text-neutral-500' : isActive ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                                            {step.description}
-                                        </p>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </nav>
-                </aside>
-
-                {/* Main Form Area */}
                 <main className="flex-1 p-8 sm:p-12 lg:p-16 overflow-y-auto flex flex-col bg-transparent">
                     <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col relative z-10">
                         <CurrentStep setIsValid={setIsValid} />
 
-                        {/* Centralized Bottom Action */}
-                        <div className="mt-auto pt-12 border-t border-white/5 flex gap-4 items-center justify-between">
-                            {currentStepIndex > 0 ? (
-                                <button
-                                    onClick={goBack}
-                                    disabled={isDeploying}
-                                    className="group px-6 py-2.5 rounded-full text-sm font-medium border border-white/10 text-white hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-                                >
-                                    <Icon icon="solar:arrow-left-linear" className="text-lg transition-transform group-hover:-translate-x-0.5" />
-                                    Back
-                                </button>
-                            ) : (
-                                <div></div>
-                            )}
-
-                            <button
-                                onClick={handleNextClick}
-                                disabled={!isValid || isDeploying}
-                                className={currentStepIndex === steps.length - 1
-                                    ? "group relative inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-3.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all overflow-hidden disabled:opacity-80 disabled:cursor-wait cursor-pointer ml-auto"
-                                    : "disabled:opacity-50 disabled:cursor-not-allowed group inline-flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-full text-sm font-medium hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all ml-auto cursor-pointer"
-                                }
-                            >
-                                {currentStepIndex === steps.length - 1 ? (
-                                    <>
-                                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                                        <span className="relative z-10 flex items-center gap-2">
-                                            {isDeploying ? "Deploying..." : "Deploy Agent"}
-                                            {!isDeploying && (
-                                                <Icon icon="solar:rocket-linear" className="text-lg transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                                            )}
-                                            {isDeploying && (
-                                                <Icon icon="solar:refresh-linear" className="text-lg animate-spin" />
-                                            )}
-                                        </span>
-                                    </>
-                                ) : (
-                                    <>
-                                        Continue
-                                        <Icon icon="solar:arrow-right-linear" className="text-lg transition-transform group-hover:translate-x-0.5" />
-                                    </>
-                                )}
-                            </button>
-                        </div>
+                        <WizardFooter
+                            currentStepIndex={currentStepIndex}
+                            totalSteps={steps.length}
+                            isValid={isValid}
+                            isDeploying={isDeploying}
+                            onBack={goBack}
+                            onNext={handleNextClick}
+                        />
                     </div>
                 </main>
             </div>
