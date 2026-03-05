@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { WizardShell } from "@/components/ui/wizard/WizardShell";
@@ -21,6 +21,16 @@ export function OnboardingWizard() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [maxVisitedIndex, setMaxVisitedIndex] = useState(0);
     const [isDeploying, setIsDeploying] = useState(false);
+    const deployTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Clear the timer on unmount to avoid stale redirects or side effects
+    useEffect(() => {
+        return () => {
+            if (deployTimeoutRef.current) {
+                clearTimeout(deployTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const methods = useForm<OnboardingFormValues>({
         resolver: zodResolver(onboardingSchema),
@@ -98,7 +108,11 @@ export function OnboardingWizard() {
         if (isDeploying || !isCurrentStepValid) return;
         if (currentStepIndex === STEPS.length - 1) {
             setIsDeploying(true);
-            setTimeout(() => {
+
+            // Clear any existing timer just in case
+            if (deployTimeoutRef.current) clearTimeout(deployTimeoutRef.current);
+
+            deployTimeoutRef.current = setTimeout(() => {
                 localStorage.setItem("onboardingComplete", "true");
                 window.location.href = "/";
             }, 2000);
