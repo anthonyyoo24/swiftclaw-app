@@ -5,7 +5,7 @@ import { useFormContext, Controller } from "react-hook-form";
 import { Icon } from "@iconify/react";
 import { StepHeader } from "@/components/onboarding/StepHeader";
 import { ChannelOptionCard, ChannelOption } from "./ChannelOptionCard";
-import type { OnboardingFormValues } from "@/components/onboarding/schema";
+import type { OnboardingFormValues, SupportedChannelId } from "@/components/onboarding/schema";
 
 export const CHANNELS: ChannelOption[] = [
     {
@@ -40,9 +40,10 @@ export function ChannelSetupStep() {
 
     const selectedChannel = watch("selectedChannel");
     const activeChannel = CHANNELS.find((c) => c.id === selectedChannel);
+    const tokenInputId = "channel-token-input";
 
     const handleChannelSelect = (id: string) => {
-        setValue("selectedChannel", id, { shouldValidate: true });
+        setValue("selectedChannel", id as SupportedChannelId, { shouldValidate: true });
         // Reset token whenever channel changes
         setValue("channelToken", "", { shouldValidate: true });
         // Reset visibility for security
@@ -71,7 +72,7 @@ export function ChannelSetupStep() {
 
                 {selectedChannel && (
                     <div className="space-y-3 animate-in slide-in-from-top-2 duration-300 fade-in">
-                        <label className="block text-sm font-medium text-neutral-300">
+                        <label htmlFor={tokenInputId} className="block text-sm font-medium text-neutral-300">
                             {activeChannel?.tokenLabel}
                             <span className="text-blue-500 pl-1">*</span>
                         </label>
@@ -85,6 +86,7 @@ export function ChannelSetupStep() {
                                 render={({ field }) => (
                                     <input
                                         {...field}
+                                        id={tokenInputId}
                                         type={showToken ? "text" : "password"}
                                         autoComplete="off"
                                         spellCheck={false}
