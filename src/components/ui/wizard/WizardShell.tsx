@@ -16,6 +16,7 @@ interface WizardShellProps {
     isDeploying?: boolean;
     onNext: () => void;
     onBack: () => void;
+    onStepClick?: (index: number) => void;
     /** The specific wizard's step content. */
     children: React.ReactNode;
 }
@@ -32,6 +33,7 @@ export function WizardShell({
     isDeploying = false,
     onNext,
     onBack,
+    onStepClick,
     children,
 }: WizardShellProps) {
     return (
@@ -64,7 +66,7 @@ export function WizardShell({
 
             {/* Main Content Split */}
             <div className="flex flex-1 overflow-hidden z-10">
-                <WizardSidebar steps={steps} currentStepIndex={currentStepIndex} />
+                <WizardSidebar steps={steps} currentStepIndex={currentStepIndex} onStepClick={onStepClick} />
 
                 <main className="flex-1 p-8 sm:p-12 lg:p-16 overflow-y-auto flex flex-col bg-transparent">
                     <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col relative z-10">

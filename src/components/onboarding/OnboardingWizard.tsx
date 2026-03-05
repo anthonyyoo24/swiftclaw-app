@@ -70,6 +70,16 @@ export function OnboardingWizard() {
         }
     };
 
+    /**
+     * Sidebar step click handler.
+     * Only allow backward jumps (linear advancement, free retreat).
+     */
+    const handleStepClick = (index: number) => {
+        if (index < currentStepIndex) {
+            setCurrentStepIndex(index);
+        }
+    };
+
     const handleNextClick = () => {
         if (!isCurrentStepValid) return;
         if (currentStepIndex === STEPS.length - 1) {
@@ -113,6 +123,7 @@ export function OnboardingWizard() {
                 isDeploying={isDeploying}
                 onNext={handleNextClick}
                 onBack={goBack}
+                onStepClick={handleStepClick}
             >
                 {renderStep()}
             </WizardShell>
