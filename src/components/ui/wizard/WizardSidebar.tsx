@@ -38,12 +38,12 @@ export function WizardSidebar({ steps, currentStepIndex, maxVisitedIndex, canPro
 
                             {/* Step Circle */}
                             <div className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-medium transition-all ${isDone
-                                    ? isLockedForward
-                                        ? "bg-white/40 text-black/60 shadow-none scale-95"
-                                        : "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)] group-hover:shadow-[0_0_20px_rgba(255,255,255,0.4)] group-hover:scale-110"
-                                    : isActive
-                                        ? "border border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
-                                        : "border border-white/10 bg-[#131316] text-neutral-500"
+                                ? isLockedForward
+                                    ? "bg-white/40 text-black/60 shadow-none scale-95"
+                                    : "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)] group-hover:shadow-[0_0_20px_rgba(255,255,255,0.4)] group-hover:scale-110"
+                                : isActive
+                                    ? "border border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                                    : "border border-white/10 bg-[#131316] text-neutral-500"
                                 }`}>
                                 {isDone ? <Icon icon="solar:check-read-linear" className="text-sm" /> : index + 1}
                             </div>
@@ -51,18 +51,18 @@ export function WizardSidebar({ steps, currentStepIndex, maxVisitedIndex, canPro
                             {/* Step Text */}
                             <div className={isLockedForward ? "opacity-60" : ""}>
                                 <h3 className={`font-medium text-sm transition-colors ${isActive
-                                        ? "text-white"
-                                        : isDone
-                                            ? isLockedForward ? "text-white/70" : "text-white/80 group-hover:text-white"
-                                            : "text-neutral-500"
+                                    ? "text-white"
+                                    : isDone
+                                        ? isLockedForward ? "text-white/70" : "text-white/80 group-hover:text-white"
+                                        : "text-neutral-500"
                                     }`}>
                                     {step.title}
                                 </h3>
                                 <p className={`text-xs mt-1 transition-colors ${isDone
-                                        ? isLockedForward ? "text-neutral-500" : "text-neutral-500 group-hover:text-neutral-400"
-                                        : isActive
-                                            ? "text-neutral-400"
-                                            : "text-neutral-600"
+                                    ? isLockedForward ? "text-neutral-500" : "text-neutral-500 group-hover:text-neutral-400"
+                                    : isActive
+                                        ? "text-neutral-400"
+                                        : "text-neutral-600"
                                     }`}>
                                     {step.description}
                                 </p>
@@ -75,6 +75,7 @@ export function WizardSidebar({ steps, currentStepIndex, maxVisitedIndex, canPro
                             <button
                                 key={index}
                                 type="button"
+                                aria-current={isActive ? "step" : undefined}
                                 onClick={() => onStepClick?.(index)}
                                 className={`flex gap-4 relative group w-full text-left cursor-pointer ${index !== steps.length - 1 ? "pb-10" : ""}`}
                             >
@@ -84,7 +85,12 @@ export function WizardSidebar({ steps, currentStepIndex, maxVisitedIndex, canPro
                     }
 
                     return (
-                        <div key={index} className={`flex gap-4 relative ${index !== steps.length - 1 ? "pb-10" : ""} ${isLockedForward ? "cursor-not-allowed" : ""}`}>
+                        <div
+                            key={index}
+                            aria-current={isActive ? "step" : undefined}
+                            aria-disabled={isLockedForward || undefined}
+                            className={`flex gap-4 relative ${index !== steps.length - 1 ? "pb-10" : ""} ${isLockedForward ? "cursor-not-allowed" : ""}`}
+                        >
                             {stepEl}
                         </div>
                     );

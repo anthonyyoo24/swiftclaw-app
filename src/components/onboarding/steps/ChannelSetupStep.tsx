@@ -45,6 +45,8 @@ export function ChannelSetupStep() {
         setValue("selectedChannel", id, { shouldValidate: true });
         // Reset token whenever channel changes
         setValue("channelToken", "", { shouldValidate: true });
+        // Reset visibility for security
+        setShowToken(false);
     };
 
     return (

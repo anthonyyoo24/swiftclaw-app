@@ -24,6 +24,7 @@ export function WizardFooter({
         <div className="mt-auto pt-12 border-t border-white/5 flex gap-4 items-center justify-between">
             {currentStepIndex > 0 ? (
                 <button
+                    type="button"
                     onClick={onBack}
                     disabled={isDeploying}
                     className="group px-6 py-2.5 rounded-full text-sm font-medium border border-white/10 text-white hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus:ring-white/20 active:scale-[0.98] active:ring-2 active:ring-white/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
@@ -36,6 +37,7 @@ export function WizardFooter({
             )}
 
             <button
+                type="button"
                 onClick={onNext}
                 disabled={!canProgress || isDeploying}
                 className={
