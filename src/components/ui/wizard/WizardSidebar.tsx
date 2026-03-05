@@ -27,11 +27,11 @@ export function WizardSidebar({ steps, currentStepIndex, onStepClick }: WizardSi
                             )}
 
                             {/* Step Circle */}
-                            <div className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-medium transition-colors ${isCompleted
-                                    ? "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)] group-hover:shadow-[0_0_20px_rgba(255,255,255,0.4)]"
-                                    : isActive
-                                        ? "border border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
-                                        : "border border-white/10 bg-[#131316] text-neutral-500"
+                            <div className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-medium transition-all ${isCompleted
+                                ? "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)] group-hover:shadow-[0_0_20px_rgba(255,255,255,0.4)] group-hover:scale-110"
+                                : isActive
+                                    ? "border border-blue-500/50 bg-blue-500/10 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                                    : "border border-white/10 bg-[#131316] text-neutral-500"
                                 }`}>
                                 {isCompleted ? <Icon icon="solar:check-read-linear" className="text-sm" /> : index + 1}
                             </div>
@@ -39,14 +39,14 @@ export function WizardSidebar({ steps, currentStepIndex, onStepClick }: WizardSi
                             {/* Step Text */}
                             <div>
                                 <h3 className={`font-medium text-sm transition-colors ${isActive
-                                        ? "text-white"
-                                        : isCompleted
-                                            ? "text-white group-hover:text-neutral-200"
-                                            : "text-neutral-500"
+                                    ? "text-white"
+                                    : isCompleted
+                                        ? "text-white/80 group-hover:text-white"
+                                        : "text-neutral-500"
                                     }`}>
                                     {step.title}
                                 </h3>
-                                <p className={`text-xs mt-1 ${isCompleted ? "text-neutral-500" : isActive ? "text-neutral-400" : "text-neutral-600"}`}>
+                                <p className={`text-xs mt-1 transition-colors ${isCompleted ? "text-neutral-500 group-hover:text-neutral-400" : isActive ? "text-neutral-400" : "text-neutral-600"}`}>
                                     {step.description}
                                 </p>
                             </div>
