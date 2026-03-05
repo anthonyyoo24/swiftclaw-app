@@ -89,7 +89,7 @@ export function WizardSidebar({ steps, currentStepIndex, maxVisitedIndex, canPro
                             key={index}
                             aria-current={isActive ? "step" : undefined}
                             aria-disabled={isLockedForward || undefined}
-                            className={`flex gap-4 relative ${index !== steps.length - 1 ? "pb-10" : ""} ${isLockedForward ? "cursor-not-allowed" : ""}`}
+                            className={`flex gap-4 relative ${index !== steps.length - 1 ? "pb-10" : ""} ${isLockedForward && index <= maxVisitedIndex ? "cursor-not-allowed" : ""}`}
                         >
                             {stepEl}
                         </div>
