@@ -8,6 +8,7 @@ interface WizardShellProps {
     /** Step metadata (title + description) for the sidebar. */
     steps: WizardStep[];
     currentStepIndex: number;
+    maxVisitedIndex: number;
     /**
      * Derived from the specific wizard's validation — drives the footer "Next"
      * button. The shell is intentionally unaware of *why* a step is valid.
@@ -29,6 +30,7 @@ interface WizardShellProps {
 export function WizardShell({
     steps,
     currentStepIndex,
+    maxVisitedIndex,
     canProgress,
     isDeploying = false,
     onNext,
@@ -66,7 +68,13 @@ export function WizardShell({
 
             {/* Main Content Split */}
             <div className="flex flex-1 overflow-hidden z-10">
-                <WizardSidebar steps={steps} currentStepIndex={currentStepIndex} onStepClick={onStepClick} />
+                <WizardSidebar
+                    steps={steps}
+                    currentStepIndex={currentStepIndex}
+                    maxVisitedIndex={maxVisitedIndex}
+                    canProgress={canProgress}
+                    onStepClick={onStepClick}
+                />
 
                 <main className="flex-1 p-8 sm:p-12 lg:p-16 overflow-y-auto flex flex-col bg-transparent">
                     <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col relative z-10">

@@ -19,6 +19,7 @@ const STEPS = [
 
 export function OnboardingWizard() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
+    const [maxVisitedIndex, setMaxVisitedIndex] = useState(0);
     const [isDeploying, setIsDeploying] = useState(false);
 
     const methods = useForm<OnboardingFormValues>({
@@ -60,7 +61,9 @@ export function OnboardingWizard() {
 
     const goNext = () => {
         if (currentStepIndex < STEPS.length - 1) {
-            setCurrentStepIndex((prev) => prev + 1);
+            const nextIndex = currentStepIndex + 1;
+            setCurrentStepIndex(nextIndex);
+            setMaxVisitedIndex((prev) => Math.max(prev, nextIndex));
         }
     };
 
@@ -72,10 +75,21 @@ export function OnboardingWizard() {
 
     /**
      * Sidebar step click handler.
-     * Only allow backward jumps (linear advancement, free retreat).
+     * - Backward jumps (to a completed step) are ALWAYS allowed.
+     * - Forward jumps require the current step to be valid AND the target
+     *   must be within the already-visited range.
      */
     const handleStepClick = (index: number) => {
-        if (index < currentStepIndex) {
+        if (index === currentStepIndex) return;
+
+        const isBackward = index < currentStepIndex;
+        if (isBackward) {
+            setCurrentStepIndex(index);
+            return;
+        }
+
+        // Forward: gate on current step validity and visited range.
+        if (isCurrentStepValid && index <= maxVisitedIndex) {
             setCurrentStepIndex(index);
         }
     };
@@ -119,6 +133,7 @@ export function OnboardingWizard() {
             <WizardShell
                 steps={STEPS}
                 currentStepIndex={currentStepIndex}
+                maxVisitedIndex={maxVisitedIndex}
                 canProgress={isCurrentStepValid}
                 isDeploying={isDeploying}
                 onNext={handleNextClick}
