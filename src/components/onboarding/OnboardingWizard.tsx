@@ -8,7 +8,7 @@ import { WelcomeStep } from "./steps/WelcomeStep";
 import { AIBrainStep } from "./steps/AIBrainStep";
 import { ChannelSetupStep } from "./steps/ChannelSetupStep";
 import { GatewayConnectionStep } from "./steps/GatewayConnectionStep";
-import { onboardingSchema, type OnboardingFormValues } from "./schema";
+import { onboardingSchema, type OnboardingFormValues, type SupportedChannelId } from "./schema";
 
 const STEPS = [
     { title: "Welcome", description: "Get started with SwiftClaw" },
@@ -29,7 +29,7 @@ export function OnboardingWizard() {
             aiProvider: "",
             aiModel: "",
             aiApiKey: "",
-            selectedChannel: "",
+            selectedChannel: undefined as unknown as SupportedChannelId,
             channelToken: "",
         },
     });
@@ -80,7 +80,7 @@ export function OnboardingWizard() {
      *   must be within the already-visited range.
      */
     const handleStepClick = (index: number) => {
-        if (index === currentStepIndex) return;
+        if (isDeploying || index === currentStepIndex) return;
 
         const isBackward = index < currentStepIndex;
         if (isBackward) {
@@ -95,7 +95,7 @@ export function OnboardingWizard() {
     };
 
     const handleNextClick = () => {
-        if (!isCurrentStepValid) return;
+        if (isDeploying || !isCurrentStepValid) return;
         if (currentStepIndex === STEPS.length - 1) {
             setIsDeploying(true);
             setTimeout(() => {
