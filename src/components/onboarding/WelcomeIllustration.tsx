@@ -55,8 +55,7 @@ export function WelcomeIllustration() {
                         Define the Relationship
                     </span>
                     <span className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-                        Provide context about you and your goals to establish how
-                        you and your agent will work together.
+                        Establish how you and your agent will work together.
                     </span>
                 </div>
             </div>
