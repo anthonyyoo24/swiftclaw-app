@@ -44,14 +44,26 @@ export function DeployProgressView({ duration }: DeployProgressViewProps) {
 
             <h2 className="text-xl font-medium text-white mb-2">Deploying Agent</h2>
 
-            <div className="h-6 mb-8 relative font-mono text-sm w-full text-center">
+            <div
+                className="h-6 mb-8 relative font-mono text-sm w-full text-center"
+                role="status"
+                aria-live="polite"
+            >
                 <p className="text-neutral-400 transition-opacity duration-300">
                     {LOADING_MESSAGES[messageIndex]}
                 </p>
             </div>
 
             {/* Linear progress bar */}
-            <div className="w-64 max-w-full h-1 bg-white/5 rounded-full overflow-hidden relative">
+            <div
+                className="w-64 max-w-full h-1 bg-white/5 rounded-full overflow-hidden relative"
+                role="progressbar"
+                aria-label="Deployment progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(((messageIndex + 1) / LOADING_MESSAGES.length) * 100)}
+                aria-valuetext={LOADING_MESSAGES[messageIndex]}
+            >
                 <div
                     className="h-full bg-linear-to-r from-blue-500 to-indigo-500 rounded-full absolute left-0 top-0 w-full animate-[linear-fill_var(--fill-duration)_linear_forwards]"
                     style={{
