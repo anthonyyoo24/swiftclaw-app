@@ -8,6 +8,8 @@ import { WelcomeStep } from "./steps/WelcomeStep";
 import { AIBrainStep } from "./steps/AIBrainStep";
 import { ChannelSetupStep } from "./steps/ChannelSetupStep";
 import { DeploymentStep } from "./steps/DeploymentStep";
+import { DeployProgressView } from "./steps/DeployProgressView";
+import { DeploySuccessView } from "./steps/DeploySuccessView";
 import { onboardingSchema, type OnboardingFormValues, type SupportedChannelId } from "./schema";
 
 const STEPS = [
@@ -20,7 +22,7 @@ const STEPS = [
 export function OnboardingWizard() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [maxVisitedIndex, setMaxVisitedIndex] = useState(0);
-    const [isDeploying, setIsDeploying] = useState(false);
+    const [deployState, setDeployState] = useState<'idle' | 'loading' | 'success'>('idle');
     const deployTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Clear the timer on unmount to avoid stale redirects or side effects
@@ -90,7 +92,7 @@ export function OnboardingWizard() {
      *   must be within the already-visited range.
      */
     const handleStepClick = (index: number) => {
-        if (isDeploying || index === currentStepIndex) return;
+        if (deployState !== 'idle' || index === currentStepIndex) return;
 
         const isBackward = index < currentStepIndex;
         if (isBackward) {
@@ -105,16 +107,15 @@ export function OnboardingWizard() {
     };
 
     const handleNextClick = () => {
-        if (isDeploying || !isCurrentStepValid) return;
+        if (deployState !== 'idle' || !isCurrentStepValid) return;
         if (currentStepIndex === STEPS.length - 1) {
-            setIsDeploying(true);
+            setDeployState('loading');
 
             // Clear any existing timer just in case
             if (deployTimeoutRef.current) clearTimeout(deployTimeoutRef.current);
 
             deployTimeoutRef.current = setTimeout(() => {
-                localStorage.setItem("onboardingComplete", "true");
-                window.location.href = "/";
+                setDeployState('success');
             }, 2000);
         } else {
             goNext();
@@ -130,6 +131,8 @@ export function OnboardingWizard() {
             case 2:
                 return <ChannelSetupStep />;
             case 3:
+                if (deployState === 'loading') return <DeployProgressView />;
+                if (deployState === 'success') return <DeploySuccessView />;
                 return (
                     <DeploymentStep
                         aiProvider={aiProvider ?? ""}
@@ -149,7 +152,7 @@ export function OnboardingWizard() {
                 currentStepIndex={currentStepIndex}
                 maxVisitedIndex={maxVisitedIndex}
                 canProgress={isCurrentStepValid}
-                isDeploying={isDeploying}
+                deployState={deployState}
                 onNext={handleNextClick}
                 onBack={goBack}
                 onStepClick={handleStepClick}

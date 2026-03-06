@@ -15,6 +15,7 @@ interface WizardShellProps {
      */
     canProgress: boolean;
     isDeploying?: boolean;
+    deployState?: 'idle' | 'loading' | 'success';
     onNext: () => void;
     onBack: () => void;
     onStepClick?: (index: number) => void;
@@ -33,6 +34,7 @@ export function WizardShell({
     maxVisitedIndex,
     canProgress,
     isDeploying = false,
+    deployState = 'idle',
     onNext,
     onBack,
     onStepClick,
@@ -68,26 +70,30 @@ export function WizardShell({
 
             {/* Main Content Split */}
             <div className="flex flex-1 overflow-hidden z-10">
-                <WizardSidebar
-                    steps={steps}
-                    currentStepIndex={currentStepIndex}
-                    maxVisitedIndex={maxVisitedIndex}
-                    canProgress={canProgress}
-                    onStepClick={onStepClick}
-                />
+                {deployState !== 'success' && (
+                    <WizardSidebar
+                        steps={steps}
+                        currentStepIndex={currentStepIndex}
+                        maxVisitedIndex={maxVisitedIndex}
+                        canProgress={canProgress}
+                        onStepClick={onStepClick}
+                    />
+                )}
 
                 <main className="flex-1 p-8 sm:p-12 lg:p-16 overflow-y-auto flex flex-col bg-transparent">
                     <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col relative z-10">
                         {children}
 
-                        <WizardFooter
-                            currentStepIndex={currentStepIndex}
-                            totalSteps={steps.length}
-                            canProgress={canProgress}
-                            isDeploying={isDeploying}
-                            onBack={onBack}
-                            onNext={onNext}
-                        />
+                        {(deployState === 'idle') && (
+                            <WizardFooter
+                                currentStepIndex={currentStepIndex}
+                                totalSteps={steps.length}
+                                canProgress={canProgress}
+                                isDeploying={isDeploying}
+                                onBack={onBack}
+                                onNext={onNext}
+                            />
+                        )}
                     </div>
                 </main>
             </div>
