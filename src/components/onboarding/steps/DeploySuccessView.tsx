@@ -25,9 +25,9 @@ export function DeploySuccessView() {
                         }}
                     >
                         <path
-                            d="M5 13L9 17L19 7"
+                            d="M2.5 12.5L9.5 19.5L21.5 5.5"
                             stroke="currentColor"
-                            strokeWidth="3.5"
+                            strokeWidth="4.5"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             pathLength="100"
