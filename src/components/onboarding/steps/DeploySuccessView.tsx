@@ -14,24 +14,27 @@ export function DeploySuccessView() {
                 <div className="absolute inset-0 rounded-full bg-emerald-500/10 blur-xl animate-pulse" />
 
                 {/* Checkmark container */}
-                <div className="relative w-full h-full rounded-full border-2 border-emerald-500 flex items-center justify-center">
+                <div className="relative w-full h-full rounded-full border-2 border-emerald-500/50 flex items-center justify-center">
                     <svg
-                        className="w-12 h-12 text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]"
+                        className="w-28 h-28 text-emerald-500 drop-shadow-[0_0_12px_rgba(16,185,129,0.9)] opacity-0 scale-50"
                         viewBox="0 0 24 24"
                         fill="none"
                         xmlns="http://www.w3.org/2000/svg"
+                        style={{
+                            animation: "pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards"
+                        }}
                     >
                         <path
                             d="M5 13L9 17L19 7"
                             stroke="currentColor"
-                            strokeWidth="3"
+                            strokeWidth="3.5"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className="scale-0 opacity-0 animate-[spring-pop_0.5s_cubic-bezier(0.175,0.885,0.32,1.275)_0.2s_forwards]"
+                            pathLength="100"
                             style={{
-                                strokeDasharray: 24,
-                                strokeDashoffset: 24,
-                                animation: "draw-check 0.6s ease-out 0.2s forwards, fade-in 0.2s ease-out 0.2s forwards"
+                                strokeDasharray: 100,
+                                strokeDashoffset: 100,
+                                animation: "draw-check 0.6s ease-out 0.3s forwards"
                             }}
                         />
                     </svg>
@@ -44,7 +47,7 @@ export function DeploySuccessView() {
 
             <p className="text-neutral-400 text-center max-w-sm mb-12">
                 Your SwiftClaw agent is live and securely connected to your selected services.
-                Let's move on and teach it how to behave.
+                Let&apos;s move on and teach it how to behave.
             </p>
 
             <button
@@ -59,15 +62,19 @@ export function DeploySuccessView() {
                 </span>
             </button>
             <style jsx>{`
+                @keyframes pop-in {
+                    0% {
+                        opacity: 0;
+                        transform: scale(0.5);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
                 @keyframes draw-check {
                     to {
                         stroke-dashoffset: 0;
-                    }
-                }
-                @keyframes fade-in {
-                    to {
-                        opacity: 1;
-                        transform: scale(1);
                     }
                 }
             `}</style>

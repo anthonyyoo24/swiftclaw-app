@@ -19,6 +19,8 @@ const STEPS = [
     { title: "Deploy AI", description: "Start your assistant" },
 ];
 
+const DEPLOY_DURATION_MS = 10000;
+
 export function OnboardingWizard() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [maxVisitedIndex, setMaxVisitedIndex] = useState(0);
@@ -116,7 +118,7 @@ export function OnboardingWizard() {
 
             deployTimeoutRef.current = setTimeout(() => {
                 setDeployState('success');
-            }, 2000);
+            }, DEPLOY_DURATION_MS);
         } else {
             goNext();
         }
@@ -131,7 +133,7 @@ export function OnboardingWizard() {
             case 2:
                 return <ChannelSetupStep />;
             case 3:
-                if (deployState === 'loading') return <DeployProgressView />;
+                if (deployState === 'loading') return <DeployProgressView duration={DEPLOY_DURATION_MS} />;
                 if (deployState === 'success') return <DeploySuccessView />;
                 return (
                     <DeploymentStep

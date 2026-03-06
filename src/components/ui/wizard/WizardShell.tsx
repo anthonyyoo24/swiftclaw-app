@@ -66,19 +66,32 @@ export function WizardShell({
                         <span className="text-neutral-400 font-medium text-sm">Setup Wizard</span>
                     </div>
                 </div>
+
+                <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="group flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all duration-300 cursor-pointer no-drag"
+                    title="Reset Wizard"
+                >
+                    <Icon
+                        icon="solar:restart-linear"
+                        className="text-lg text-neutral-500 group-hover:text-white group-hover:-rotate-45 transition-all duration-300"
+                    />
+                    <span className="text-sm font-medium text-neutral-400 group-hover:text-white transition-colors">
+                        Reset
+                    </span>
+                </button>
             </header>
 
             {/* Main Content Split */}
             <div className="flex flex-1 overflow-hidden z-10">
-                {deployState !== 'success' && (
-                    <WizardSidebar
-                        steps={steps}
-                        currentStepIndex={currentStepIndex}
-                        maxVisitedIndex={maxVisitedIndex}
-                        canProgress={canProgress}
-                        onStepClick={onStepClick}
-                    />
-                )}
+                <WizardSidebar
+                    steps={steps}
+                    currentStepIndex={currentStepIndex}
+                    maxVisitedIndex={maxVisitedIndex}
+                    canProgress={canProgress}
+                    onStepClick={onStepClick}
+                />
 
                 <main className="flex-1 p-8 sm:p-12 lg:p-16 overflow-y-auto flex flex-col bg-transparent">
                     <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col relative z-10">

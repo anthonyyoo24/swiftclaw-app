@@ -4,22 +4,27 @@ import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 
 const LOADING_MESSAGES = [
-    "Provisioning secure environment...",
+    "Starting your deployment...",
     "Connecting to your AI provider...",
-    "Establishing channel bridge...",
+    "Establishing channel connection...",
     "Finalizing agent startup...",
 ];
 
-export function DeployProgressView() {
+interface DeployProgressViewProps {
+    duration: number;
+}
+
+export function DeployProgressView({ duration }: DeployProgressViewProps) {
     const [messageIndex, setMessageIndex] = useState(0);
 
     useEffect(() => {
+        const messageInterval = duration / LOADING_MESSAGES.length;
         const interval = setInterval(() => {
             setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-        }, 800);
+        }, messageInterval);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [duration]);
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 min-h-100">
@@ -39,16 +44,30 @@ export function DeployProgressView() {
 
             <h2 className="text-xl font-medium text-white mb-2">Deploying Agent</h2>
 
-            <div className="h-6 mb-8 relative font-mono text-sm">
-                <p className="text-neutral-400 text-center transition-opacity duration-300">
+            <div className="h-6 mb-8 relative font-mono text-sm w-full text-center">
+                <p className="text-neutral-400 transition-opacity duration-300">
                     {LOADING_MESSAGES[messageIndex]}
                 </p>
             </div>
 
-            {/* Subtle progress bar */}
-            <div className="w-64 max-w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full bg-linear-to-r from-blue-500 to-indigo-500 rounded-full w-full origin-left animate-[pulse_2s_ease-in-out_infinite] opacity-80" />
+            {/* Linear progress bar */}
+            <div className="w-64 max-w-full h-1 bg-white/5 rounded-full overflow-hidden relative">
+                <div
+                    className="h-full bg-linear-to-r from-blue-500 to-indigo-500 rounded-full absolute left-0 top-0 w-full animate-[linear-fill_var(--fill-duration)_linear_forwards]"
+                    style={{
+                        transform: 'translateX(-100%)',
+                        ['--fill-duration' as string]: `${duration}ms`
+                    } as React.CSSProperties}
+                />
             </div>
+
+            <style jsx>{`
+                @keyframes linear-fill {
+                    to {
+                        transform: translateX(0%);
+                    }
+                }
+            `}</style>
         </div>
     );
 }
