@@ -7,7 +7,7 @@ import { WizardShell } from "@/components/ui/wizard/WizardShell";
 import { WelcomeStep } from "./steps/WelcomeStep";
 import { AIBrainStep } from "./steps/AIBrainStep";
 import { ChannelSetupStep } from "./steps/ChannelSetupStep";
-import { GatewayConnectionStep } from "./steps/GatewayConnectionStep";
+import { DeploymentStep } from "./steps/DeploymentStep";
 import { onboardingSchema, type OnboardingFormValues, type SupportedChannelId } from "./schema";
 
 const STEPS = [
@@ -131,7 +131,7 @@ export function OnboardingWizard() {
                 return <ChannelSetupStep />;
             case 3:
                 return (
-                    <GatewayConnectionStep
+                    <DeploymentStep
                         aiProvider={aiProvider ?? ""}
                         aiModel={aiModel ?? ""}
                         selectedChannel={selectedChannel ?? ""}

@@ -6,7 +6,7 @@ import { StepHeader } from "@/components/onboarding/StepHeader";
 import { PROVIDER_OPTIONS, MODEL_OPTIONS } from "./AIBrainStep";
 import { CHANNELS } from "./ChannelSetupStep";
 
-interface GatewayConnectionStepProps {
+interface DeploymentStepProps {
     aiProvider: string;
     aiModel: string;
     selectedChannel: string | null;
@@ -18,7 +18,7 @@ const PROVIDER_ICONS: Record<string, React.ReactNode> = {
     google: <Google size={18} className="text-[#4285F4]" />,
 };
 
-export function GatewayConnectionStep({ aiProvider, aiModel, selectedChannel }: GatewayConnectionStepProps) {
+export function DeploymentStep({ aiProvider, aiModel, selectedChannel }: DeploymentStepProps) {
     const providerOption = PROVIDER_OPTIONS.find((p) => p.id === aiProvider);
     const modelOption = MODEL_OPTIONS[aiProvider]?.find((m) => m.id === aiModel);
     const channelOption = CHANNELS.find((c) => c.id === selectedChannel);
@@ -34,7 +34,7 @@ export function GatewayConnectionStep({ aiProvider, aiModel, selectedChannel }: 
             {/* Configuration Summary */}
             <div className="space-y-6 flex-1">
                 <div className="bg-[#0a0a0c] border border-white/10 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="p-4 border-b border-white/5 bg-white/[0.02]">
+                    <div className="p-4 border-b border-white/5 bg-white/2">
                         <h3 className="text-sm font-medium text-white flex items-center gap-2">
                             <Icon icon="solar:document-text-linear" className="text-neutral-400 text-lg" />
                             Configuration Summary
