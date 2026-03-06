@@ -34,7 +34,7 @@ export function DeployProgressView({ duration }: DeployProgressViewProps) {
 
                 {/* Spinning dual rings */}
                 <div className="absolute inset-0 rounded-full border-t-2 border-b-2 border-blue-400 opacity-60 animate-spin transition-all duration-1000" />
-                <div className="absolute inset-2 rounded-full border-l-2 border-r-2 border-indigo-400 opacity-40 animate-spin animation-duration-[1.5s] transition-all" />
+                <div className="absolute inset-2 rounded-full border-l-2 border-r-2 border-indigo-400 opacity-40 animate-spin [animation-duration:1.5s] transition-all" />
 
                 {/* Center icon */}
                 <div className="absolute inset-0 flex items-center justify-center text-blue-400">
