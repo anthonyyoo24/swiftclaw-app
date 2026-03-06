@@ -124,6 +124,16 @@ export function OnboardingWizard() {
         }
     };
 
+    const handleReset = () => {
+        methods.reset();
+        setCurrentStepIndex(0);
+        setMaxVisitedIndex(0);
+        setDeployState('idle');
+        if (deployTimeoutRef.current) {
+            clearTimeout(deployTimeoutRef.current);
+        }
+    };
+
     const renderStep = () => {
         switch (currentStepIndex) {
             case 0:
@@ -158,6 +168,7 @@ export function OnboardingWizard() {
                 onNext={handleNextClick}
                 onBack={goBack}
                 onStepClick={handleStepClick}
+                onReset={handleReset}
             >
                 {renderStep()}
             </WizardShell>

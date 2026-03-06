@@ -19,6 +19,8 @@ interface WizardShellProps {
     onNext: () => void;
     onBack: () => void;
     onStepClick?: (index: number) => void;
+    /** Called when the user confirms they want to reset the entire wizard. */
+    onReset?: () => void;
     /** The specific wizard's step content. */
     children: React.ReactNode;
 }
@@ -38,6 +40,7 @@ export function WizardShell({
     onNext,
     onBack,
     onStepClick,
+    onReset,
     children,
 }: WizardShellProps) {
     return (
@@ -69,7 +72,11 @@ export function WizardShell({
 
                 <button
                     type="button"
-                    onClick={() => window.location.reload()}
+                    onClick={() => {
+                        if (window.confirm("Are you sure you want to reset the wizard? All entered progress and credentials will be cleared.")) {
+                            onReset?.();
+                        }
+                    }}
                     className="group flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all duration-300 cursor-pointer no-drag"
                     title="Reset Wizard"
                 >
