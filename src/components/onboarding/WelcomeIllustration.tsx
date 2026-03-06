@@ -23,7 +23,7 @@ export function WelcomeIllustration() {
 
             {/* Icon 1: Circuitry (Top Left) */}
             <div className="absolute left-[15%] top-[25%] -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-2xl bg-[#09090b] border border-blue-500/40 flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.3)] z-10">
-                <Icon icon="lucide:circuit-board" className="text-2xl text-blue-400" />
+                <Icon icon="solar:cpu-linear" className="text-2xl text-blue-400" />
                 <div className="absolute top-full mt-4 left-1/2 -translate-x-1/2 w-48 text-center flex flex-col items-center pointer-events-none">
                     <span className="text-white text-sm font-semibold">
                         System Configuration
