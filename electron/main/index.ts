@@ -1,18 +1,23 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
-import electronIsDev from 'electron-is-dev'
 import log from 'electron-log'
 
 log.transports.file.level = 'info'
 log.transports.console.level = 'debug'
 Object.assign(console, log.functions)
 
+const isDev = !app.isPackaged
+
 function createWindow() {
     const mainWindow = new BrowserWindow({
-        width: 900,
-        height: 670,
+        width: 1100,
+        height: 750,
+        minWidth: 900,
+        minHeight: 670,
         show: false,
         autoHideMenuBar: true,
+        titleBarStyle: 'hiddenInset',
+        trafficLightPosition: { x: 16, y: 16 }, // Nice padding for macOS lights
         webPreferences: {
             preload: join(__dirname, '../preload/index.js'),
             sandbox: false
@@ -23,7 +28,7 @@ function createWindow() {
         mainWindow.show()
     })
 
-    if (electronIsDev) {
+    if (isDev) {
         mainWindow.loadURL('http://localhost:3000')
     } else {
         mainWindow.loadFile(join(__dirname, '../../out/index.html'))
