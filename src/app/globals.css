@@ -158,15 +158,14 @@ html {
   }
 }
 
-@layer utilities {
-  .animate-dash-flow {
-      animation: dash-flow 1s linear infinite;
-  }
+@utility animate-dash-flow {
+  animation: dash-flow 1s linear infinite;
+}
 
-  .drag {
-    -webkit-app-region: drag;
-  }
-  .no-drag {
-    -webkit-app-region: no-drag;
-  }
+@utility drag {
+  -webkit-app-region: drag;
+}
+
+@utility no-drag {
+  -webkit-app-region: no-drag;
 }
