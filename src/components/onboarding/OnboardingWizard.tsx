@@ -10,7 +10,7 @@ import { ChannelSetupStep } from "./steps/ChannelSetupStep";
 import { DeploymentStep } from "./steps/DeploymentStep";
 import { DeployProgressView } from "./steps/DeployProgressView";
 import { DeploySuccessView } from "./steps/DeploySuccessView";
-import { onboardingSchema, type OnboardingFormValues, type SupportedChannelId } from "./schema";
+import { onboardingSchema, type OnboardingFormValues } from "./schema";
 
 const STEPS = [
     { title: "Welcome", description: "Get started with SwiftClaw" },
@@ -43,7 +43,7 @@ export function OnboardingWizard() {
             aiProvider: "",
             aiModel: "",
             aiApiKey: "",
-            selectedChannel: undefined as unknown as SupportedChannelId,
+            selectedChannel: undefined,
             channelToken: "",
         },
     });
