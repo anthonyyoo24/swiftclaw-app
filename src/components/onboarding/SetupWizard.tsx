@@ -21,7 +21,7 @@ const STEPS = [
 
 const DEPLOY_DURATION_MS = 10000;
 
-export function OnboardingWizard() {
+export function SetupWizard() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [maxVisitedIndex, setMaxVisitedIndex] = useState(0);
     const [deployState, setDeployState] = useState<'idle' | 'loading' | 'success'>('idle');
