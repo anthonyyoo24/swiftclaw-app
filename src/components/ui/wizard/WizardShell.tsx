@@ -23,6 +23,8 @@ export interface WizardShellProps {
     onReset?: () => void;
     /** The specific wizard's step content. */
     children: React.ReactNode;
+    /** Optional title to show in the header. Defaults to "Setup Wizard" */
+    title?: string;
 }
 
 /**
@@ -42,6 +44,7 @@ export function WizardShell({
     onStepClick,
     onReset,
     children,
+    title = "Setup Wizard",
 }: WizardShellProps) {
     return (
         <div className="bg-[#09090b] opacity-[0.99] w-full flex flex-col h-screen text-white font-sans relative overflow-hidden">
@@ -66,7 +69,7 @@ export function WizardShell({
                     <div className="flex items-center gap-2.5">
                         <span className="font-medium text-sm text-white">SwiftClaw</span>
                         <span className="text-neutral-700">/</span>
-                        <span className="text-neutral-400 font-medium text-sm">Setup Wizard</span>
+                        <span className="text-neutral-400 font-medium text-sm">{title}</span>
                     </div>
                 </div>
 

@@ -169,6 +169,7 @@ export function OnboardingWizard() {
                 onBack={goBack}
                 onStepClick={handleStepClick}
                 onReset={handleReset}
+                title="Setup Wizard"
             >
                 {renderStep()}
             </WizardShell>

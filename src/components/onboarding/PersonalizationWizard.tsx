@@ -57,6 +57,7 @@ export function PersonalizationWizard() {
             onNext={goNext}
             onBack={goBack}
             onStepClick={handleStepClick}
+            title="Personalization Wizard"
         >
             <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="bg-[#0a0a0c] border border-white/10 rounded-2xl overflow-hidden shadow-sm flex-1 flex flex-col items-center justify-center p-8 text-center min-h-100">
