@@ -44,18 +44,18 @@ export function WizardShell({
     children,
 }: WizardShellProps) {
     return (
-        <div className="bg-[#09090b] w-full flex flex-col h-screen text-white font-sans relative overflow-hidden">
+        <div className="bg-[#09090b] opacity-[0.99] w-full flex flex-col h-screen text-white font-sans relative overflow-hidden">
             {/* Background effects */}
-            <div className="pointer-events-none absolute inset-0 -z-10">
+            {/* <div className="pointer-events-none absolute inset-0 -z-10">
                 <div className="absolute inset-0 bg-linear-to-b from-transparent via-black/50 to-black" />
                 <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2">
-                    <div className="w-200 h-200 rounded-full bg-blue-600/10 blur-[120px] mix-blend-screen animate-pulse duration-4000" />
+                    <div className="w-[50rem] h-[50rem] rounded-full bg-blue-600/10 blur-[120px] mix-blend-screen animate-pulse duration-[4000ms]" />
                 </div>
                 <div
                     className="absolute inset-0 opacity-[0.15]"
                     style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "24px 24px" }}
                 />
-            </div>
+            </div> */}
 
             {/* Header */}
             <header className="flex items-center justify-between px-6 sm:px-10 pt-14 pb-5 border-b border-white/5 bg-transparent z-10 shrink-0 drag">
