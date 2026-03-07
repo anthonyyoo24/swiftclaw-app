@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import { Icon } from "@iconify/react";
-import { StepHeader } from "@/components/onboarding/StepHeader";
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 import { ChannelOptionCard, ChannelOption } from "./ChannelOptionCard";
-import type { OnboardingFormValues, SupportedChannelId } from "@/components/onboarding/schema";
+import type { OnboardingFormValues, SupportedChannelId } from "@/components/onboarding/setup-wizard/schema";
 
 export const CHANNELS: ChannelOption[] = [
     {

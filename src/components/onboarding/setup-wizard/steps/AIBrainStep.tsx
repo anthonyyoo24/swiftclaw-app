@@ -5,8 +5,8 @@ import { useFormContext, Controller } from "react-hook-form";
 import { Icon } from "@iconify/react";
 import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
 import { Anthropic, OpenAI, Google } from "@lobehub/icons";
-import { StepHeader } from "@/components/onboarding/StepHeader";
-import type { OnboardingFormValues } from "@/components/onboarding/schema";
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
+import type { OnboardingFormValues } from "@/components/onboarding/setup-wizard/schema";
 
 export const PROVIDER_OPTIONS: DropdownOption[] = [
     {

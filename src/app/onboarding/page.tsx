@@ -1,4 +1,4 @@
-import { SetupWizard } from "@/components/onboarding/SetupWizard";
+import { SetupWizard } from "@/components/onboarding/setup-wizard/SetupWizard";
 
 export default function OnboardingPage() {
     return (

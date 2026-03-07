@@ -1,4 +1,4 @@
-import { PersonalizationWizard } from "@/components/onboarding/PersonalizationWizard";
+import { PersonalizationWizard } from "@/components/onboarding/personalization-wizard/PersonalizationWizard";
 
 export default function PersonalizePage() {
     return (

@@ -2,7 +2,7 @@
 
 import { Icon } from "@iconify/react";
 import { Anthropic, OpenAI, Google } from "@lobehub/icons";
-import { StepHeader } from "@/components/onboarding/StepHeader";
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 import { PROVIDER_OPTIONS, MODEL_OPTIONS } from "./AIBrainStep";
 import { CHANNELS } from "./ChannelSetupStep";
 
