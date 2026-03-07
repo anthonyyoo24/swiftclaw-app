@@ -1,4 +1,4 @@
-import { AgentTemplateId } from "@/components/onboarding/PersonalizationWizardSchema";
+import { AgentTemplateId } from "../schema";
 import { cn } from "@/lib/utils";
 
 interface Template {

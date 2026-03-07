@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { WizardShell } from "@/components/ui/wizard/WizardShell";
-import { personalizationSchema, type PersonalizationFormValues } from "./PersonalizationWizardSchema";
+import { personalizationSchema, type PersonalizationFormValues } from "./schema";
 import { CharacterSelectionView } from "./steps/CharacterSelectionView";
 import { AgentNameView } from "./steps/AgentNameView";
 import { AgentNatureView } from "./steps/AgentNatureView";
@@ -122,7 +122,7 @@ export function PersonalizationWizard() {
             case 0:
                 return (
                     <CharacterSelectionView
-                        selectedTemplateId={formValues.agentTemplateId as import("./PersonalizationWizardSchema").AgentTemplateId}
+                        selectedTemplateId={formValues.agentTemplateId as import("./schema").AgentTemplateId}
                         onSelect={(id) => {
                             methods.setValue("agentTemplateId", id, { shouldValidate: true });
                             if (id !== "custom") {
