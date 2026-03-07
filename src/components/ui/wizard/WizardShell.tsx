@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react";
 import { WizardSidebar, WizardStep } from "./WizardSidebar";
 import { WizardFooter } from "./WizardFooter";
 
-interface WizardShellProps {
+export interface WizardShellProps {
     /** Step metadata (title + description) for the sidebar. */
     steps: WizardStep[];
     currentStepIndex: number;
