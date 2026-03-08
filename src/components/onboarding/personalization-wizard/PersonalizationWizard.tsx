@@ -15,10 +15,10 @@ import { BoundariesView } from "./steps/BoundariesView";
 
 const STEPS = [
     { title: "Character Selection", description: "Choose a template or go custom" },
-    { title: "Agent Name", description: "What to call it" },
-    { title: "Agent Nature", description: "Its self-concept" },
-    { title: "Agent Vibe", description: "Its tone of voice" },
-    { title: "Agent Emoji", description: "Its signature" },
+    { title: "Name", description: "What to call it" },
+    { title: "Nature", description: "Its self-concept" },
+    { title: "Vibe", description: "Its tone of voice" },
+    { title: "Emoji", description: "Its signature" },
     { title: "Core Truths", description: "Its absolute facts" },
     { title: "Boundaries", description: "What it must never do" },
 ];
