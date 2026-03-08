@@ -1,42 +1,98 @@
 import { AgentTemplateId } from "../schema";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface Template {
     id: AgentTemplateId;
     title: string;
+    role: string;
     description: string;
     emoji: string;
     color: string;
+    avatar?: string;
 }
 
 const TEMPLATES: Template[] = [
     {
-        id: "scholar",
-        title: "The Scholar",
-        description: "A meticulous, highly organized assistant that prioritizes accuracy and detailed research.",
-        emoji: "📚",
-        color: "from-blue-500/20 to-indigo-500/20",
+        id: "maya",
+        title: "Maya",
+        role: "Customer support specialist",
+        description: "Handles customer issues with patience and care. Warm, reassuring, and talks to you like a friend.",
+        emoji: "🎧",
+        color: "from-blue-500/20 to-cyan-500/20",
+        avatar: "/avatars/maya-customer-support.png",
     },
     {
-        id: "rebel",
-        title: "The Rebel",
-        description: "A sharp, independent thinker that cuts through corporate speak and tells it like it is.",
-        emoji: "⚡️",
-        color: "from-rose-500/20 to-orange-500/20",
+        id: "jack",
+        title: "Jack",
+        role: "Sales representative",
+        description: "Qualifies leads and books meetings so you can focus on closing. Bold, playful, and never runs out of energy.",
+        emoji: "💼",
+        color: "from-indigo-500/20 to-blue-500/20",
+        avatar: "/avatars/jack-sales-rep.png",
     },
     {
-        id: "copilot",
-        title: "The Co-Pilot",
-        description: "A pragmatic, efficient companion focused entirely on shipping code and getting things done.",
-        emoji: "🚀",
-        color: "from-emerald-500/20 to-teal-500/20",
-    },
-    {
-        id: "ghost",
-        title: "The Ghost",
-        description: "A silent, invisible observer that only speaks when absolutely necessary.",
-        emoji: "👻",
+        id: "lily",
+        title: "Lily",
+        role: "Content writer",
+        description: "Writes blogs, social posts, and marketing content. Creative, witty, and speaks in stories.",
+        emoji: "✍️",
         color: "from-purple-500/20 to-fuchsia-500/20",
+        avatar: "/avatars/lily-content-writer.png",
+    },
+    {
+        id: "max",
+        title: "Max",
+        role: "Research analyst",
+        description: "Researches competitors, trends, and insights. Calm, curious, and has dry one-liners ready.",
+        emoji: "🔍",
+        color: "from-emerald-500/20 to-teal-500/20",
+        avatar: "/avatars/max-research-analyst.png",
+    },
+    {
+        id: "sarah",
+        title: "Sarah",
+        role: "Product manager",
+        description: "Prioritizes what to build and keeps the team aligned. Decisive, practical, and makes scope creep jokes.",
+        emoji: "📊",
+        color: "from-rose-500/20 to-orange-500/20",
+        avatar: "/avatars/sarah-product-manager.png",
+    },
+    {
+        id: "emma",
+        title: "Emma",
+        role: "Administrative assistant",
+        description: "Manages calendars, notes, and follow-ups. Calm, reliable, and always knows what you need before you ask.",
+        emoji: "📋",
+        color: "from-amber-500/20 to-yellow-500/20",
+        avatar: "/avatars/emma-admin-assistant.png",
+    },
+    {
+        id: "chris",
+        title: "Chris",
+        role: "QA engineer",
+        description: "Tests your app so you don't have to. Detail-obsessed, deadpan humor, and finds bugs you didn't know existed.",
+        emoji: "🪲",
+        color: "from-green-500/20 to-emerald-500/20",
+        avatar: "/avatars/chris-qa-engineer.png",
+    },
+    {
+        id: "kevin",
+        title: "Kevin",
+        role: "Software engineer",
+        description: "Writes code and ships features. Chill, pragmatic, and keeps it real.",
+        emoji: "💻",
+        color: "from-slate-500/20 to-gray-500/20",
+        avatar: "/avatars/kevin-software-engineer.png",
+    },
+    {
+        id: "zoe",
+        title: "Zoe",
+        role: "UI/UX designer",
+        description: "Designs interfaces users actually want to use. Creative, visual humor, and describes things in metaphors.",
+        emoji: "✨",
+        color: "from-pink-500/20 to-rose-500/20",
+        avatar: "/avatars/zoe-designer.png",
     },
 ];
 
@@ -76,18 +132,30 @@ export function CharacterSelectionView({ selectedTemplateId, onSelect }: Charact
 
                             <div className="relative flex items-start gap-4">
                                 <div className={cn(
-                                    "flex items-center justify-center w-12 h-12 rounded-xl text-2xl transition-transform duration-300",
+                                    "flex items-center justify-center w-12 h-12 rounded-xl text-2xl transition-transform duration-300 relative overflow-hidden shrink-0",
                                     isSelected ? "bg-white/20 scale-110" : "bg-white/10 group-hover:bg-white/20 group-hover:scale-110"
                                 )}>
-                                    {template.emoji}
+                                    {template.avatar ? (
+                                        <div className="relative w-full h-full">
+                                            <Image
+                                                src={template.avatar}
+                                                alt={template.title}
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        </div>
+                                    ) : (
+                                        template.emoji
+                                    )}
                                 </div>
-                                <div className="flex-1 space-y-1">
-                                    <div className="flex items-center justify-between">
+                                <div className="flex-1 space-y-1 text-left flex flex-col items-start">
+                                    <div className="flex items-center justify-between w-full">
                                         <h3 className="font-semibold text-white tracking-tight">{template.title}</h3>
                                         {isSelected && (
                                             <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
                                         )}
                                     </div>
+                                    <p className="text-[11px] text-indigo-300/80 font-semibold tracking-wide uppercase mb-0.5 leading-tight">{template.role}</p>
                                     <p className="text-sm text-neutral-400 group-hover:text-neutral-300 transition-colors">
                                         {template.description}
                                     </p>
