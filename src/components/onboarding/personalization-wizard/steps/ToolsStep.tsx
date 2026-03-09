@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { Wrench, Plus } from "lucide-react";
+import { Wrench, Plus, X } from "lucide-react";
 
 interface ToolsStepProps {
     value: string[];
@@ -79,6 +79,7 @@ function ToolIcon({ src, alt, label }: ToolIconProps) {
 export function ToolsStep({ value, onChange }: ToolsStepProps) {
     const [isAddingCustom, setIsAddingCustom] = useState(false);
     const [customInputValue, setCustomInputValue] = useState("");
+    const [addedCustomTools, setAddedCustomTools] = useState<string[]>([]);
 
     const toggle = (id: string) => {
         if (value.includes(id)) {
@@ -89,7 +90,9 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
     };
 
     const predefinedIds = new Set(TOOL_OPTIONS.map((t) => t.id));
-    const customTools: ToolOption[] = value
+
+    // Custom tools are derived from what the user explicitly added, not just the current form value
+    const customTools: ToolOption[] = addedCustomTools
         .filter((id) => !predefinedIds.has(id))
         .map((id) => ({
             id,
@@ -98,6 +101,14 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
         }));
 
     const allTools = [...TOOL_OPTIONS, ...customTools];
+
+    const removeCustomTool = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation(); // prevent toggling selection
+        setAddedCustomTools((prev) => prev.filter((t) => t !== id));
+        if (value.includes(id)) {
+            onChange(value.filter((v) => v !== id));
+        }
+    };
 
     return (
         <div className="w-full max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -120,7 +131,7 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
                             key={tool.id}
                             onClick={() => toggle(tool.id)}
                             className={cn(
-                                "group flex flex-col items-center gap-2 p-3 rounded-xl border cursor-pointer",
+                                "relative group flex flex-col items-center gap-2 p-3 rounded-xl border cursor-pointer",
                                 "transition-all duration-150 hover:-translate-y-0.5",
                                 isSelected
                                     ? "bg-white/10 border-white shadow-md"
@@ -144,6 +155,18 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
                             )}>
                                 {tool.label}
                             </span>
+
+                            {/* Delete Button for Custom Tools */}
+                            {!predefinedIds.has(tool.id) && (
+                                <div
+                                    role="button"
+                                    onClick={(e) => removeCustomTool(e, tool.id)}
+                                    className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-neutral-800 border border-neutral-700 text-neutral-400 opacity-0 group-hover:opacity-100  hover:text-red-400 hover:border-red-500/30 transition-all z-10"
+                                    title="Remove tool"
+                                >
+                                    <X className="w-3 h-3" />
+                                </div>
+                            )}
                         </button>
                     );
                 })}
@@ -181,6 +204,9 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
                                 if (e.key === "Enter") {
                                     e.preventDefault();
                                     const cleanId = customInputValue.trim().toLowerCase().replace(/\s+/g, '-');
+                                    if (cleanId && !addedCustomTools.includes(cleanId) && !predefinedIds.has(cleanId)) {
+                                        setAddedCustomTools((prev) => [...prev, cleanId]);
+                                    }
                                     if (cleanId && !value.includes(cleanId)) {
                                         onChange([...value, cleanId]);
                                     }
