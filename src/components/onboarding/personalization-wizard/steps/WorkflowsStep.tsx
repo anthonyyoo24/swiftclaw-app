@@ -39,7 +39,7 @@ export function WorkflowsStep({ value, onChange }: WorkflowsStepProps) {
     };
 
     return (
-        <div className="w-full max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="w-full max-w-2xl mx-auto space-y-8 pb-8 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
                 <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-500/20 mx-auto mb-4">
                     <Zap className="w-6 h-6 text-amber-300" />
@@ -56,7 +56,7 @@ export function WorkflowsStep({ value, onChange }: WorkflowsStepProps) {
                             key={wf.id}
                             onClick={() => toggle(wf.id)}
                             className={cn(
-                                "group flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left",
+                                "group flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left cursor-pointer",
                                 "transition-all duration-150 hover:-translate-y-0.5",
                                 isSelected
                                     ? "bg-white/10 border-white text-white shadow-md"
@@ -69,12 +69,6 @@ export function WorkflowsStep({ value, onChange }: WorkflowsStepProps) {
                     );
                 })}
             </div>
-
-            {value.length > 0 && (
-                <p className="text-center text-xs text-neutral-500 animate-in fade-in duration-300">
-                    {value.length} workflow{value.length !== 1 ? "s" : ""} selected
-                </p>
-            )}
         </div>
     );
 }
