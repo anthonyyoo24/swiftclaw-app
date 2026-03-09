@@ -8,6 +8,7 @@ interface WizardFooterProps {
     isDeploying: boolean;
     onBack: () => void;
     onNext: () => void;
+    submitAction?: 'deploy' | 'save';
 }
 
 export function WizardFooter({
@@ -17,6 +18,7 @@ export function WizardFooter({
     isDeploying,
     onBack,
     onNext,
+    submitAction = 'deploy',
 }: WizardFooterProps) {
     const isLastStep = currentStepIndex === totalSteps - 1;
 
@@ -50,9 +52,14 @@ export function WizardFooter({
                     <>
                         <div className="absolute inset-0 bg-linear-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                         <span className="relative z-10 flex items-center gap-2" aria-live="polite">
-                            {isDeploying ? "Deploying..." : "Deploy Agent"}
+                            {isDeploying
+                                ? (submitAction === 'save' ? "Saving..." : "Deploying...")
+                                : (submitAction === 'save' ? "Save & Finish" : "Deploy Agent")}
                             {!isDeploying && (
-                                <Icon icon="solar:rocket-linear" className="text-lg transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                                <Icon
+                                    icon={submitAction === 'save' ? "solar:check-circle-linear" : "solar:rocket-linear"}
+                                    className={`text-lg transition-transform ${submitAction === 'save' ? '' : 'group-hover:translate-x-0.5 group-hover:-translate-y-0.5'}`}
+                                />
                             )}
                             {isDeploying && (
                                 <Icon icon="solar:refresh-linear" className="text-lg animate-spin" />

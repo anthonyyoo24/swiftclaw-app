@@ -241,7 +241,8 @@ export function PersonalizationWizard() {
                 onNext={handleNextClick}
                 onBack={goBack}
                 onStepClick={handleStepClick}
-                title="Get Started"
+                title="Personalize Your Agent"
+                submitAction="save"
             >
                 {renderStep()}
             </WizardShell>

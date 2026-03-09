@@ -25,6 +25,8 @@ export interface WizardShellProps {
     children: React.ReactNode;
     /** Optional title to show in the header. Defaults to "Setup Wizard" */
     title?: string;
+    /** The action style to use for the final step button */
+    submitAction?: 'deploy' | 'save';
 }
 
 /**
@@ -45,6 +47,7 @@ export function WizardShell({
     onReset,
     children,
     title = "Setup Wizard",
+    submitAction = 'deploy',
 }: WizardShellProps) {
     return (
         <div className="bg-[#09090b] opacity-[0.99] w-full flex flex-col h-screen text-white font-sans relative overflow-hidden">
@@ -122,6 +125,7 @@ export function WizardShell({
                                     isDeploying={isDeploying}
                                     onBack={onBack}
                                     onNext={onNext}
+                                    submitAction={submitAction}
                                 />
                             </div>
                         </div>
