@@ -49,7 +49,7 @@ function ToolIcon({ src, alt, label }: ToolIconProps) {
     const [hasError, setHasError] = useState(false);
     const firstLetter = label.charAt(0).toUpperCase();
 
-    if (!src || hasError) {
+    if (hasError) {
         return (
             <div className="w-full h-full bg-white flex items-center justify-center">
                 <span className="text-emerald-400 font-bold text-lg leading-none select-none">
@@ -68,7 +68,9 @@ function ToolIcon({ src, alt, label }: ToolIconProps) {
             className="object-contain"
             onLoad={(e) => {
                 const img = e.currentTarget as HTMLImageElement;
-                if (img.naturalWidth === 0) setHasError(true);
+                // Google's globe placeholder renders at 16px even when sz=128 is requested.
+                // A real logo will be at least 48px wide, so anything smaller is the fallback globe.
+                if (img.naturalWidth < 48) setHasError(true);
             }}
             onError={() => setHasError(true)}
             unoptimized
@@ -97,7 +99,8 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
         .map((id) => ({
             id,
             label: id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' '),
-            logo: "",
+            // sz=128 returns a real logo at high-res; the generic globe is returned at 16px
+            logo: `https://www.google.com/s2/favicons?domain=${id}.com&sz=128`,
         }));
 
     const allTools = [...TOOL_OPTIONS, ...customTools];
@@ -144,6 +147,7 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
                                 isSelected ? "bg-white shadow-sm scale-110" : "bg-white/90 group-hover:bg-white group-hover:scale-105"
                             )}>
                                 <ToolIcon
+                                    key={tool.logo}
                                     src={tool.logo}
                                     alt={tool.label}
                                     label={tool.label}
