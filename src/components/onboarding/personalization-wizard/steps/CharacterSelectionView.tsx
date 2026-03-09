@@ -98,81 +98,110 @@ const TEMPLATES: Template[] = [
 
 interface CharacterSelectionViewProps {
     selectedTemplateId: AgentTemplateId | undefined;
-    availableTemplates: AgentTemplateId[];
+    recommendedTemplates: AgentTemplateId[];
+    otherTemplates: AgentTemplateId[];
     onSelect: (id: AgentTemplateId) => void;
 }
 
 export function CharacterSelectionView({
     selectedTemplateId,
-    availableTemplates,
+    recommendedTemplates,
+    otherTemplates,
     onSelect,
 }: CharacterSelectionViewProps) {
+    const renderTemplateCard = (templateId: AgentTemplateId, isRecommended: boolean = false) => {
+        const template = TEMPLATES.find(t => t.id === templateId);
+        if (!template) return null;
+
+        const isSelected = selectedTemplateId === template.id;
+
+        return (
+            <button
+                key={template.id}
+                onClick={() => onSelect(template.id)}
+                className={cn(
+                    "relative group text-left px-6 py-5 rounded-2xl border cursor-pointer transition-all duration-200",
+                    "hover:-translate-y-1 hover:shadow-lg flex flex-col h-full",
+                    isSelected
+                        ? "bg-white/5 border-white shadow-md shadow-white/5"
+                        : "bg-white/5 border-white/10 hover:border-white/30",
+                    isRecommended && !isSelected && "border-indigo-500/30 hover:border-indigo-500/50"
+                )}
+            >
+                {/* Gradient overlay */}
+                <div className={cn(
+                    "absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 transition-opacity duration-300 pointer-events-none",
+                    template.color,
+                    isSelected ? "opacity-100" : "group-hover:opacity-100"
+                )} />
+
+                {isRecommended && (
+                    <div className="absolute -top-3 left-6 px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full shadow-lg border border-white/10 flex items-center gap-1.5 z-10">
+                        <span className="text-[10px] font-bold text-white uppercase tracking-wider">Top Match</span>
+                    </div>
+                )}
+
+                <div className="relative flex items-start gap-4 mt-1">
+                    <div className={cn(
+                        "flex items-center justify-center w-12 h-12 rounded-xl text-2xl transition-transform duration-300 relative overflow-hidden shrink-0",
+                        isSelected ? "bg-white/20 scale-110" : "bg-white/10 group-hover:bg-white/20 group-hover:scale-110"
+                    )}>
+                        {template.avatar ? (
+                            <div className="relative w-full h-full">
+                                <Image
+                                    src={template.avatar}
+                                    alt={template.title}
+                                    fill
+                                    className="object-cover"
+                                />
+                            </div>
+                        ) : (
+                            template.emoji
+                        )}
+                    </div>
+                    <div className="flex-1 space-y-1 text-left flex flex-col items-start">
+                        <div className="flex items-center justify-between w-full">
+                            <h3 className="font-semibold text-white tracking-tight">{template.title}</h3>
+                            {isSelected && (
+                                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                            )}
+                        </div>
+                        <p className="text-[11px] text-indigo-300/80 font-semibold tracking-wide uppercase mb-0.5 leading-tight">{template.role}</p>
+                        <p className="text-sm text-neutral-400 group-hover:text-neutral-300 transition-colors">
+                            {template.description}
+                        </p>
+                    </div>
+                </div>
+            </button>
+        );
+    };
+
     return (
-        <div className="w-full max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="w-full max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight text-white">Meet Your Agent</h1>
                 <p className="text-neutral-400">
-                    Choose a template to get started with your new agent.
+                    Based on your needs, we found the perfect matches.
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {TEMPLATES.filter(t => availableTemplates.includes(t.id)).map((template) => {
-                    const isSelected = selectedTemplateId === template.id;
-                    return (
-                        <button
-                            key={template.id}
-                            onClick={() => onSelect(template.id)}
-                            className={cn(
-                                "relative group text-left px-6 py-5 rounded-2xl border transition-all duration-200",
-                                "hover:-translate-y-1 hover:shadow-lg",
-                                isSelected
-                                    ? "bg-white/5 border-white shadow-md shadow-white/5"
-                                    : "bg-white/5 border-white/10 hover:border-white/30"
-                            )}
-                        >
-                            {/* Gradient overlay */}
-                            <div className={cn(
-                                "absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 transition-opacity duration-300 pointer-events-none",
-                                template.color,
-                                isSelected ? "opacity-100" : "group-hover:opacity-100"
-                            )} />
+            {recommendedTemplates.length > 0 && (
+                <div className="space-y-4">
+                    <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-widest px-1">Recommended for You</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {recommendedTemplates.map(id => renderTemplateCard(id, true))}
+                    </div>
+                </div>
+            )}
 
-                            <div className="relative flex items-start gap-4">
-                                <div className={cn(
-                                    "flex items-center justify-center w-12 h-12 rounded-xl text-2xl transition-transform duration-300 relative overflow-hidden shrink-0",
-                                    isSelected ? "bg-white/20 scale-110" : "bg-white/10 group-hover:bg-white/20 group-hover:scale-110"
-                                )}>
-                                    {template.avatar ? (
-                                        <div className="relative w-full h-full">
-                                            <Image
-                                                src={template.avatar}
-                                                alt={template.title}
-                                                fill
-                                                className="object-cover"
-                                            />
-                                        </div>
-                                    ) : (
-                                        template.emoji
-                                    )}
-                                </div>
-                                <div className="flex-1 space-y-1 text-left flex flex-col items-start">
-                                    <div className="flex items-center justify-between w-full">
-                                        <h3 className="font-semibold text-white tracking-tight">{template.title}</h3>
-                                        {isSelected && (
-                                            <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                                        )}
-                                    </div>
-                                    <p className="text-[11px] text-indigo-300/80 font-semibold tracking-wide uppercase mb-0.5 leading-tight">{template.role}</p>
-                                    <p className="text-sm text-neutral-400 group-hover:text-neutral-300 transition-colors">
-                                        {template.description}
-                                    </p>
-                                </div>
-                            </div>
-                        </button>
-                    );
-                })}
-            </div>
+            {otherTemplates.length > 0 && (
+                <div className="space-y-4 pt-4 border-t border-white/5">
+                    <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-widest px-1">Other Options</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-80 hover:opacity-100 transition-opacity duration-300">
+                        {otherTemplates.map(id => renderTemplateCard(id, false))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

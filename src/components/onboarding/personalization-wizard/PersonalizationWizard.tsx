@@ -61,9 +61,14 @@ function buildSteps(isBusiness: boolean): StepConfig[] {
     return steps;
 }
 
-/** Returns hardcoded available templates. */
-function getAvailableTemplates(): AgentTemplateId[] {
-    return ["maya", "jack", "emma", "lily", "max", "sarah"];
+/** Returns hardcoded recommended templates. */
+function getRecommendedTemplates(): AgentTemplateId[] {
+    return ["maya", "jack"];
+}
+
+/** Returns hardcoded other templates. */
+function getOtherTemplates(): AgentTemplateId[] {
+    return ["lily", "max", "sarah", "emma", "chris", "kevin", "zoe"];
 }
 
 // ---------------------------------------------------------------------------
@@ -96,7 +101,8 @@ export function PersonalizationWizard() {
     const steps = useMemo(() => buildSteps(isBusiness), [isBusiness]);
     const currentStep = steps[currentStepIndex];
 
-    const availableTemplates = useMemo(() => getAvailableTemplates(), []);
+    const recommendedTemplates = useMemo(() => getRecommendedTemplates(), []);
+    const otherTemplates = useMemo(() => getOtherTemplates(), []);
 
     const isCurrentStepValid = useMemo((): boolean => {
         switch (currentStep?.id) {
@@ -215,7 +221,8 @@ export function PersonalizationWizard() {
                 return (
                     <CharacterSelectionView
                         selectedTemplateId={formValues.agentTemplateId as AgentTemplateId | undefined}
-                        availableTemplates={availableTemplates}
+                        recommendedTemplates={recommendedTemplates}
+                        otherTemplates={otherTemplates}
                         onSelect={(id) => setValue("agentTemplateId", id, { shouldValidate: true })}
                     />
                 );
