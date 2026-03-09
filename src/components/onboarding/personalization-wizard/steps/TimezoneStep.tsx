@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
 import { Globe } from "lucide-react";
+import { CustomDropdown } from "@/components/ui/CustomDropdown";
 
 interface TimezoneStepProps {
     value: string;
@@ -50,8 +50,10 @@ export function TimezoneStep({ value, onChange }: TimezoneStepProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const selectedLabel = COMMON_TIMEZONES.find((tz) => tz.value === value)?.label
-        ?? (value ? value.replace(/_/g, " ") : null);
+    const dropdownOptions = COMMON_TIMEZONES.map((tz) => ({
+        id: tz.value,
+        label: tz.label,
+    }));
 
     return (
         <div className="w-full max-w-lg mx-auto space-y-10 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -73,36 +75,14 @@ export function TimezoneStep({ value, onChange }: TimezoneStepProps) {
                     )}
                 </div>
                 <div className="relative">
-                    <select
-                        id="timezone"
+                    <CustomDropdown
+                        options={dropdownOptions}
                         value={value}
-                        onChange={(e) => onChange(e.target.value)}
-                        className={cn(
-                            "w-full h-14 px-4 rounded-xl border bg-white/5 text-white text-sm",
-                            "border-white/10 focus:border-white/40 focus:outline-none",
-                            "transition-colors appearance-none cursor-pointer",
-                            "focus:ring-1 focus:ring-white/20"
-                        )}
-                    >
-                        <option value="" disabled className="bg-neutral-900">
-                            Select a timezone…
-                        </option>
-                        {COMMON_TIMEZONES.map((tz) => (
-                            <option key={tz.value} value={tz.value} className="bg-neutral-900">
-                                {tz.label}
-                            </option>
-                        ))}
-                    </select>
-                    <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500">
-                        ▾
-                    </div>
+                        onChange={onChange}
+                        placeholder="Select a timezone…"
+                        size="lg"
+                    />
                 </div>
-
-                {selectedLabel && (
-                    <p className="text-xs text-neutral-500 text-center animate-in fade-in duration-300">
-                        Selected: <span className="text-neutral-300">{selectedLabel}</span>
-                    </p>
-                )}
             </div>
         </div>
     );
