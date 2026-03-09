@@ -4,109 +4,141 @@ import { useState, useMemo } from "react";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { WizardShell } from "@/components/ui/wizard/WizardShell";
-import { personalizationSchema, type PersonalizationFormValues } from "./schema";
-import { CharacterSelectionView } from "./steps/CharacterSelectionView";
-import { AgentNameView } from "./steps/AgentNameView";
-import { AgentNatureView } from "./steps/AgentNatureView";
-import { AgentVibeView } from "./steps/AgentVibeView";
-import { AgentEmojiView } from "./steps/AgentEmojiView";
-import { CoreTruthsView } from "./steps/CoreTruthsView";
-import { BoundariesView } from "./steps/BoundariesView";
+import { onboardingSchema, type OnboardingFormValues, type AgentTemplateId } from "./schema";
 
-const STEPS = [
-    { title: "Character Selection", description: "Choose a template or go custom" },
-    { title: "Name", description: "What to call it" },
-    { title: "Nature", description: "Its self-concept" },
-    { title: "Vibe", description: "Its tone of voice" },
-    { title: "Emoji", description: "Its signature" },
-    { title: "Core Truths", description: "Its absolute facts" },
-    { title: "Boundaries", description: "What it must never do" },
+// Step components
+import { UsageTypeStep } from "./steps/UsageTypeStep";
+import { UserNameStep } from "./steps/UserNameStep";
+import { TimezoneStep } from "./steps/TimezoneStep";
+import { BusinessUseStep } from "./steps/BusinessUseStep";
+import { GoalsStep } from "./steps/GoalsStep";
+import { WorkflowsStep } from "./steps/WorkflowsStep";
+import { ToolsStep } from "./steps/ToolsStep";
+import { CharacterSelectionView } from "./steps/CharacterSelectionView";
+
+// ---------------------------------------------------------------------------
+// Step definitions
+// ---------------------------------------------------------------------------
+
+type StepId =
+    | "usage-type"
+    | "user-name"
+    | "timezone"
+    | "business-use"
+    | "goals"
+    | "workflows"
+    | "tools"
+    | "character";
+
+interface StepConfig {
+    id: StepId;
+    title: string;
+    description: string;
+}
+
+const BASE_STEPS: StepConfig[] = [
+    { id: "usage-type", title: "Usage", description: "Business or personal?" },
+    { id: "user-name", title: "Your Name", description: "How should we address you?" },
+    { id: "timezone", title: "Timezone", description: "Where are you based?" },
+    { id: "goals", title: "Goals", description: "What do you want to achieve?" },
+    { id: "workflows", title: "Workflows", description: "What will your agent handle?" },
+    { id: "tools", title: "Tools", description: "What's in your stack?" },
+    { id: "character", title: "Character", description: "Meet your agent" },
 ];
+
+const BUSINESS_STEP: StepConfig = {
+    id: "business-use",
+    title: "Your Business",
+    description: "What does your business do?",
+};
+
+/** Builds the ordered step list, splicing in the business step when needed. */
+function buildSteps(isBusiness: boolean): StepConfig[] {
+    if (!isBusiness) return BASE_STEPS;
+    const steps = [...BASE_STEPS];
+    // Insert business description step after timezone (index 3)
+    steps.splice(3, 0, BUSINESS_STEP);
+    return steps;
+}
+
+/** Returns hardcoded available templates. */
+function getAvailableTemplates(): AgentTemplateId[] {
+    return ["maya", "jack", "emma", "lily", "max", "sarah"];
+}
+
+// ---------------------------------------------------------------------------
+// Wizard
+// ---------------------------------------------------------------------------
 
 export function PersonalizationWizard() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [maxVisitedIndex, setMaxVisitedIndex] = useState(0);
 
-    const methods = useForm<PersonalizationFormValues>({
-        resolver: zodResolver(personalizationSchema),
+    const methods = useForm<OnboardingFormValues>({
+        resolver: zodResolver(onboardingSchema),
         mode: "onChange",
         defaultValues: {
-            agentTemplateId: "custom",
-            agentName: "",
-            agentNature: "",
-            agentVibe: "",
-            agentEmoji: "🦞",
-            coreTruths: [""],
-            boundaries: [""],
+            usageType: undefined,
+            userName: "",
+            timezone: "",
+            businessDescription: "",
+            goals: [],
+            workflows: [],
+            tools: [],
+            agentTemplateId: undefined,
         },
     });
 
-    const formValues = useWatch({
-        control: methods.control,
-    });
+    const formValues = useWatch({ control: methods.control });
+    const isBusiness = formValues.usageType === "business";
+    const steps = useMemo(() => buildSteps(isBusiness), [isBusiness]);
+    const currentStep = steps[currentStepIndex];
 
-    const isCustomMode = formValues.agentTemplateId === "custom";
+    const availableTemplates = useMemo(() => getAvailableTemplates(), []);
 
     const isCurrentStepValid = useMemo((): boolean => {
-        switch (currentStepIndex) {
-            case 0: // Character Selection - always valid (defaults to custom)
+        switch (currentStep?.id) {
+            case "usage-type":
+                return !!formValues.usageType;
+            case "user-name":
+                return (formValues.userName?.trim().length ?? 0) > 0;
+            case "timezone":
+                return (formValues.timezone?.trim().length ?? 0) > 0;
+            case "business-use":
+                return (formValues.businessDescription?.trim().length ?? 0) > 0;
+            case "goals":
+                return (formValues.goals?.length ?? 0) > 0;
+            case "workflows":
+                return (formValues.workflows?.length ?? 0) > 0;
+            case "tools":
+                return true; // optional
+            case "character":
                 return !!formValues.agentTemplateId;
-            case 1: // Name
-                return !!formValues.agentName && formValues.agentName.trim().length > 0;
-            case 2: // Nature
-                return !!formValues.agentNature && formValues.agentNature.trim().length > 0;
-            case 3: // Vibe
-                return !!formValues.agentVibe && formValues.agentVibe.trim().length > 0;
-            case 4: // Emoji
-                return !!formValues.agentEmoji && formValues.agentEmoji.trim().length > 0;
-            case 5: // Core Truths
-                return !!formValues.coreTruths && formValues.coreTruths.filter((t: string) => t.trim().length > 0).length > 0;
-            case 6: // Boundaries
-                return !!formValues.boundaries && formValues.boundaries.filter((b: string) => b.trim().length > 0).length > 0;
             default:
                 return false;
         }
-    }, [currentStepIndex, formValues]);
+    }, [currentStep, formValues]);
 
     const goNext = () => {
-        if (currentStepIndex < STEPS.length - 1) {
-            let nextIndex = currentStepIndex + 1;
-
-            // Skip logic: if we are on Step 1 (index 0) and picked a preset, jump to Step 6 (index 5)
-            if (currentStepIndex === 0 && !isCustomMode) {
-                nextIndex = 5;
-            }
-
+        if (currentStepIndex < steps.length - 1) {
+            const nextIndex = currentStepIndex + 1;
             setCurrentStepIndex(nextIndex);
             setMaxVisitedIndex((prev) => Math.max(prev, nextIndex));
         } else {
-            // Finished personalization - redirect to dashboard
             window.location.href = "/";
         }
     };
 
     const goBack = () => {
-        if (currentStepIndex > 0) {
-            let prevIndex = currentStepIndex - 1;
-
-            // Skip logic reverse: if we are on Step 6 (index 5) and picked a preset, jump back to Step 1 (index 0)
-            if (currentStepIndex === 5 && !isCustomMode) {
-                prevIndex = 0;
-            }
-
-            setCurrentStepIndex(prevIndex);
-        }
+        if (currentStepIndex > 0) setCurrentStepIndex(currentStepIndex - 1);
     };
 
     const handleStepClick = (index: number) => {
         if (index === currentStepIndex) return;
-
-        const isBackward = index < currentStepIndex;
-        if (isBackward) {
+        if (index < currentStepIndex) {
             setCurrentStepIndex(index);
             return;
         }
-
         if (isCurrentStepValid && index <= maxVisitedIndex) {
             setCurrentStepIndex(index);
         }
@@ -118,67 +150,63 @@ export function PersonalizationWizard() {
     };
 
     const renderStep = () => {
-        switch (currentStepIndex) {
-            case 0:
+        const setValue = methods.setValue;
+        switch (currentStep?.id) {
+            case "usage-type":
+                return (
+                    <UsageTypeStep
+                        value={formValues.usageType}
+                        onChange={(v) => setValue("usageType", v, { shouldValidate: true })}
+                    />
+                );
+            case "user-name":
+                return (
+                    <UserNameStep
+                        value={formValues.userName ?? ""}
+                        onChange={(v) => setValue("userName", v, { shouldValidate: true })}
+                    />
+                );
+            case "timezone":
+                return (
+                    <TimezoneStep
+                        value={formValues.timezone ?? ""}
+                        onChange={(v) => setValue("timezone", v, { shouldValidate: true })}
+                    />
+                );
+            case "business-use":
+                return (
+                    <BusinessUseStep
+                        value={formValues.businessDescription ?? ""}
+                        onChange={(v) => setValue("businessDescription", v, { shouldValidate: true })}
+                    />
+                );
+            case "goals":
+                return (
+                    <GoalsStep
+                        value={formValues.goals ?? []}
+                        onChange={(v) => setValue("goals", v, { shouldValidate: true })}
+                    />
+                );
+            case "workflows":
+                return (
+                    <WorkflowsStep
+                        value={formValues.workflows ?? []}
+                        onChange={(v) => setValue("workflows", v, { shouldValidate: true })}
+                    />
+                );
+            case "tools":
+                return (
+                    <ToolsStep
+                        value={formValues.tools ?? []}
+                        onChange={(v) => setValue("tools", v, { shouldValidate: true })}
+                    />
+                );
+            case "character":
                 return (
                     <CharacterSelectionView
-                        selectedTemplateId={formValues.agentTemplateId as import("./schema").AgentTemplateId}
-                        onSelect={(id) => {
-                            methods.setValue("agentTemplateId", id, { shouldValidate: true });
-                            if (id !== "custom") {
-                                // Provide dummy data to bypass validation for skipped steps,
-                                // or parse the template details here.
-                                methods.setValue("agentName", "Template Default");
-                                methods.setValue("agentNature", "Template");
-                                methods.setValue("agentVibe", "Template");
-                            } else {
-                                methods.setValue("agentName", "");
-                                methods.setValue("agentNature", "");
-                                methods.setValue("agentVibe", "");
-                            }
-                        }}
-                    />
-                );
-            case 1:
-                return (
-                    <AgentNameView
-                        name={formValues.agentName || ""}
-                        onChange={(val) => methods.setValue("agentName", val, { shouldValidate: true })}
-                    />
-                );
-            case 2:
-                return (
-                    <AgentNatureView
-                        nature={formValues.agentNature || ""}
-                        onChange={(val) => methods.setValue("agentNature", val, { shouldValidate: true })}
-                    />
-                );
-            case 3:
-                return (
-                    <AgentVibeView
-                        vibe={formValues.agentVibe || ""}
-                        onChange={(val) => methods.setValue("agentVibe", val, { shouldValidate: true })}
-                    />
-                );
-            case 4:
-                return (
-                    <AgentEmojiView
-                        emoji={formValues.agentEmoji || "🦞"}
-                        onChange={(val) => methods.setValue("agentEmoji", val, { shouldValidate: true })}
-                    />
-                );
-            case 5:
-                return (
-                    <CoreTruthsView
-                        truths={formValues.coreTruths || [""]}
-                        onChange={(val) => methods.setValue("coreTruths", val, { shouldValidate: true })}
-                    />
-                );
-            case 6:
-                return (
-                    <BoundariesView
-                        boundaries={formValues.boundaries || [""]}
-                        onChange={(val) => methods.setValue("boundaries", val, { shouldValidate: true })}
+                        selectedTemplateId={formValues.agentTemplateId as AgentTemplateId | undefined}
+                        availableTemplates={availableTemplates}
+                        onSelect={(id) => setValue("agentTemplateId", id, { shouldValidate: true })}
                     />
                 );
             default:
@@ -189,14 +217,14 @@ export function PersonalizationWizard() {
     return (
         <FormProvider {...methods}>
             <WizardShell
-                steps={STEPS}
+                steps={steps}
                 currentStepIndex={currentStepIndex}
                 maxVisitedIndex={maxVisitedIndex}
                 canProgress={isCurrentStepValid}
                 onNext={handleNextClick}
                 onBack={goBack}
                 onStepClick={handleStepClick}
-                title="Personalization Wizard"
+                title="Get Started"
             >
                 {renderStep()}
             </WizardShell>
