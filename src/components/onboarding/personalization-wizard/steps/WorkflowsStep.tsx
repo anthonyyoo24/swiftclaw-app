@@ -2,10 +2,13 @@
 
 import { cn } from "@/lib/utils";
 import { Zap } from "lucide-react";
+import { Textarea } from "@/components/ui/Textarea";
 
 interface WorkflowsStepProps {
     value: string[];
     onChange: (value: string[]) => void;
+    customWorkflow?: string;
+    onCustomWorkflowChange?: (value: string) => void;
 }
 
 interface WorkflowOption {
@@ -29,10 +32,13 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
     { id: "other", label: "Something custom", emoji: "⚡" },
 ];
 
-export function WorkflowsStep({ value, onChange }: WorkflowsStepProps) {
+export function WorkflowsStep({ value, onChange, customWorkflow = "", onCustomWorkflowChange }: WorkflowsStepProps) {
     const toggle = (id: string) => {
         if (value.includes(id)) {
             onChange(value.filter((v) => v !== id));
+            if (id === "other" && onCustomWorkflowChange) {
+                onCustomWorkflowChange(""); // Clear input when deselected
+            }
         } else {
             onChange([...value, id]);
         }
@@ -69,6 +75,19 @@ export function WorkflowsStep({ value, onChange }: WorkflowsStepProps) {
                     );
                 })}
             </div>
+
+            {value.includes("other") && (
+                <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <Textarea
+                        value={customWorkflow}
+                        onChange={(e) => onCustomWorkflowChange?.(e.target.value)}
+                        placeholder="Describe the workflow you want to automate..."
+                        className="bg-white/5 border-white/10 text-white placeholder:text-neutral-600 rounded-xl px-4 py-3 min-h-20 focus-visible:border-white/20 no-drag select-text relative z-50 resize-none"
+                        rows={6}
+                        autoFocus
+                    />
+                </div>
+            )}
         </div>
     );
 }

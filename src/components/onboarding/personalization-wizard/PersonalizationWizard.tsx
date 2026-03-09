@@ -85,6 +85,7 @@ export function PersonalizationWizard() {
             goals: [],
             customGoal: "",
             workflows: [],
+            customWorkflow: "",
             tools: [],
             agentTemplateId: undefined,
         },
@@ -112,7 +113,9 @@ export function PersonalizationWizard() {
                 if (formValues.goals.includes("other") && (formValues.customGoal?.trim().length ?? 0) === 0) return false;
                 return true;
             case "workflows":
-                return (formValues.workflows?.length ?? 0) > 0;
+                if (!formValues.workflows || formValues.workflows.length === 0) return false;
+                if (formValues.workflows.includes("other") && (formValues.customWorkflow?.trim().length ?? 0) === 0) return false;
+                return true;
             case "tools":
                 return true; // optional
             case "character":
@@ -197,6 +200,8 @@ export function PersonalizationWizard() {
                     <WorkflowsStep
                         value={formValues.workflows ?? []}
                         onChange={(v) => setValue("workflows", v, { shouldValidate: true })}
+                        customWorkflow={formValues.customWorkflow ?? ""}
+                        onCustomWorkflowChange={(v: string) => setValue("customWorkflow", v, { shouldValidate: true })}
                     />
                 );
             case "tools":
