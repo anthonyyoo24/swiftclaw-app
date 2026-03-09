@@ -20,22 +20,22 @@ const TOOL_OPTIONS: ToolOption[] = [
     { id: "slack", label: "Slack", logo: "https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png" },
     { id: "github", label: "GitHub", logo: "https://github.com/favicon.ico" },
     { id: "gmail", label: "Gmail", logo: "https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico" },
-    { id: "google-cal", label: "Google Cal", logo: "https://ssl.gstatic.com/calendar/images/dynamiclogo_2020q4/calendar_31_2x.ico" },
+    { id: "google-cal", label: "Google Cal", logo: "https://www.google.com/s2/favicons?domain=calendar.google.com&sz=128" },
     { id: "google-drive", label: "Google Drive", logo: "https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png" },
     { id: "google-sheets", label: "Sheets", logo: "https://www.gstatic.com/images/branding/product/1x/sheets_2020q4_48dp.png" },
     { id: "hubspot", label: "HubSpot", logo: "https://www.hubspot.com/hubfs/HubSpot_Logos/HubSpot-Inversed-Favicon.png" },
-    { id: "shopify", label: "Shopify", logo: "https://cdn.shopify.com/s/files/1/0604/4820/7971/files/favicon.ico" },
+    { id: "shopify", label: "Shopify", logo: "https://www.google.com/s2/favicons?domain=shopify.com&sz=128" },
     { id: "stripe", label: "Stripe", logo: "https://stripe.com/favicon.ico" },
-    { id: "airtable", label: "Airtable", logo: "https://airtable.com/favicon.ico" },
+    { id: "salesforce", label: "Salesforce", logo: "https://www.salesforce.com/favicon.ico" },
     { id: "jira", label: "Jira", logo: "https://jira.atlassian.com/favicon.ico" },
     { id: "linear", label: "Linear", logo: "https://linear.app/favicon.ico" },
     { id: "trello", label: "Trello", logo: "https://trello.com/favicon.ico" },
-    { id: "zapier", label: "Zapier", logo: "https://zapier.com/favicon.ico" },
-    { id: "make", label: "Make", logo: "https://www.make.com/favicon.ico" },
-    { id: "figma", label: "Figma", logo: "https://www.figma.com/favicon.ico" },
-    { id: "intercom", label: "Intercom", logo: "https://static.intercomassets.com/assets/favicon-ea73eb13cfe16057ed02a9b476bb6c7fcb3e1413c65deab8cfafe78b84e5e4e1.png" },
+    { id: "zapier", label: "Zapier", logo: "https://www.google.com/s2/favicons?domain=zapier.com&sz=128" },
+    { id: "quickbooks", label: "QuickBooks", logo: "https://www.google.com/s2/favicons?domain=quickbooks.intuit.com&sz=128" },
+    { id: "figma", label: "Figma", logo: "https://www.google.com/s2/favicons?domain=figma.com&sz=128" },
+    { id: "mixpanel", label: "Mixpanel", logo: "https://mixpanel.com/favicon.ico" },
     { id: "zendesk", label: "Zendesk", logo: "https://www.zendesk.com/favicon.ico" },
-    { id: "typeform", label: "Typeform", logo: "https://www.typeform.com/favicon.ico" },
+    { id: "typeform", label: "Typeform", logo: "https://www.google.com/s2/favicons?domain=typeform.com&sz=128" },
 ];
 
 export function ToolsStep({ value, onChange }: ToolsStepProps) {
@@ -68,7 +68,7 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
                             key={tool.id}
                             onClick={() => toggle(tool.id)}
                             className={cn(
-                                "group flex flex-col items-center gap-2 p-3 rounded-xl border",
+                                "group flex flex-col items-center gap-2 p-3 rounded-xl border cursor-pointer",
                                 "transition-all duration-150 hover:-translate-y-0.5",
                                 isSelected
                                     ? "bg-white/10 border-white shadow-md"
