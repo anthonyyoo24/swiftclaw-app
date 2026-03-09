@@ -21,7 +21,7 @@ export function WizardFooter({
     const isLastStep = currentStepIndex === totalSteps - 1;
 
     return (
-        <div className="mt-auto pt-12 border-t border-white/5 flex gap-4 items-center justify-between">
+        <div className="mt-auto pt-8 border-t border-white/5 flex gap-4 items-center justify-between">
             {currentStepIndex > 0 ? (
                 <button
                     type="button"

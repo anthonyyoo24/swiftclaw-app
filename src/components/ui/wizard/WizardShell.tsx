@@ -103,21 +103,29 @@ export function WizardShell({
                     onStepClick={onStepClick}
                 />
 
-                <main className="flex-1 p-8 sm:p-12 lg:p-16 overflow-y-auto flex flex-col bg-transparent">
-                    <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col relative z-10">
-                        {children}
-
-                        {(deployState === 'idle') && (
-                            <WizardFooter
-                                currentStepIndex={currentStepIndex}
-                                totalSteps={steps.length}
-                                canProgress={canProgress}
-                                isDeploying={isDeploying}
-                                onBack={onBack}
-                                onNext={onNext}
-                            />
-                        )}
+                <main className="flex-1 flex flex-col overflow-hidden bg-transparent">
+                    {/* Scrollable content area */}
+                    <div className="flex-1 overflow-y-auto px-8 sm:px-12 lg:px-16 pt-8 sm:pt-12 lg:pt-16 pb-8">
+                        <div className="max-w-2xl w-full mx-auto relative z-10">
+                            {children}
+                        </div>
                     </div>
+
+                    {/* Footer pinned to the bottom of the right pane */}
+                    {(deployState === 'idle') && (
+                        <div className="shrink-0 px-8 sm:px-12 lg:px-16 pb-8 bg-transparent">
+                            <div className="max-w-2xl w-full mx-auto">
+                                <WizardFooter
+                                    currentStepIndex={currentStepIndex}
+                                    totalSteps={steps.length}
+                                    canProgress={canProgress}
+                                    isDeploying={isDeploying}
+                                    onBack={onBack}
+                                    onNext={onNext}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </main>
             </div>
         </div>
