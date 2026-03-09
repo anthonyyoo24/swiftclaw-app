@@ -223,7 +223,7 @@ export function PersonalizationWizard() {
                         selectedTemplateId={formValues.agentTemplateId as AgentTemplateId | undefined}
                         recommendedTemplates={recommendedTemplates}
                         otherTemplates={otherTemplates}
-                        onSelect={(id) => setValue("agentTemplateId", id, { shouldValidate: true })}
+                        onSelect={(id) => setValue("agentTemplateId", (formValues.agentTemplateId === id ? undefined : id) as AgentTemplateId, { shouldValidate: true })}
                     />
                 );
             default:

@@ -136,7 +136,7 @@ export function CharacterSelectionView({
                 )} />
 
                 {isRecommended && (
-                    <div className="absolute -top-3 left-6 px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full shadow-lg border border-white/10 flex items-center gap-1.5 z-10">
+                    <div className="absolute -top-3 left-6 px-3 py-1 bg-linear-to-r from-indigo-500 to-purple-500 rounded-full shadow-lg border border-white/10 flex items-center gap-1.5 z-10">
                         <span className="text-[10px] font-bold text-white uppercase tracking-wider">Top Match</span>
                     </div>
                 )}
@@ -162,9 +162,6 @@ export function CharacterSelectionView({
                     <div className="flex-1 space-y-1 text-left flex flex-col items-start">
                         <div className="flex items-center justify-between w-full">
                             <h3 className="font-semibold text-white tracking-tight">{template.title}</h3>
-                            {isSelected && (
-                                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                            )}
                         </div>
                         <p className="text-[11px] text-indigo-300/80 font-semibold tracking-wide uppercase mb-0.5 leading-tight">{template.role}</p>
                         <p className="text-sm text-neutral-400 group-hover:text-neutral-300 transition-colors">
