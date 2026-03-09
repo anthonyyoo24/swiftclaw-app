@@ -108,7 +108,9 @@ export function PersonalizationWizard() {
             case "business-use":
                 return (formValues.businessDescription?.trim().length ?? 0) > 0;
             case "goals":
-                return (formValues.goals?.length ?? 0) > 0;
+                if (!formValues.goals || formValues.goals.length === 0) return false;
+                if (formValues.goals.includes("other") && (formValues.customGoal?.trim().length ?? 0) === 0) return false;
+                return true;
             case "workflows":
                 return (formValues.workflows?.length ?? 0) > 0;
             case "tools":
