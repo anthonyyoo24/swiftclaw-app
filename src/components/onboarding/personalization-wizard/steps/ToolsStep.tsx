@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { Wrench } from "lucide-react";
+import { Wrench, Plus } from "lucide-react";
 
 interface ToolsStepProps {
     value: string[];
@@ -39,6 +40,9 @@ const TOOL_OPTIONS: ToolOption[] = [
 ];
 
 export function ToolsStep({ value, onChange }: ToolsStepProps) {
+    const [isAddingCustom, setIsAddingCustom] = useState(false);
+    const [customInputValue, setCustomInputValue] = useState("");
+
     const toggle = (id: string) => {
         if (value.includes(id)) {
             onChange(value.filter((v) => v !== id));
@@ -46,6 +50,17 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
             onChange([...value, id]);
         }
     };
+
+    const predefinedIds = new Set(TOOL_OPTIONS.map((t) => t.id));
+    const customTools: ToolOption[] = value
+        .filter((id) => !predefinedIds.has(id))
+        .map((id) => ({
+            id,
+            label: id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' '),
+            logo: `https://www.google.com/s2/favicons?domain=${id}.com&sz=128`,
+        }));
+
+    const allTools = [...TOOL_OPTIONS, ...customTools];
 
     return (
         <div className="w-full max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -61,7 +76,7 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
             </div>
 
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                {TOOL_OPTIONS.map((tool) => {
+                {allTools.map((tool) => {
                     const isSelected = value.includes(tool.id);
                     return (
                         <button
@@ -78,7 +93,7 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
                             <div className={cn(
                                 "w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden",
                                 "transition-all duration-150",
-                                isSelected ? "bg-white/20 scale-110" : "bg-white/10 group-hover:bg-white/15 group-hover:scale-105"
+                                isSelected ? "bg-white shadow-sm scale-110" : "bg-white/90 group-hover:bg-white group-hover:scale-105"
                             )}>
                                 <Image
                                     src={tool.logo}
@@ -98,6 +113,59 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
                         </button>
                     );
                 })}
+
+                {!isAddingCustom ? (
+                    <button
+                        onClick={() => setIsAddingCustom(true)}
+                        className={cn(
+                            "group flex flex-col items-center justify-center gap-2 p-3 rounded-xl border border-dashed cursor-pointer h-21",
+                            "transition-all duration-150 hover:-translate-y-0.5",
+                            "bg-white/5 border-white/20 hover:border-white/40 hover:bg-white/10"
+                        )}
+                    >
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-white/5 group-hover:bg-white/10 transition-colors">
+                            <Plus className="w-5 h-5 text-neutral-400 group-hover:text-white" />
+                        </div>
+                        <span className="text-xs font-medium leading-tight text-neutral-400 group-hover:text-neutral-200 transition-colors">
+                            Add Custom
+                        </span>
+                    </button>
+                ) : (
+                    <div
+                        className={cn(
+                            "flex flex-col items-center justify-center gap-1 p-3 rounded-xl border h-21",
+                            "bg-white/10 border-white/30"
+                        )}
+                    >
+                        <input
+                            autoFocus
+                            type="text"
+                            placeholder="Tool name..."
+                            value={customInputValue}
+                            onChange={(e) => setCustomInputValue(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const cleanId = customInputValue.trim().toLowerCase().replace(/\s+/g, '-');
+                                    if (cleanId && !value.includes(cleanId)) {
+                                        onChange([...value, cleanId]);
+                                    }
+                                    setCustomInputValue("");
+                                    setIsAddingCustom(false);
+                                } else if (e.key === "Escape") {
+                                    setCustomInputValue("");
+                                    setIsAddingCustom(false);
+                                }
+                            }}
+                            onBlur={() => {
+                                setCustomInputValue("");
+                                setIsAddingCustom(false);
+                            }}
+                            className="w-full bg-transparent text-white text-xs text-center focus:outline-none placeholder:text-neutral-400"
+                        />
+                        <span className="text-[10px] text-neutral-400">Press Enter</span>
+                    </div>
+                )}
             </div>
 
             {value.length > 0 && (
