@@ -1,6 +1,6 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/Input";
 
 interface UserNameStepProps {
     value: string;
@@ -26,7 +26,7 @@ export function UserNameStep({ value, onChange }: UserNameStepProps) {
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     autoFocus
-                    className="h-14 text-lg bg-white/5 border-white/10 focus:border-white/40 text-white placeholder:text-neutral-600 rounded-xl transition-colors no-drag select-text relative z-50 selection:bg-blue-500/50 selection:text-white"
+                    className="h-14 text-lg bg-white/5 border-white/10 focus:border-white/40 text-white placeholder:text-neutral-600 rounded-xl transition-colors no-drag select-text relative z-50 px-5"
                 />
             </div>
 

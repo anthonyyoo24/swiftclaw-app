@@ -83,6 +83,7 @@ export function PersonalizationWizard() {
             timezone: "",
             businessDescription: "",
             goals: [],
+            customGoal: "",
             workflows: [],
             tools: [],
             agentTemplateId: undefined,
@@ -185,6 +186,8 @@ export function PersonalizationWizard() {
                     <GoalsStep
                         value={formValues.goals ?? []}
                         onChange={(v) => setValue("goals", v, { shouldValidate: true })}
+                        customGoal={formValues.customGoal ?? ""}
+                        onCustomGoalChange={(v: string) => setValue("customGoal", v, { shouldValidate: true })}
                     />
                 );
             case "workflows":

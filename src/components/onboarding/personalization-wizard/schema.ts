@@ -32,6 +32,7 @@ export const onboardingSchema = z.object({
 
     // Step 5 — Goals (multi-select)
     goals: z.array(z.string().min(1)).min(1, "Select at least one goal"),
+    customGoal: z.string().optional(),
 
     // Step 6 — Workflows (multi-select + free text)
     workflows: z.array(z.string().min(1)).min(1, "Select at least one workflow"),

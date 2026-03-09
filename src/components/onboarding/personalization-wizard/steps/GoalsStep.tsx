@@ -2,10 +2,13 @@
 
 import { cn } from "@/lib/utils";
 import { Target } from "lucide-react";
+import { Textarea } from "@/components/ui/Textarea";
 
 interface GoalsStepProps {
     value: string[];
     onChange: (value: string[]) => void;
+    customGoal?: string;
+    onCustomGoalChange?: (value: string) => void;
 }
 
 interface GoalOption {
@@ -27,10 +30,13 @@ const GOAL_OPTIONS: GoalOption[] = [
     { id: "other", label: "Something else", emoji: "💡" },
 ];
 
-export function GoalsStep({ value, onChange }: GoalsStepProps) {
+export function GoalsStep({ value, onChange, customGoal = "", onCustomGoalChange }: GoalsStepProps) {
     const toggle = (id: string) => {
         if (value.includes(id)) {
             onChange(value.filter((v) => v !== id));
+            if (id === "other" && onCustomGoalChange) {
+                onCustomGoalChange(""); // Clear input when unselected
+            }
         } else {
             onChange([...value, id]);
         }
@@ -67,6 +73,18 @@ export function GoalsStep({ value, onChange }: GoalsStepProps) {
                     );
                 })}
             </div>
+
+            {value.includes("other") && (
+                <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <Textarea
+                        value={customGoal}
+                        onChange={(e) => onCustomGoalChange?.(e.target.value)}
+                        placeholder="Tell us more about your goals..."
+                        className="bg-white/5 border-white/10 text-white placeholder:text-neutral-600 rounded-xl px-4 py-3 min-h-20 focus-visible:border-white/20 no-drag select-text relative z-50 resize-none"
+                        autoFocus
+                    />
+                </div>
+            )}
         </div>
     );
 }

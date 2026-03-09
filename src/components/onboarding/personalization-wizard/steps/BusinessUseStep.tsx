@@ -1,18 +1,12 @@
 "use client";
 
 import { Building2 } from "lucide-react";
+import { Textarea } from "@/components/ui/Textarea";
 
 interface BusinessUseStepProps {
     value: string;
     onChange: (value: string) => void;
 }
-
-const EXAMPLES = [
-    "E-commerce store selling handmade jewellery",
-    "SaaS platform for restaurant inventory management",
-    "Solo marketing consultancy for B2B tech companies",
-    "Physiotherapy clinic with 3 locations",
-];
 
 export function BusinessUseStep({ value, onChange }: BusinessUseStepProps) {
     return (
@@ -28,13 +22,13 @@ export function BusinessUseStep({ value, onChange }: BusinessUseStepProps) {
             </div>
 
             <div className="space-y-3">
-                <textarea
+                <Textarea
                     placeholder="e.g. We run an e-commerce store selling handmade jewellery to customers in North America."
                     value={value}
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
                     autoFocus
                     rows={7}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 focus:border-white/40 focus:outline-none focus:ring-1 focus:ring-white/20 text-white placeholder:text-neutral-600 rounded-xl resize-none transition-colors text-sm leading-relaxed"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 focus:border-white/40 focus:outline-none focus-visible:border-white/20 focus-visible:ring-transparent text-white placeholder:text-neutral-600 rounded-xl resize-none transition-colors text-sm leading-relaxed no-drag select-text relative z-50"
                 />
             </div>
         </div>
