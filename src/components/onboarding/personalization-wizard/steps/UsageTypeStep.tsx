@@ -80,9 +80,6 @@ export function UsageTypeStep({ value, onChange }: UsageTypeStepProps) {
                                     {option.subtitle}
                                 </p>
                             </div>
-                            {isSelected && (
-                                <div className="absolute top-4 right-4 w-3 h-3 rounded-full bg-white animate-pulse" />
-                            )}
                         </button>
                     );
                 })}
