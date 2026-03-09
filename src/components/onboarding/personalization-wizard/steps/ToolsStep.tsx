@@ -22,7 +22,7 @@ const TOOL_OPTIONS: ToolOption[] = [
     { id: "github", label: "GitHub", logo: "https://github.com/favicon.ico" },
     { id: "gmail", label: "Gmail", logo: "https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico" },
     { id: "google-cal", label: "Google Cal", logo: "https://www.google.com/s2/favicons?domain=calendar.google.com&sz=128" },
-    { id: "google-drive", label: "Google Drive", logo: "https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png" },
+    { id: "wordpress", label: "WordPress", logo: "https://www.google.com/s2/favicons?domain=wordpress.com&sz=128" },
     { id: "google-sheets", label: "Sheets", logo: "https://www.gstatic.com/images/branding/product/1x/sheets_2020q4_48dp.png" },
     { id: "hubspot", label: "HubSpot", logo: "https://www.hubspot.com/hubfs/HubSpot_Logos/HubSpot-Inversed-Favicon.png" },
     { id: "shopify", label: "Shopify", logo: "https://www.google.com/s2/favicons?domain=shopify.com&sz=128" },
@@ -114,7 +114,7 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
     };
 
     return (
-        <div className="w-full max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="w-full max-w-2xl mx-auto space-y-8 pb-8 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
                 <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/20 mx-auto mb-4">
                     <Wrench className="w-6 h-6 text-emerald-300" />
@@ -231,12 +231,6 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
                     </div>
                 )}
             </div>
-
-            {value.length > 0 && (
-                <p className="text-center text-xs text-neutral-500 animate-in fade-in duration-300">
-                    {value.length} tool{value.length !== 1 ? "s" : ""} selected
-                </p>
-            )}
         </div>
     );
 }
