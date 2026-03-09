@@ -39,6 +39,43 @@ const TOOL_OPTIONS: ToolOption[] = [
     { id: "typeform", label: "Typeform", logo: "https://www.google.com/s2/favicons?domain=typeform.com&sz=128" },
 ];
 
+interface ToolIconProps {
+    src: string;
+    alt: string;
+    label: string;
+}
+
+function ToolIcon({ src, alt, label }: ToolIconProps) {
+    const [hasError, setHasError] = useState(false);
+    const firstLetter = label.charAt(0).toUpperCase();
+
+    if (!src || hasError) {
+        return (
+            <div className="w-full h-full bg-white flex items-center justify-center">
+                <span className="text-emerald-400 font-bold text-lg leading-none select-none">
+                    {firstLetter}
+                </span>
+            </div>
+        );
+    }
+
+    return (
+        <Image
+            src={src}
+            alt={alt}
+            width={20}
+            height={20}
+            className="object-contain"
+            onLoad={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                if (img.naturalWidth === 0) setHasError(true);
+            }}
+            onError={() => setHasError(true)}
+            unoptimized
+        />
+    );
+}
+
 export function ToolsStep({ value, onChange }: ToolsStepProps) {
     const [isAddingCustom, setIsAddingCustom] = useState(false);
     const [customInputValue, setCustomInputValue] = useState("");
@@ -57,7 +94,7 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
         .map((id) => ({
             id,
             label: id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' '),
-            logo: `https://www.google.com/s2/favicons?domain=${id}.com&sz=128`,
+            logo: "",
         }));
 
     const allTools = [...TOOL_OPTIONS, ...customTools];
@@ -95,13 +132,10 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
                                 "transition-all duration-150",
                                 isSelected ? "bg-white shadow-sm scale-110" : "bg-white/90 group-hover:bg-white group-hover:scale-105"
                             )}>
-                                <Image
+                                <ToolIcon
                                     src={tool.logo}
                                     alt={tool.label}
-                                    width={20}
-                                    height={20}
-                                    className="object-contain"
-                                    unoptimized
+                                    label={tool.label}
                                 />
                             </div>
                             <span className={cn(
