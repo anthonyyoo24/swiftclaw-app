@@ -71,7 +71,7 @@ export function AIBrainStep() {
                             <CustomDropdown
                                 label="LLM Provider"
                                 options={PROVIDER_OPTIONS}
-                                value={field.value}
+                                value={field.value ?? ""}
                                 onChange={handleProviderChange}
                                 placeholder="Select provider..."
                             />
@@ -83,8 +83,8 @@ export function AIBrainStep() {
                         render={({ field }) => (
                             <CustomDropdown
                                 label="Model Version"
-                                options={MODEL_OPTIONS[provider] || []}
-                                value={field.value}
+                                options={provider ? (MODEL_OPTIONS[provider] || []) : []}
+                                value={field.value ?? ""}
                                 onChange={(v) => field.onChange(v)}
                                 placeholder="Select model..."
                             />

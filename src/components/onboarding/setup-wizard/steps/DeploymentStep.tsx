@@ -7,9 +7,9 @@ import { PROVIDER_OPTIONS, MODEL_OPTIONS } from "./AIBrainStep";
 import { CHANNELS } from "./ChannelSetupStep";
 
 interface DeploymentStepProps {
-    aiProvider: string;
-    aiModel: string;
-    selectedChannel: string | null;
+    aiProvider?: string;
+    aiModel?: string;
+    selectedChannel?: string | null;
 }
 
 const PROVIDER_ICONS: Record<string, React.ReactNode> = {
@@ -19,8 +19,8 @@ const PROVIDER_ICONS: Record<string, React.ReactNode> = {
 };
 
 export function DeploymentStep({ aiProvider, aiModel, selectedChannel }: DeploymentStepProps) {
-    const providerOption = PROVIDER_OPTIONS.find((p) => p.id === aiProvider);
-    const modelOption = MODEL_OPTIONS[aiProvider]?.find((m) => m.id === aiModel);
+    const providerOption = aiProvider ? PROVIDER_OPTIONS.find((p) => p.id === aiProvider) : undefined;
+    const modelOption = aiProvider ? MODEL_OPTIONS[aiProvider]?.find((m) => m.id === aiModel) : undefined;
     const channelOption = CHANNELS.find((c) => c.id === selectedChannel);
 
     return (
@@ -45,7 +45,7 @@ export function DeploymentStep({ aiProvider, aiModel, selectedChannel }: Deploym
                         <div className="flex items-start justify-between">
                             <div className="flex items-start gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0 mt-0.5">
-                                    {PROVIDER_ICONS[aiProvider] ?? (
+                                    {aiProvider && PROVIDER_ICONS[aiProvider] ? PROVIDER_ICONS[aiProvider] : (
                                         <Icon icon="solar:cpu-linear" className="text-neutral-400" />
                                     )}
                                 </div>

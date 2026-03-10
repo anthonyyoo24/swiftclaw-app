@@ -4,20 +4,86 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { WizardShell } from "@/components/ui/wizard/WizardShell";
+
+import { onboardingSchema, type OnboardingFormValues, type AgentTemplateId } from "./schema";
+
+// Setup Steps
 import { WelcomeStep } from "./steps/WelcomeStep";
 import { AIBrainStep } from "./steps/AIBrainStep";
 import { ChannelSetupStep } from "./steps/ChannelSetupStep";
 import { DeploymentStep } from "./steps/DeploymentStep";
 import { DeployProgressView } from "./steps/DeployProgressView";
 import { DeploySuccessView } from "./steps/DeploySuccessView";
-import { onboardingSchema, type OnboardingFormValues } from "./schema";
 
-const STEPS = [
-    { title: "Welcome", description: "Get started with SwiftClaw" },
-    { title: "AI Brain Selection", description: "Configure your LLM provider" },
-    { title: "Communication Channel", description: "Setup external platforms" },
-    { title: "Deploy AI", description: "Start your assistant" },
+// Personalization Steps
+import { UsageTypeStep } from "./steps/UsageTypeStep";
+import { UserNameStep } from "./steps/UserNameStep";
+import { TimezoneStep } from "./steps/TimezoneStep";
+import { BusinessUseStep } from "./steps/BusinessUseStep";
+import { GoalsStep } from "./steps/GoalsStep";
+import { WorkflowsStep } from "./steps/WorkflowsStep";
+import { ToolsStep } from "./steps/ToolsStep";
+import { CharacterSelectionView } from "./steps/CharacterSelectionView";
+
+// ---------------------------------------------------------------------------
+// Step definitions
+// ---------------------------------------------------------------------------
+
+type StepId =
+    | "welcome"
+    | "usage-type"
+    | "user-name"
+    | "timezone"
+    | "business-use"
+    | "goals"
+    | "workflows"
+    | "tools"
+    | "character"
+    | "ai-brain"
+    | "channel-setup"
+    | "deploy";
+
+interface StepConfig {
+    id: StepId;
+    title: string;
+    description: string;
+}
+
+const BASE_STEPS: StepConfig[] = [
+    { id: "welcome", title: "Welcome", description: "Get started with SwiftClaw" },
+    { id: "usage-type", title: "Usage", description: "Business or personal?" },
+    { id: "user-name", title: "Your Name", description: "How should we address you?" },
+    { id: "timezone", title: "Timezone", description: "Where are you based?" },
+    { id: "goals", title: "Goals", description: "What do you want to achieve?" },
+    { id: "workflows", title: "Workflows", description: "What will your agent handle?" },
+    { id: "tools", title: "Tools", description: "What's in your stack?" },
+    { id: "character", title: "Character", description: "Meet your agent" },
+    { id: "ai-brain", title: "AI Brain Selection", description: "Configure your LLM provider" },
+    { id: "channel-setup", title: "Communication Channel", description: "Setup external platforms" },
+    { id: "deploy", title: "Deploy AI", description: "Start your assistant" },
 ];
+
+const BUSINESS_STEP: StepConfig = {
+    id: "business-use",
+    title: "Your Business",
+    description: "What does your business do?",
+};
+
+function buildSteps(isBusiness: boolean): StepConfig[] {
+    if (!isBusiness) return BASE_STEPS;
+    const steps = [...BASE_STEPS];
+    // Insert business description step after timezone (index 3)
+    steps.splice(4, 0, BUSINESS_STEP);
+    return steps;
+}
+
+function getRecommendedTemplates(): AgentTemplateId[] {
+    return ["maya", "jack"];
+}
+
+function getOtherTemplates(): AgentTemplateId[] {
+    return ["lily", "max", "sarah", "emma", "chris", "kevin", "zoe"];
+}
 
 const DEPLOY_DURATION_MS = 10000;
 
@@ -40,6 +106,18 @@ export function SetupWizard() {
         resolver: zodResolver(onboardingSchema),
         mode: "onChange",
         defaultValues: {
+            // Personalization
+            usageType: undefined,
+            userName: "",
+            timezone: "",
+            businessDescription: "",
+            goals: [],
+            customGoal: "",
+            workflows: [],
+            customWorkflow: "",
+            tools: [],
+            agentTemplateId: undefined,
+            // Setup
             aiProvider: "",
             aiModel: "",
             aiApiKey: "",
@@ -48,33 +126,54 @@ export function SetupWizard() {
         },
     });
 
-    // useWatch subscribes only to these fields; the rest of the tree stays still.
-    const [aiProvider, aiModel, aiApiKey, selectedChannel, channelToken] = useWatch({
-        control: methods.control,
-        name: ["aiProvider", "aiModel", "aiApiKey", "selectedChannel", "channelToken"],
-    });
+    const formValues = useWatch({ control: methods.control });
+    const isBusiness = formValues.usageType === "business";
+    const steps = useMemo(() => buildSteps(isBusiness), [isBusiness]);
+    const currentStep = steps[currentStepIndex];
+
+    const recommendedTemplates = useMemo(() => getRecommendedTemplates(), []);
+    const otherTemplates = useMemo(() => getOtherTemplates(), []);
 
     /**
      * Derived validity — the single source of truth that feeds into WizardShell.
-     * There is no `isValid` state to reset or forget; it is always computed fresh.
      */
     const isCurrentStepValid = useMemo((): boolean => {
-        switch (currentStepIndex) {
-            case 0: // Welcome — always allowed to proceed
+        switch (currentStep?.id) {
+            case "welcome":
                 return true;
-            case 1: // AI Brain
-                return Boolean(aiProvider && aiModel && aiApiKey && aiApiKey.trim().length >= 5);
-            case 2: // Channel Setup
-                return Boolean(selectedChannel && channelToken && channelToken.trim().length >= 5);
-            case 3: // Deploy — summary only, always allowed to deploy
+            case "usage-type":
+                return !!formValues.usageType;
+            case "user-name":
+                return (formValues.userName?.trim().length ?? 0) > 0;
+            case "timezone":
+                return (formValues.timezone?.trim().length ?? 0) > 0;
+            case "business-use":
+                return (formValues.businessDescription?.trim().length ?? 0) > 0;
+            case "goals":
+                if (!formValues.goals || formValues.goals.length === 0) return false;
+                if (formValues.goals.includes("other") && (formValues.customGoal?.trim().length ?? 0) === 0) return false;
+                return true;
+            case "workflows":
+                if (!formValues.workflows || formValues.workflows.length === 0) return false;
+                if (formValues.workflows.includes("other") && (formValues.customWorkflow?.trim().length ?? 0) === 0) return false;
+                return true;
+            case "tools":
+                return true; // optional
+            case "character":
+                return !!formValues.agentTemplateId;
+            case "ai-brain":
+                return Boolean(formValues.aiProvider && formValues.aiModel && formValues.aiApiKey && formValues.aiApiKey.trim().length >= 5);
+            case "channel-setup":
+                return Boolean(formValues.selectedChannel && formValues.channelToken && formValues.channelToken.trim().length >= 5);
+            case "deploy":
                 return true;
             default:
                 return false;
         }
-    }, [currentStepIndex, aiProvider, aiModel, aiApiKey, selectedChannel, channelToken]);
+    }, [currentStep, formValues]);
 
     const goNext = () => {
-        if (currentStepIndex < STEPS.length - 1) {
+        if (currentStepIndex < steps.length - 1) {
             const nextIndex = currentStepIndex + 1;
             setCurrentStepIndex(nextIndex);
             setMaxVisitedIndex((prev) => Math.max(prev, nextIndex));
@@ -87,12 +186,6 @@ export function SetupWizard() {
         }
     };
 
-    /**
-     * Sidebar step click handler.
-     * - Backward jumps (to a completed step) are ALWAYS allowed.
-     * - Forward jumps require the current step to be valid AND the target
-     *   must be within the already-visited range.
-     */
     const handleStepClick = (index: number) => {
         if (deployState !== 'idle' || index === currentStepIndex) return;
 
@@ -110,7 +203,7 @@ export function SetupWizard() {
 
     const handleNextClick = () => {
         if (deployState !== 'idle' || !isCurrentStepValid) return;
-        if (currentStepIndex === STEPS.length - 1) {
+        if (currentStepIndex === steps.length - 1) {
             setDeployState('loading');
 
             // Clear any existing timer just in case
@@ -135,21 +228,84 @@ export function SetupWizard() {
     };
 
     const renderStep = () => {
-        switch (currentStepIndex) {
-            case 0:
+        const setValue = methods.setValue;
+        switch (currentStep?.id) {
+            case "welcome":
                 return <WelcomeStep />;
-            case 1:
+            case "usage-type":
+                return (
+                    <UsageTypeStep
+                        value={formValues.usageType}
+                        onChange={(v) => setValue("usageType", v, { shouldValidate: true })}
+                    />
+                );
+            case "user-name":
+                return (
+                    <UserNameStep
+                        value={formValues.userName ?? ""}
+                        onChange={(v) => setValue("userName", v, { shouldValidate: true })}
+                    />
+                );
+            case "timezone":
+                return (
+                    <TimezoneStep
+                        value={formValues.timezone ?? ""}
+                        onChange={(v) => setValue("timezone", v, { shouldValidate: true })}
+                    />
+                );
+            case "business-use":
+                return (
+                    <BusinessUseStep
+                        value={formValues.businessDescription ?? ""}
+                        onChange={(v) => setValue("businessDescription", v, { shouldValidate: true })}
+                    />
+                );
+            case "goals":
+                return (
+                    <GoalsStep
+                        value={formValues.goals ?? []}
+                        onChange={(v) => setValue("goals", v, { shouldValidate: true })}
+                        customGoal={formValues.customGoal ?? ""}
+                        onCustomGoalChange={(v: string) => setValue("customGoal", v, { shouldValidate: true })}
+                    />
+                );
+            case "workflows":
+                return (
+                    <WorkflowsStep
+                        value={formValues.workflows ?? []}
+                        onChange={(v) => setValue("workflows", v, { shouldValidate: true })}
+                        customWorkflow={formValues.customWorkflow ?? ""}
+                        onCustomWorkflowChange={(v: string) => setValue("customWorkflow", v, { shouldValidate: true })}
+                    />
+                );
+            case "tools":
+                return (
+                    <ToolsStep
+                        value={formValues.tools ?? []}
+                        onChange={(v) => setValue("tools", v, { shouldValidate: true })}
+                    />
+                );
+            case "character":
+                return (
+                    <CharacterSelectionView
+                        selectedTemplateId={formValues.agentTemplateId as AgentTemplateId | undefined}
+                        recommendedTemplates={recommendedTemplates}
+                        otherTemplates={otherTemplates}
+                        onSelect={(id) => setValue("agentTemplateId", (formValues.agentTemplateId === id ? undefined : id) as AgentTemplateId, { shouldValidate: true })}
+                    />
+                );
+            case "ai-brain":
                 return <AIBrainStep />;
-            case 2:
+            case "channel-setup":
                 return <ChannelSetupStep />;
-            case 3:
+            case "deploy":
                 if (deployState === 'loading') return <DeployProgressView duration={DEPLOY_DURATION_MS} />;
                 if (deployState === 'success') return <DeploySuccessView />;
                 return (
                     <DeploymentStep
-                        aiProvider={aiProvider ?? ""}
-                        aiModel={aiModel ?? ""}
-                        selectedChannel={selectedChannel ?? ""}
+                        aiProvider={formValues.aiProvider ?? ""}
+                        aiModel={formValues.aiModel ?? ""}
+                        selectedChannel={formValues.selectedChannel ?? ""}
                     />
                 );
             default:
@@ -160,7 +316,7 @@ export function SetupWizard() {
     return (
         <FormProvider {...methods}>
             <WizardShell
-                steps={STEPS}
+                steps={steps}
                 currentStepIndex={currentStepIndex}
                 maxVisitedIndex={maxVisitedIndex}
                 canProgress={isCurrentStepValid}
