@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Zap } from "lucide-react";
 import { Textarea } from "@/components/ui/Textarea";
 
 interface WorkflowsStepProps {
@@ -32,6 +31,8 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
     { id: "other", label: "Something custom", emoji: "⚡" },
 ];
 
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
+
 export function WorkflowsStep({ value, onChange, customWorkflow = "", onCustomWorkflowChange }: WorkflowsStepProps) {
     const toggle = (id: string) => {
         if (value.includes(id)) {
@@ -46,13 +47,11 @@ export function WorkflowsStep({ value, onChange, customWorkflow = "", onCustomWo
 
     return (
         <div className="w-full max-w-2xl mx-auto space-y-8 pb-8 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="text-center space-y-2">
-                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-500/20 mx-auto mb-4">
-                    <Zap className="w-6 h-6 text-amber-300" />
-                </div>
-                <h1 className="text-3xl font-bold tracking-tight text-white">What will your agent handle?</h1>
-                <p className="text-neutral-400">Pick the workflows you want to automate first.</p>
-            </div>
+            <StepHeader
+                title="What will your agent handle?"
+                description="Pick the workflows you want to automate first."
+                icon="solar:bolt-linear"
+            />
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {WORKFLOW_OPTIONS.map((wf) => {

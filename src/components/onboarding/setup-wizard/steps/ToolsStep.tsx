@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { Wrench, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 
 interface ToolsStepProps {
     value: string[];
@@ -115,16 +116,11 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
 
     return (
         <div className="w-full max-w-2xl mx-auto space-y-8 pb-8 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="text-center space-y-2">
-                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/20 mx-auto mb-4">
-                    <Wrench className="w-6 h-6 text-emerald-300" />
-                </div>
-                <h1 className="text-3xl font-bold tracking-tight text-white">What&apos;s in your stack?</h1>
-                <p className="text-neutral-400">
-                    Select the tools you use — your agent will learn to work with them.{" "}
-                    <span className="text-neutral-500">(Optional)</span>
-                </p>
-            </div>
+            <StepHeader
+                title="What's in your stack?"
+                description="Select the tools you use — your agent will learn to work with them. (Optional)"
+                icon="lucide:wrench"
+            />
 
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                 {allTools.map((tool) => {

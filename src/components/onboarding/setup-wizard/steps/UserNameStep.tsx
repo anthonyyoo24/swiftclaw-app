@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/Input";
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 
 interface UserNameStepProps {
     value: string;
@@ -10,10 +11,11 @@ interface UserNameStepProps {
 export function UserNameStep({ value, onChange }: UserNameStepProps) {
     return (
         <div className="w-full max-w-lg mx-auto space-y-10 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="text-center space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight text-white">What&apos;s your name?</h1>
-                <p className="text-neutral-400">Your agent will use this to address you personally.</p>
-            </div>
+            <StepHeader
+                title="What's your name?"
+                description="Your agent will use this to address you personally."
+                icon="solar:user-id-linear"
+            />
 
             <div className="space-y-3">
                 <label htmlFor="user-name" className="text-sm font-medium text-neutral-300">

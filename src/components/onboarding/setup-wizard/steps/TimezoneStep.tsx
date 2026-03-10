@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Globe } from "lucide-react";
+import { Icon } from "@iconify/react";
 import { CustomDropdown } from "@/components/ui/CustomDropdown";
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 
 interface TimezoneStepProps {
     value: string;
@@ -57,16 +58,15 @@ export function TimezoneStep({ value, onChange }: TimezoneStepProps) {
 
     return (
         <div className="w-full max-w-lg mx-auto space-y-10 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="text-center space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight text-white">Where are you based?</h1>
-                <p className="text-neutral-400">
-                    Your agent uses your timezone to schedule and respond at the right times.
-                </p>
-            </div>
+            <StepHeader
+                title="Where are you based?"
+                description="Your agent uses your timezone to schedule and respond at the right times."
+                icon="solar:earth-linear"
+            />
 
             <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-neutral-300">
-                    <Globe className="w-4 h-4 text-indigo-400" />
+                    <Icon icon="solar:earth-linear" className="w-4 h-4 text-indigo-400" />
                     <span>Timezone</span>
                     {detectedTimezone && (
                         <span className="ml-auto text-xs text-indigo-400">

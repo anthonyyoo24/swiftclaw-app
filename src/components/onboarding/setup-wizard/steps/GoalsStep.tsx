@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Target } from "lucide-react";
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 import { Textarea } from "@/components/ui/Textarea";
 
 interface GoalsStepProps {
@@ -44,13 +44,12 @@ export function GoalsStep({ value, onChange, customGoal = "", onCustomGoalChange
 
     return (
         <div className="w-full max-w-2xl mx-auto space-y-8 pb-8 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="text-center space-y-2">
-                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-rose-500/20 mx-auto mb-4">
-                    <Target className="w-6 h-6 text-rose-300" />
-                </div>
-                <h1 className="text-3xl font-bold tracking-tight text-white">What are your main goals?</h1>
-                <p className="text-neutral-400">Select everything that applies — we&apos;ll recommend the right agent.</p>
-            </div>
+            <StepHeader
+                title="What are your main goals?"
+                description="Select everything that applies — we'll recommend the right agent."
+                icon="solar:target-linear"
+            />
+
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {GOAL_OPTIONS.map((goal) => {

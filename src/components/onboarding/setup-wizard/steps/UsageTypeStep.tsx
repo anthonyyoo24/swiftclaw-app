@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Building2, User } from "lucide-react";
 import type { UsageType } from "../schema";
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 
 interface UsageTypeStepProps {
     value: UsageType | undefined;
@@ -40,10 +41,11 @@ const OPTIONS: UsageOption[] = [
 export function UsageTypeStep({ value, onChange }: UsageTypeStepProps) {
     return (
         <div className="w-full max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="text-center space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight text-white">How will you use Swiftclaw?</h1>
-                <p className="text-neutral-400">This helps us tailor your experience and recommend the right agent.</p>
-            </div>
+            <StepHeader
+                title="How will you use Swiftclaw?"
+                description="This helps us tailor your experience and recommend the right agent."
+                icon="solar:case-linear"
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {OPTIONS.map((option) => {

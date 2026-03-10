@@ -1,6 +1,7 @@
 import { AgentTemplateId } from "../schema";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 
 interface Template {
     id: AgentTemplateId;
@@ -175,12 +176,11 @@ export function CharacterSelectionView({
 
     return (
         <div className="w-full max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="text-center space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight text-white">Meet Your Agent</h1>
-                <p className="text-neutral-400">
-                    Based on your needs, we found the perfect matches.
-                </p>
-            </div>
+            <StepHeader
+                title="Meet Your Agent"
+                description="Based on your needs, we found the perfect matches."
+                icon="lucide:bot"
+            />
 
             {recommendedTemplates.length > 0 && (
                 <div className="space-y-4">

@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2 } from "lucide-react";
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 import { Textarea } from "@/components/ui/Textarea";
 
 interface BusinessUseStepProps {
@@ -11,15 +11,11 @@ interface BusinessUseStepProps {
 export function BusinessUseStep({ value, onChange }: BusinessUseStepProps) {
     return (
         <div className="w-full max-w-lg mx-auto space-y-8 pb-8 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="text-center space-y-2">
-                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-500/20 mx-auto mb-4">
-                    <Building2 className="w-6 h-6 text-indigo-300" />
-                </div>
-                <h1 className="text-3xl font-bold tracking-tight text-white">What does your business do?</h1>
-                <p className="text-neutral-400">
-                    A short description helps your agent understand your industry and context.
-                </p>
-            </div>
+            <StepHeader
+                title="What does your business do?"
+                description="A short description helps your agent understand your industry and context."
+                icon="solar:shop-linear"
+            />
 
             <div className="space-y-3">
                 <Textarea
