@@ -57,7 +57,8 @@ export function AIBrainStep() {
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
             <StepHeader
-                icon="solar:cpu-linear"
+                // icon="solar:cpu-linear"
+                icon="lucide:brain"
                 title="AI Brain Selection"
                 description="This selection defines the core intelligence of your SwiftClaw agent. You can change your provider and model later in the settings."
             />

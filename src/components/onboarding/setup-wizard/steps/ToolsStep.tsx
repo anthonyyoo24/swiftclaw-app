@@ -69,9 +69,10 @@ function ToolIcon({ src, alt, label }: ToolIconProps) {
             className="object-contain"
             onLoad={(e) => {
                 const img = e.currentTarget as HTMLImageElement;
+                const isGoogleFaviconApi = src.includes("google.com/s2/favicons");
                 // Google's globe placeholder renders at 16px even when sz=128 is requested.
-                // A real logo will be at least 48px wide, so anything smaller is the fallback globe.
-                if (img.naturalWidth < 48) setHasError(true);
+                // A real logo will be at least 32px wide (often 64px+), so anything 16px or smaller is the fallback globe.
+                if (isGoogleFaviconApi && img.naturalWidth <= 16) setHasError(true);
             }}
             onError={() => setHasError(true)}
             unoptimized
