@@ -24,7 +24,8 @@ export function BusinessUseStep({ value, onChange }: BusinessUseStepProps) {
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
                     autoFocus
                     rows={7}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 focus:border-white/40 focus:outline-none focus-visible:border-white/20 focus-visible:ring-transparent text-white placeholder:text-neutral-600 rounded-xl resize-none transition-colors text-sm leading-relaxed no-drag select-text relative z-50"
+                    variant="glass"
+                    className="resize-none leading-relaxed no-drag select-text relative z-50"
                 />
             </div>
         </div>

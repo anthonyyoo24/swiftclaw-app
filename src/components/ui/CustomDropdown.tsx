@@ -77,13 +77,12 @@ export function CustomDropdown({ options, value, onChange, label, placeholder = 
                 type="button"
                 onClick={toggleDropdown}
                 className={cn(
-                    "w-full relative flex items-center justify-between border rounded-xl transition-all cursor-pointer focus:outline-none group",
-                    size === "default" && "pl-4 pr-10 py-3 text-sm shadow-sm focus:ring-1 focus:border-blue-500/50 focus:ring-blue-500/50",
-                    size === "lg" && "px-4 h-14 text-lg focus:border-white/40",
-                    isOpen && size === "default" && "bg-white/5 border-blue-500/50 text-white ring-1 ring-blue-500/50",
-                    !isOpen && size === "default" && "bg-[#0a0a0c] border-white/10 text-white hover:bg-white/5",
-                    size === "lg" && "bg-white/5 border-white/10 text-white",
-                    isOpen && size === "lg" && "border-white/40"
+                    "w-full relative flex items-center justify-between border rounded-xl transition-all cursor-pointer focus:outline-none group shadow-sm",
+                    "focus-visible:border-blue-500/50 focus-visible:ring-1 focus-visible:ring-blue-500/50",
+                    size === "default" ? "pl-4 pr-10 py-3 text-sm" : "px-4 pr-10 h-14 text-lg",
+                    isOpen 
+                        ? "bg-white/5 border-blue-500/50 text-white ring-1 ring-blue-500/50" 
+                        : "bg-white/5 border-white/10 text-white hover:border-white/30"
                 )}
             >
                 <div className="flex items-center gap-3">

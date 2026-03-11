@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import { Icon } from "@iconify/react";
+import { Input } from "@/components/ui/Input";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 import { ChannelOptionCard, ChannelOption } from "./ChannelOptionCard";
 import type { OnboardingFormValues, SupportedChannelId } from "@/components/onboarding/setup-wizard/schema";
@@ -84,14 +85,15 @@ export function ChannelSetupStep() {
                                 name="channelToken"
                                 control={control}
                                 render={({ field }) => (
-                                    <input
+                                <Input
                                         {...field}
                                         id={tokenInputId}
                                         type={showToken ? "text" : "password"}
                                         autoComplete="off"
                                         spellCheck={false}
                                         placeholder="Enter your platform token..."
-                                        className="w-full pl-11 pr-12 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
+                                        variant="glass"
+                                        className="pl-11 pr-12 py-3 shadow-sm"
                                     />
                                 )}
                             />

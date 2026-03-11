@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import { Icon } from "@iconify/react";
+import { Input } from "@/components/ui/Input";
 import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
 import { Anthropic, OpenAI, Google } from "@lobehub/icons";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
@@ -108,13 +109,14 @@ export function AIBrainStep() {
                             name="aiApiKey"
                             control={control}
                             render={({ field }) => (
-                                <input
+                                <Input
                                     {...field}
                                     type={showApiKey ? "text" : "password"}
                                     autoComplete="off"
                                     spellCheck={false}
                                     placeholder="sk-ant-..."
-                                    className="w-full pl-11 pr-12 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
+                                    variant="glass"
+                                    className="pl-11 pr-12 py-3 shadow-sm"
                                 />
                             )}
                         />

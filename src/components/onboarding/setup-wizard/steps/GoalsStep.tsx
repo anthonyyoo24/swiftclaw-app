@@ -79,7 +79,8 @@ export function GoalsStep({ value, onChange, customGoal = "", onCustomGoalChange
                         value={customGoal}
                         onChange={(e) => onCustomGoalChange?.(e.target.value)}
                         placeholder="Tell us more about your goals..."
-                        className="bg-white/5 border-white/10 text-white placeholder:text-neutral-600 rounded-xl px-4 py-3 min-h-20 focus-visible:border-white/20 no-drag select-text relative z-50 resize-none"
+                        variant="glass"
+                        className="min-h-20 no-drag select-text relative z-50 resize-none"
                         rows={6}
                         autoFocus
                     />
