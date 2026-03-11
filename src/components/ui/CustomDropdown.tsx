@@ -29,16 +29,15 @@ export function CustomDropdown({ options, value, onChange, label, placeholder = 
     const selectedOption = options.find((opt) => opt.id === value);
     const displayLabel = selectedOption?.label ?? placeholder;
 
-    const closeDropdown = useCallback((blurButton = false) => {
+    const closeDropdown = useCallback(() => {
         setIsOpen(false);
-        if (blurButton) buttonRef.current?.blur();
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => setShouldRender(false), 200);
     }, []);
 
     const toggleDropdown = useCallback(() => {
         if (isOpen) {
-            closeDropdown(true);
+            closeDropdown();
         } else {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             setShouldRender(true);
