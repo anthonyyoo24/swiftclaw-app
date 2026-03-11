@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useRef } from "react";
 import { Building2, User } from "lucide-react";
 import type { UsageType } from "../schema";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
@@ -39,6 +40,24 @@ const OPTIONS: UsageOption[] = [
 ];
 
 export function UsageTypeStep({ value, onChange }: UsageTypeStepProps) {
+    const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+            e.preventDefault();
+            const currentIndex = OPTIONS.findIndex((o) => o.id === value);
+            const nextIndex = (currentIndex + 1) % OPTIONS.length;
+            onChange(OPTIONS[nextIndex].id);
+            buttonRefs.current[nextIndex]?.focus();
+        } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+            e.preventDefault();
+            const currentIndex = OPTIONS.findIndex((o) => o.id === value);
+            const prevIndex = (currentIndex - 1 + OPTIONS.length) % OPTIONS.length;
+            onChange(OPTIONS[prevIndex].id);
+            buttonRefs.current[prevIndex]?.focus();
+        }
+    };
+
     return (
         <div className="w-full max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
             <StepHeader
@@ -47,13 +66,23 @@ export function UsageTypeStep({ value, onChange }: UsageTypeStepProps) {
                 icon="solar:case-linear"
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {OPTIONS.map((option) => {
+            <div
+                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                role="radiogroup"
+                aria-label="Usage type"
+                onKeyDown={handleKeyDown}
+            >
+                {OPTIONS.map((option, index) => {
                     const isSelected = value === option.id;
                     const Icon = option.icon;
                     return (
                         <button
                             key={option.id}
+                            ref={(el) => { buttonRefs.current[index] = el; }}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            tabIndex={isSelected ? 0 : value === undefined && option.id === OPTIONS[0].id ? 0 : -1}
                             onClick={() => onChange(option.id)}
                             className={cn(
                                 "relative group text-left p-8 rounded-2xl border-2 transition-all duration-200",
