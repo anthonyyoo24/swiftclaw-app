@@ -6,7 +6,7 @@ export function WelcomeStep() {
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
             <StepHeader
                 title="Welcome to SwiftClaw"
-                description="To get your agent up and running, we'll walk you through three essential setup stages. Once your agent is deployed, we'll move into a focused personalization wizard to fine-tune your specific preferences."
+                description="We'll start by learning about you, provide an agent recommendation, and finally complete the system configuration to deploy it."
                 icon="solar:hand-stars-linear"
             />
 
