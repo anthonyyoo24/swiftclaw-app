@@ -89,7 +89,7 @@ const DEPLOY_DURATION_MS = 10000;
 
 export function SetupWizard() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
-    const [maxVisitedIndex, setMaxVisitedIndex] = useState(0);
+    const [visitedIds, setVisitedIds] = useState<Set<StepId>>(new Set(["welcome"]));
     const [deployState, setDeployState] = useState<'idle' | 'loading' | 'success'>('idle');
     const deployTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -129,7 +129,26 @@ export function SetupWizard() {
     const formValues = useWatch({ control: methods.control });
     const isBusiness = formValues.usageType === "business";
     const steps = useMemo(() => buildSteps(isBusiness), [isBusiness]);
-    const currentStep = steps[currentStepIndex];
+
+    /**
+     * Calculate the furthest reachable step index based on current steps array and visited IDs.
+     * A step is reachable if all previous steps have been visited.
+     */
+    const maxVisitedIndex = useMemo(() => {
+        let max = 0;
+        for (let i = 0; i < steps.length; i++) {
+            if (visitedIds.has(steps[i].id)) {
+                max = i;
+            } else {
+                break;
+            }
+        }
+        return max;
+    }, [steps, visitedIds]);
+
+    // Synchronous clamp — avoids a double-render from setState in an effect.
+    const safeCurrentIndex = Math.min(currentStepIndex, steps.length - 1);
+    const currentStep = steps[safeCurrentIndex];
 
     const recommendedTemplates = useMemo(() => getRecommendedTemplates(), []);
     const otherTemplates = useMemo(() => getOtherTemplates(), []);
@@ -176,7 +195,15 @@ export function SetupWizard() {
         if (currentStepIndex < steps.length - 1) {
             const nextIndex = currentStepIndex + 1;
             setCurrentStepIndex(nextIndex);
-            setMaxVisitedIndex((prev) => Math.max(prev, nextIndex));
+            
+            // Track that we've reached the next step
+            setVisitedIds((prev) => {
+                const nextId = steps[nextIndex].id;
+                if (prev.has(nextId)) return prev;
+                const nextSet = new Set(prev);
+                nextSet.add(nextId);
+                return nextSet;
+            });
         }
     };
 
@@ -220,7 +247,7 @@ export function SetupWizard() {
     const handleReset = () => {
         methods.reset();
         setCurrentStepIndex(0);
-        setMaxVisitedIndex(0);
+        setVisitedIds(new Set(["welcome"]));
         setDeployState('idle');
         if (deployTimeoutRef.current) {
             clearTimeout(deployTimeoutRef.current);

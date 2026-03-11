@@ -38,7 +38,7 @@ export const onboardingSchema = z.object({
     aiModel: z.string().min(1, "Please select a model").optional(),
     aiApiKey: z.string().min(5, "API Key must be at least 5 characters").optional(),
     selectedChannel: z.enum(SUPPORTED_CHANNEL_IDS, {
-        message: "Please select a supported channel",
+        error: "Please select a supported channel",
     }).optional(),
     channelToken: z.string().min(5, "Token must be at least 5 characters").optional(),
 });
