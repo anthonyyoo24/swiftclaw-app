@@ -120,6 +120,8 @@ export function CharacterSelectionView({
             <button
                 key={template.id}
                 onClick={() => onSelect(template.id)}
+                type="button"
+                aria-pressed={isSelected}
                 className={cn(
                     "relative group text-left px-6 py-5 rounded-2xl border cursor-pointer transition-all duration-200",
                     "hover:-translate-y-1 hover:shadow-lg flex flex-col h-full",
