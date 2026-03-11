@@ -41,6 +41,22 @@ export const onboardingSchema = z.object({
         error: "Please select a supported channel",
     }).optional(),
     channelToken: z.string().min(5, "Token must be at least 5 characters").optional(),
+}).superRefine((data, ctx) => {
+    if (data.goals?.includes("other") && (!data.customGoal || data.customGoal.trim() === "")) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Please specify your custom goal",
+            path: ["customGoal"],
+        });
+    }
+
+    if (data.workflows?.includes("other") && (!data.customWorkflow || data.customWorkflow.trim() === "")) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Please specify your custom workflow",
+            path: ["customWorkflow"],
+        });
+    }
 });
 
 export type OnboardingFormValues = z.infer<typeof onboardingSchema>;

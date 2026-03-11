@@ -169,13 +169,9 @@ export function SetupWizard() {
             case "business-use":
                 return (formValues.businessDescription?.trim().length ?? 0) > 0;
             case "goals":
-                if (!formValues.goals || formValues.goals.length === 0) return false;
-                if (formValues.goals.includes("other") && (formValues.customGoal?.trim().length ?? 0) === 0) return false;
-                return true;
+                return Boolean(formValues.goals && formValues.goals.length > 0 && !methods.formState.errors.customGoal);
             case "workflows":
-                if (!formValues.workflows || formValues.workflows.length === 0) return false;
-                if (formValues.workflows.includes("other") && (formValues.customWorkflow?.trim().length ?? 0) === 0) return false;
-                return true;
+                return Boolean(formValues.workflows && formValues.workflows.length > 0 && !methods.formState.errors.customWorkflow);
             case "tools":
                 return true; // optional
             case "character":
@@ -189,7 +185,7 @@ export function SetupWizard() {
             default:
                 return false;
         }
-    }, [currentStep, formValues]);
+    }, [currentStep, formValues, methods.formState.errors]);
 
     const goNext = () => {
         if (currentStepIndex < steps.length - 1) {
