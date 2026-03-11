@@ -208,6 +208,7 @@ export function SetupWizard() {
     };
 
     const goBack = () => {
+        if (deployState !== 'idle') return;
         if (currentStepIndex > 0) {
             setCurrentStepIndex((prev) => prev - 1);
         }
