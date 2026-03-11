@@ -116,7 +116,7 @@ export function SetupWizard() {
             workflows: [],
             customWorkflow: "",
             tools: [],
-            agentTemplateId: undefined,
+            agentTemplateIds: [],
             // Setup
             aiProvider: "",
             aiModel: "",
@@ -160,7 +160,7 @@ export function SetupWizard() {
             case "tools":
                 return true; // optional
             case "character":
-                return !!formValues.agentTemplateId;
+                return Boolean(formValues.agentTemplateIds && formValues.agentTemplateIds.length > 0);
             case "ai-brain":
                 return Boolean(formValues.aiProvider && formValues.aiModel && formValues.aiApiKey && formValues.aiApiKey.trim().length >= 5);
             case "channel-setup":
@@ -288,10 +288,14 @@ export function SetupWizard() {
             case "character":
                 return (
                     <CharacterSelectionView
-                        selectedTemplateId={formValues.agentTemplateId as AgentTemplateId | undefined}
+                        selectedTemplateIds={(formValues.agentTemplateIds as AgentTemplateId[]) ?? []}
                         recommendedTemplates={recommendedTemplates}
                         otherTemplates={otherTemplates}
-                        onSelect={(id) => setValue("agentTemplateId", (formValues.agentTemplateId === id ? undefined : id) as AgentTemplateId, { shouldValidate: true })}
+                        onSelect={(id) => {
+                            const current = (formValues.agentTemplateIds as AgentTemplateId[]) ?? [];
+                            const next = current.includes(id) ? current.filter(tId => tId !== id) : [...current, id];
+                            setValue("agentTemplateIds", next, { shouldValidate: true });
+                        }}
                     />
                 );
             case "ai-brain":
@@ -306,6 +310,7 @@ export function SetupWizard() {
                         aiProvider={formValues.aiProvider ?? ""}
                         aiModel={formValues.aiModel ?? ""}
                         selectedChannel={formValues.selectedChannel ?? ""}
+                        agentTemplateIds={(formValues.agentTemplateIds as AgentTemplateId[]) ?? []}
                     />
                 );
             default:

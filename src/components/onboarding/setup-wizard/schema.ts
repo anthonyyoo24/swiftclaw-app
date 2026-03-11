@@ -31,7 +31,7 @@ export const onboardingSchema = z.object({
     workflows: z.array(z.string().min(1)).min(1, "Select at least one workflow").optional(),
     customWorkflow: z.string().optional(),
     tools: z.array(z.string()).optional(),
-    agentTemplateId: z.enum(AGENT_TEMPLATES).optional(),
+    agentTemplateIds: z.array(z.enum(AGENT_TEMPLATES)).optional(),
 
     // Setup steps
     aiProvider: z.string().min(1, "Please select an AI provider").optional(),

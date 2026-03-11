@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 
-interface Template {
+export interface Template {
     id: AgentTemplateId;
     title: string;
     role: string;
@@ -13,7 +13,7 @@ interface Template {
     avatar?: string;
 }
 
-const TEMPLATES: Template[] = [
+export const TEMPLATES: Template[] = [
     {
         id: "maya",
         title: "Maya",
@@ -98,14 +98,14 @@ const TEMPLATES: Template[] = [
 ];
 
 interface CharacterSelectionViewProps {
-    selectedTemplateId: AgentTemplateId | undefined;
+    selectedTemplateIds: AgentTemplateId[];
     recommendedTemplates: AgentTemplateId[];
     otherTemplates: AgentTemplateId[];
     onSelect: (id: AgentTemplateId) => void;
 }
 
 export function CharacterSelectionView({
-    selectedTemplateId,
+    selectedTemplateIds,
     recommendedTemplates,
     otherTemplates,
     onSelect,
@@ -114,7 +114,7 @@ export function CharacterSelectionView({
         const template = TEMPLATES.find(t => t.id === templateId);
         if (!template) return null;
 
-        const isSelected = selectedTemplateId === template.id;
+        const isSelected = selectedTemplateIds.includes(template.id);
 
         return (
             <button

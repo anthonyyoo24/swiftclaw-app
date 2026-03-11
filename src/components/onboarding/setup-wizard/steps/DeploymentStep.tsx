@@ -5,11 +5,15 @@ import { Anthropic, OpenAI, Google } from "@lobehub/icons";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 import { PROVIDER_OPTIONS, MODEL_OPTIONS } from "./AIBrainStep";
 import { CHANNELS } from "./ChannelSetupStep";
+import { AgentTemplateId } from "../schema";
+import { TEMPLATES, Template } from "./CharacterSelectionView";
+import Image from "next/image";
 
 interface DeploymentStepProps {
     aiProvider?: string;
     aiModel?: string;
     selectedChannel?: string | null;
+    agentTemplateIds?: AgentTemplateId[];
 }
 
 const PROVIDER_ICONS: Record<string, React.ReactNode> = {
@@ -18,10 +22,11 @@ const PROVIDER_ICONS: Record<string, React.ReactNode> = {
     google: <Google size={18} className="text-[#4285F4]" />,
 };
 
-export function DeploymentStep({ aiProvider, aiModel, selectedChannel }: DeploymentStepProps) {
+export function DeploymentStep({ aiProvider, aiModel, selectedChannel, agentTemplateIds }: DeploymentStepProps) {
     const providerOption = aiProvider ? PROVIDER_OPTIONS.find((p) => p.id === aiProvider) : undefined;
     const modelOption = aiProvider ? MODEL_OPTIONS[aiProvider]?.find((m) => m.id === aiModel) : undefined;
     const channelOption = CHANNELS.find((c) => c.id === selectedChannel);
+    const selectedTemplates = agentTemplateIds ? agentTemplateIds.map(id => TEMPLATES.find(t => t.id === id)).filter((t): t is Template => !!t) : [];
 
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
@@ -30,6 +35,53 @@ export function DeploymentStep({ aiProvider, aiModel, selectedChannel }: Deploym
                 title="Ready to Deploy"
                 description="Your SwiftClaw agent is configured and ready. Review your settings below before initiating the deployment process."
             />
+
+            {/* Agent Character Profiles */}
+            {selectedTemplates.length > 0 && (
+                <div className="mb-8">
+                    <div className="flex items-center gap-2 px-1 mb-4">
+                        <div className="h-px flex-1 bg-white/5 mr-2" />
+                        <Icon icon="solar:users-group-rounded-linear" className="text-neutral-400 text-lg shrink-0" />
+                        <h3 className="text-sm font-medium text-white whitespace-nowrap">
+                            {selectedTemplates.length === 1 ? "Your Agent" : "Your Agents"}
+                        </h3>
+                        <div className="h-px flex-1 bg-white/5 ml-2" />
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center justify-center gap-4 py-6">
+                    {selectedTemplates.map((template) => (
+                        <div
+                            key={template.id}
+                            className="flex items-center gap-3.5 px-5 py-3.5 rounded-2xl bg-[#0a0a0c] border border-white/10 shadow-sm animate-in fade-in zoom-in duration-500"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden shrink-0 border border-white/5">
+                                {template.avatar ? (
+                                    <div className="relative w-full h-full">
+                                        <Image
+                                            src={template.avatar}
+                                            alt={template.title}
+                                            fill
+                                            className="object-cover"
+                                            sizes="40px"
+                                        />
+                                    </div>
+                                ) : (
+                                    <span className="text-xl">{template.emoji}</span>
+                                )}
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-sm font-semibold text-white tracking-tight leading-none mb-1">
+                                    {template.title}
+                                </span>
+                                <span className="text-[11px] text-neutral-400 font-medium uppercase tracking-wider">
+                                    {template.role}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+            )}
 
             {/* Configuration Summary */}
             <div className="space-y-6 flex-1">
