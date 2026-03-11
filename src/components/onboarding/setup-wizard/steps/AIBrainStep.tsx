@@ -78,19 +78,21 @@ export function AIBrainStep() {
                             />
                         )}
                     />
-                    <Controller
-                        name="aiModel"
-                        control={control}
-                        render={({ field }) => (
-                            <CustomDropdown
-                                label="Model Version"
-                                options={provider ? (MODEL_OPTIONS[provider] || []) : []}
-                                value={field.value ?? ""}
-                                onChange={(v) => field.onChange(v)}
-                                placeholder="Select model..."
-                            />
-                        )}
-                    />
+                    {provider && (
+                        <Controller
+                            name="aiModel"
+                            control={control}
+                            render={({ field }) => (
+                                <CustomDropdown
+                                    label="Model Version"
+                                    options={MODEL_OPTIONS[provider] || []}
+                                    value={field.value ?? ""}
+                                    onChange={(v) => field.onChange(v)}
+                                    placeholder="Select model..."
+                                />
+                            )}
+                        />
+                    )}
                 </div>
 
                 {/* API Key Input */}
