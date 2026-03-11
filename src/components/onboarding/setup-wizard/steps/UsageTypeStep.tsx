@@ -42,7 +42,7 @@ export function UsageTypeStep({ value, onChange }: UsageTypeStepProps) {
     return (
         <div className="w-full max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
             <StepHeader
-                title="How will you use Swiftclaw?"
+                title="How will you use SwiftClaw?"
                 description="This helps us tailor your experience and recommend the right agent."
                 icon="solar:case-linear"
             />

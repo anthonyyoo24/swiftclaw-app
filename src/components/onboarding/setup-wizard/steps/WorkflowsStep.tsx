@@ -59,7 +59,9 @@ export function WorkflowsStep({ value, onChange, customWorkflow = "", onCustomWo
                     return (
                         <button
                             key={wf.id}
+                            type="button"
                             onClick={() => toggle(wf.id)}
+                            aria-pressed={isSelected}
                             className={cn(
                                 "group flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left cursor-pointer",
                                 "transition-all duration-150 hover:-translate-y-0.5",
