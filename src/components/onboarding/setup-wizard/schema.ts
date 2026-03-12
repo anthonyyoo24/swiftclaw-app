@@ -100,25 +100,33 @@ export const STEP_SCHEMAS: Record<StepId, z.ZodTypeAny> = {
     "deploy": deployStepSchema,
 };
 
-export const onboardingSchema = z.object({
-    // Personalization steps
-    usageType: z.enum(USAGE_TYPES).optional(),
-    userName: z.string().min(1, "Name is required").optional(),
-    timezone: z.string().min(1, "Timezone is required").optional(),
-    businessDescription: z.string().optional(),
-    goals: z.array(z.string().min(1)).min(1, "Select at least one goal").optional(),
-    workflows: z.array(z.string().min(1)).min(1, "Select at least one workflow").optional(),
-    tools: z.array(z.string()).optional(),
-    agentTemplateIds: z.array(z.enum(AGENT_TEMPLATES)).optional(),
-
-    // Setup steps
-    aiProvider: z.string().min(1, "Please select an AI provider").optional(),
-    aiModel: z.string().min(1, "Please select a model").optional(),
-    aiApiKey: z.string().min(5, "API Key must be at least 5 characters").optional(),
-    selectedChannel: z.enum(SUPPORTED_CHANNEL_IDS, {
-        error: "Please select a supported channel",
-    }).optional(),
-    channelToken: z.string().min(5, "Token must be at least 5 characters").optional(),
-});
+// Not a runtime validator for step navigation — that is handled per-step via
+// STEP_SCHEMAS[id].safeParse(). This schema merges all step schemas in wizard
+// order to (a) infer the full OnboardingFormValues type and (b) act as the
+// final correctness guard right before deploy.
+export const onboardingSchema = welcomeStepSchema
+    .merge(usageTypeStepSchema)
+    .merge(userNameStepSchema)
+    .merge(timezoneStepSchema)
+    .merge(businessUseStepSchema.partial()) // conditional step — personal users skip it
+    .merge(goalsStepSchema)
+    .merge(workflowsStepSchema)
+    .merge(toolsStepSchema)
+    .merge(characterStepSchema)
+    .merge(aiBrainStepSchema)
+    .merge(channelSetupStepSchema)
+    .superRefine((data, ctx) => {
+        // businessDescription is only required for business users
+        if (
+            data.usageType === "business" &&
+            (!data.businessDescription || data.businessDescription.trim() === "")
+        ) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Please describe your business",
+                path: ["businessDescription"],
+            });
+        }
+    });
 
 export type OnboardingFormValues = z.infer<typeof onboardingSchema>;

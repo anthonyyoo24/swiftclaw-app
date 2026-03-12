@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { WizardShell } from "@/components/ui/wizard/WizardShell";
 
 import { STEP_SCHEMAS, onboardingSchema, type OnboardingFormValues, type AgentTemplateId } from "./schema";
@@ -103,7 +102,6 @@ export function SetupWizard() {
     }, []);
 
     const methods = useForm<OnboardingFormValues>({
-        resolver: zodResolver(onboardingSchema),
         mode: "onChange",
         defaultValues: {
             // Personalization
@@ -201,6 +199,17 @@ export function SetupWizard() {
     const handleNextClick = () => {
         if (deployState !== 'idle' || !isCurrentStepValid) return;
         if (currentStepIndex === steps.length - 1) {
+            // Final submit validation
+            const currentValues = methods.getValues();
+            const result = onboardingSchema.safeParse(currentValues);
+            
+            if (!result.success) {
+                // If the final validation fails (e.g. they somehow bypassed a step), 
+                // don't proceed to deploy. You could also log this or show a toast.
+                console.error("Form validation failed before deploy:", result.error);
+                return;
+            }
+
             setDeployState('loading');
 
             // Clear any existing timer just in case
