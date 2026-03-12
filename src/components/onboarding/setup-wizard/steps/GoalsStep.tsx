@@ -28,12 +28,12 @@ const GOAL_OPTIONS: GoalOption[] = [
     { id: "other", label: "Something else", emoji: "💡" },
 ];
 
-const PRESET_IDS = new Set(GOAL_OPTIONS.map(g => g.id).filter(id => id !== "other"));
+const CUSTOM_PREFIX = "__CUSTOM__:";
 
 export function GoalsStep({ value, onChange }: GoalsStepProps) {
-    const customEntryIndex = value.findIndex(v => !PRESET_IDS.has(v));
+    const customEntryIndex = value.findIndex(v => v.startsWith(CUSTOM_PREFIX));
     const isCustomActive = customEntryIndex !== -1;
-    const customText = isCustomActive ? value[customEntryIndex] : "";
+    const customText = isCustomActive ? value[customEntryIndex].slice(CUSTOM_PREFIX.length) : "";
 
     const togglePreset = (id: string) => {
         if (value.includes(id)) {
@@ -45,18 +45,16 @@ export function GoalsStep({ value, onChange }: GoalsStepProps) {
 
     const toggleOther = () => {
         if (isCustomActive) {
-            // Remove the custom entry entirely
             onChange(value.filter((_, i) => i !== customEntryIndex));
         } else {
-            // Add "" as a placeholder. It fails z.string().min(1), so the user must type!
-            onChange([...value, ""]);
+            onChange([...value, CUSTOM_PREFIX]);
         }
     };
 
     const handleCustomChange = (text: string) => {
         if (isCustomActive) {
             const next = [...value];
-            next[customEntryIndex] = text;
+            next[customEntryIndex] = CUSTOM_PREFIX + text;
             onChange(next);
         }
     };

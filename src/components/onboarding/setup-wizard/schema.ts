@@ -53,11 +53,11 @@ export const businessUseStepSchema = z.object({
 });
 
 export const goalsStepSchema = z.object({
-    goals: z.array(z.string().min(1, "Custom goal cannot be empty")).min(1, "Select at least one goal"),
+    goals: z.array(z.string().refine(val => val !== "__CUSTOM__:", { message: "Custom goal cannot be empty" })).min(1, "Select at least one goal"),
 });
 
 export const workflowsStepSchema = z.object({
-    workflows: z.array(z.string().min(1, "Custom workflow cannot be empty")).min(1, "Select at least one workflow"),
+    workflows: z.array(z.string().refine(val => val !== "__CUSTOM__:", { message: "Custom workflow cannot be empty" })).min(1, "Select at least one workflow"),
 });
 
 export const toolsStepSchema = z.object({
