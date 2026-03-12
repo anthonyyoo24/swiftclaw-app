@@ -7,8 +7,6 @@ import { Textarea } from "@/components/ui/Textarea";
 interface GoalsStepProps {
     value: string[];
     onChange: (value: string[]) => void;
-    customGoal?: string;
-    onCustomGoalChange?: (value: string) => void;
 }
 
 interface GoalOption {
@@ -30,15 +28,36 @@ const GOAL_OPTIONS: GoalOption[] = [
     { id: "other", label: "Something else", emoji: "💡" },
 ];
 
-export function GoalsStep({ value, onChange, customGoal = "", onCustomGoalChange }: GoalsStepProps) {
-    const toggle = (id: string) => {
+const PRESET_IDS = new Set(GOAL_OPTIONS.map(g => g.id).filter(id => id !== "other"));
+
+export function GoalsStep({ value, onChange }: GoalsStepProps) {
+    const customEntryIndex = value.findIndex(v => !PRESET_IDS.has(v));
+    const isCustomActive = customEntryIndex !== -1;
+    const customText = isCustomActive ? value[customEntryIndex] : "";
+
+    const togglePreset = (id: string) => {
         if (value.includes(id)) {
             onChange(value.filter((v) => v !== id));
-            if (id === "other" && onCustomGoalChange) {
-                onCustomGoalChange(""); // Clear input when unselected
-            }
         } else {
             onChange([...value, id]);
+        }
+    };
+
+    const toggleOther = () => {
+        if (isCustomActive) {
+            // Remove the custom entry entirely
+            onChange(value.filter((_, i) => i !== customEntryIndex));
+        } else {
+            // Add "" as a placeholder. It fails z.string().min(1), so the user must type!
+            onChange([...value, ""]);
+        }
+    };
+
+    const handleCustomChange = (text: string) => {
+        if (isCustomActive) {
+            const next = [...value];
+            next[customEntryIndex] = text;
+            onChange(next);
         }
     };
 
@@ -50,14 +69,15 @@ export function GoalsStep({ value, onChange, customGoal = "", onCustomGoalChange
                 icon="solar:target-linear"
             />
 
-
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {GOAL_OPTIONS.map((goal) => {
-                    const isSelected = value.includes(goal.id);
+                    const isOther = goal.id === "other";
+                    const isSelected = isOther ? isCustomActive : value.includes(goal.id);
                     return (
                         <button
                             key={goal.id}
-                            onClick={() => toggle(goal.id)}
+                            type="button"
+                            onClick={() => isOther ? toggleOther() : togglePreset(goal.id)}
                             className={cn(
                                 "group flex items-center cursor-pointer gap-3 px-4 py-3.5 rounded-xl border text-left",
                                 "transition-all duration-150 hover:-translate-y-0.5",
@@ -73,11 +93,11 @@ export function GoalsStep({ value, onChange, customGoal = "", onCustomGoalChange
                 })}
             </div>
 
-            {value.includes("other") && (
+            {isCustomActive && (
                 <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
                     <Textarea
-                        value={customGoal}
-                        onChange={(e) => onCustomGoalChange?.(e.target.value)}
+                        value={customText}
+                        onChange={(e) => handleCustomChange(e.target.value)}
                         placeholder="Tell us more about your goals..."
                         variant="glass"
                         className="min-h-20 no-drag select-text relative z-50 resize-none"

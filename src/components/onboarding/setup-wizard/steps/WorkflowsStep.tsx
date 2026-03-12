@@ -2,12 +2,11 @@
 
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/Textarea";
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 
 interface WorkflowsStepProps {
     value: string[];
     onChange: (value: string[]) => void;
-    customWorkflow?: string;
-    onCustomWorkflowChange?: (value: string) => void;
 }
 
 interface WorkflowOption {
@@ -31,17 +30,35 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
     { id: "other", label: "Something custom", emoji: "⚡" },
 ];
 
-import { StepHeader } from "@/components/onboarding/shared/StepHeader";
+const PRESET_IDS = new Set(WORKFLOW_OPTIONS.map(wf => wf.id).filter(id => id !== "other"));
 
-export function WorkflowsStep({ value, onChange, customWorkflow = "", onCustomWorkflowChange }: WorkflowsStepProps) {
-    const toggle = (id: string) => {
+export function WorkflowsStep({ value, onChange }: WorkflowsStepProps) {
+    const customEntryIndex = value.findIndex(v => !PRESET_IDS.has(v));
+    const isCustomActive = customEntryIndex !== -1;
+    const customText = isCustomActive ? value[customEntryIndex] : "";
+
+    const togglePreset = (id: string) => {
         if (value.includes(id)) {
             onChange(value.filter((v) => v !== id));
-            if (id === "other" && onCustomWorkflowChange) {
-                onCustomWorkflowChange(""); // Clear input when deselected
-            }
         } else {
             onChange([...value, id]);
+        }
+    };
+
+    const toggleOther = () => {
+        if (isCustomActive) {
+            onChange(value.filter((_, i) => i !== customEntryIndex));
+        } else {
+            // Add "" as a placeholder. It fails z.string().min(1), so the user must type!
+            onChange([...value, ""]);
+        }
+    };
+
+    const handleCustomChange = (text: string) => {
+        if (isCustomActive) {
+            const next = [...value];
+            next[customEntryIndex] = text;
+            onChange(next);
         }
     };
 
@@ -55,12 +72,13 @@ export function WorkflowsStep({ value, onChange, customWorkflow = "", onCustomWo
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {WORKFLOW_OPTIONS.map((wf) => {
-                    const isSelected = value.includes(wf.id);
+                    const isOther = wf.id === "other";
+                    const isSelected = isOther ? isCustomActive : value.includes(wf.id);
                     return (
                         <button
                             key={wf.id}
                             type="button"
-                            onClick={() => toggle(wf.id)}
+                            onClick={() => isOther ? toggleOther() : togglePreset(wf.id)}
                             aria-pressed={isSelected}
                             className={cn(
                                 "group flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left cursor-pointer",
@@ -77,11 +95,11 @@ export function WorkflowsStep({ value, onChange, customWorkflow = "", onCustomWo
                 })}
             </div>
 
-            {value.includes("other") && (
+            {isCustomActive && (
                 <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
                     <Textarea
-                        value={customWorkflow}
-                        onChange={(e) => onCustomWorkflowChange?.(e.target.value)}
+                        value={customText}
+                        onChange={(e) => handleCustomChange(e.target.value)}
                         placeholder="Describe the workflow you want to automate..."
                         variant="glass"
                         className="min-h-20 no-drag select-text relative z-50 resize-none"

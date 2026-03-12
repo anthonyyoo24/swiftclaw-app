@@ -5,7 +5,7 @@ import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { WizardShell } from "@/components/ui/wizard/WizardShell";
 
-import { onboardingSchema, type OnboardingFormValues, type AgentTemplateId } from "./schema";
+import { STEP_SCHEMAS, onboardingSchema, type OnboardingFormValues, type AgentTemplateId } from "./schema";
 
 // Setup Steps
 import { WelcomeStep } from "./steps/WelcomeStep";
@@ -112,9 +112,7 @@ export function SetupWizard() {
             timezone: "",
             businessDescription: "",
             goals: [],
-            customGoal: "",
             workflows: [],
-            customWorkflow: "",
             tools: [],
             agentTemplateIds: [],
             // Setup
@@ -154,38 +152,13 @@ export function SetupWizard() {
     const otherTemplates = useMemo(() => getOtherTemplates(), []);
 
     /**
-     * Derived validity — the single source of truth that feeds into WizardShell.
+     * Derived validity — driven entirely by the step's own Zod schema via safeParse.
      */
     const isCurrentStepValid = useMemo((): boolean => {
-        switch (currentStep?.id) {
-            case "welcome":
-                return true;
-            case "usage-type":
-                return !!formValues.usageType;
-            case "user-name":
-                return (formValues.userName?.trim().length ?? 0) > 0;
-            case "timezone":
-                return (formValues.timezone?.trim().length ?? 0) > 0;
-            case "business-use":
-                return (formValues.businessDescription?.trim().length ?? 0) > 0;
-            case "goals":
-                return Boolean(formValues.goals && formValues.goals.length > 0 && !methods.formState.errors.customGoal);
-            case "workflows":
-                return Boolean(formValues.workflows && formValues.workflows.length > 0 && !methods.formState.errors.customWorkflow);
-            case "tools":
-                return true; // optional
-            case "character":
-                return Boolean(formValues.agentTemplateIds && formValues.agentTemplateIds.length > 0);
-            case "ai-brain":
-                return Boolean(formValues.aiProvider && formValues.aiModel && formValues.aiApiKey && formValues.aiApiKey.trim().length >= 5);
-            case "channel-setup":
-                return Boolean(formValues.selectedChannel && formValues.channelToken && formValues.channelToken.trim().length >= 5);
-            case "deploy":
-                return true;
-            default:
-                return false;
-        }
-    }, [currentStep, formValues, methods.formState.errors]);
+        if (!currentStep) return false;
+        const stepSchema = STEP_SCHEMAS[currentStep.id];
+        return stepSchema.safeParse(formValues).success;
+    }, [currentStep, formValues]);
 
     const goNext = () => {
         if (currentStepIndex < steps.length - 1) {
@@ -289,8 +262,6 @@ export function SetupWizard() {
                     <GoalsStep
                         value={formValues.goals ?? []}
                         onChange={(v) => setValue("goals", v, { shouldValidate: true })}
-                        customGoal={formValues.customGoal ?? ""}
-                        onCustomGoalChange={(v: string) => setValue("customGoal", v, { shouldValidate: true })}
                     />
                 );
             case "workflows":
@@ -298,8 +269,6 @@ export function SetupWizard() {
                     <WorkflowsStep
                         value={formValues.workflows ?? []}
                         onChange={(v) => setValue("workflows", v, { shouldValidate: true })}
-                        customWorkflow={formValues.customWorkflow ?? ""}
-                        onCustomWorkflowChange={(v: string) => setValue("customWorkflow", v, { shouldValidate: true })}
                     />
                 );
             case "tools":
