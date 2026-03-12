@@ -53,7 +53,7 @@ export const businessUseStepSchema = z.object({
 });
 
 export const goalsStepSchema = z.object({
-    goals: z.array(z.string().refine(val => val !== "__CUSTOM__:", { message: "Custom goal cannot be empty" })).min(1, "Select at least one goal"),
+    goals: z.string().min(1, "Please describe your goals"),
 });
 
 export const workflowsStepSchema = z.object({

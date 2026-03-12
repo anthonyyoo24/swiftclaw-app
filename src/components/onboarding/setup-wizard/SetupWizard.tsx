@@ -109,7 +109,7 @@ export function SetupWizard() {
             userName: "",
             timezone: "",
             businessDescription: "",
-            goals: [],
+            goals: "",
             workflows: [],
             tools: [],
             agentTemplateIds: [],
@@ -269,7 +269,7 @@ export function SetupWizard() {
             case "goals":
                 return (
                     <GoalsStep
-                        value={formValues.goals ?? []}
+                        value={formValues.goals ?? ""}
                         onChange={(v) => setValue("goals", v, { shouldValidate: true })}
                     />
                 );
