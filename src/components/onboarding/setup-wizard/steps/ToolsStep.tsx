@@ -194,6 +194,13 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
                             "flex flex-col items-center justify-center gap-1 p-3 rounded-xl border h-21 transition-all",
                             "bg-white/10 border-white/30 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/50"
                         )}
+                        onBlur={(e) => {
+                            // Check if the focus is moving to something outside the container
+                            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                                setCustomInputValue("");
+                                setIsAddingCustom(false);
+                            }
+                        }}
                     >
                         <input
                             autoFocus
@@ -217,10 +224,6 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
                                     setCustomInputValue("");
                                     setIsAddingCustom(false);
                                 }
-                            }}
-                            onBlur={() => {
-                                setCustomInputValue("");
-                                setIsAddingCustom(false);
                             }}
                             className="w-full bg-transparent text-white text-xs text-center focus:outline-none placeholder:text-neutral-400"
                         />
