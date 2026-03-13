@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/Textarea";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 import { useWizardField } from "../hooks/useWizardField";
+import { useFormContext } from "react-hook-form";
+import type { OnboardingFormValues } from "../schema";
 
 interface WorkflowOption {
     id: string;
@@ -11,7 +13,7 @@ interface WorkflowOption {
     emoji: string;
 }
 
-const WORKFLOW_OPTIONS: WorkflowOption[] = [
+const BUSINESS_WORKFLOW_OPTIONS: WorkflowOption[] = [
     { id: "answer-faq", label: "Answer FAQs automatically", emoji: "💬" },
     { id: "qualify-leads", label: "Qualify & follow up with leads", emoji: "🎯" },
     { id: "book-meetings", label: "Book meetings & send reminders", emoji: "📅" },
@@ -26,12 +28,31 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
     { id: "other", label: "Something custom", emoji: "⚡" },
 ];
 
+const PERSONAL_WORKFLOW_OPTIONS: WorkflowOption[] = [
+    { id: "summarise-articles", label: "Summarize articles & newsletters", emoji: "📰" },
+    { id: "draft-emails", label: "Draft emails & messages", emoji: "✉️" },
+    { id: "set-reminders", label: "Set reminders & daily check-ins", emoji: "🔔" },
+    { id: "plan-meals", label: "Plan meals & grocery lists", emoji: "🥗" },
+    { id: "research-topics", label: "Research topics & compile notes", emoji: "🔍" },
+    { id: "manage-reading", label: "Manage my reading list", emoji: "📚" },
+    { id: "track-habits", label: "Track habits & goals", emoji: "🎯" },
+    { id: "plan-trips", label: "Plan trips & itineraries", emoji: "✈️" },
+    { id: "write-journal", label: "Write journal entries", emoji: "📓" },
+    { id: "find-news", label: "Find & summarize news", emoji: "🗞️" },
+    { id: "brainstorm", label: "Brainstorm ideas", emoji: "💡" },
+    { id: "other", label: "Something custom", emoji: "⚡" },
+];
+
 const CUSTOM_PREFIX = "__CUSTOM__:";
 
 export function WorkflowsStep() {
+    const { watch } = useFormContext<OnboardingFormValues>();
+    const usageType = watch("usageType");
+    const WORKFLOW_OPTIONS = usageType === "personal" ? PERSONAL_WORKFLOW_OPTIONS : BUSINESS_WORKFLOW_OPTIONS;
+
     const { value: rawValue, onChange } = useWizardField("workflows");
     const value = rawValue || [];
-    const customEntryIndex = value.findIndex(v => v.startsWith(CUSTOM_PREFIX));
+    const customEntryIndex = value.findIndex((v: string) => v.startsWith(CUSTOM_PREFIX));
     const isCustomActive = customEntryIndex !== -1;
     const customText = isCustomActive ? value[customEntryIndex].slice(CUSTOM_PREFIX.length) : "";
 

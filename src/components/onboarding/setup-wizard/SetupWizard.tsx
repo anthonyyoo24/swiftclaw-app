@@ -19,6 +19,7 @@ import { UsageTypeStep } from "./steps/UsageTypeStep";
 import { UserNameStep } from "./steps/UserNameStep";
 import { TimezoneStep } from "./steps/TimezoneStep";
 import { BusinessUseStep } from "./steps/BusinessUseStep";
+import { PersonalContextStep } from "./steps/PersonalContextStep";
 import { GoalsStep } from "./steps/GoalsStep";
 import { WorkflowsStep } from "./steps/WorkflowsStep";
 import { ToolsStep } from "./steps/ToolsStep";
@@ -34,6 +35,7 @@ type StepId =
     | "user-name"
     | "timezone"
     | "business-use"
+    | "personal-context"
     | "goals"
     | "workflows"
     | "tools"
@@ -68,11 +70,20 @@ const BUSINESS_STEP: StepConfig = {
     description: "What does your business do?",
 };
 
+const PERSONAL_STEP: StepConfig = {
+    id: "personal-context",
+    title: "About You",
+    description: "Tell us a bit about yourself",
+};
+
 function buildSteps(isBusiness: boolean): StepConfig[] {
-    if (!isBusiness) return BASE_STEPS;
     const steps = [...BASE_STEPS];
-    // Insert business description step after timezone (index 3)
-    steps.splice(4, 0, BUSINESS_STEP);
+    // Insert business or personal description step after timezone (index 3)
+    if (isBusiness) {
+        steps.splice(4, 0, BUSINESS_STEP);
+    } else {
+        steps.splice(4, 0, PERSONAL_STEP);
+    }
     return steps;
 }
 
@@ -245,6 +256,8 @@ export function SetupWizard() {
                 return <TimezoneStep />;
             case "business-use":
                 return <BusinessUseStep />;
+            case "personal-context":
+                return <PersonalContextStep />;
             case "goals":
                 return <GoalsStep />;
             case "workflows":

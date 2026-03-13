@@ -26,6 +26,7 @@ export type StepId =
     | "user-name"
     | "timezone"
     | "business-use"
+    | "personal-context"
     | "goals"
     | "workflows"
     | "tools"
@@ -50,6 +51,10 @@ export const timezoneStepSchema = z.object({
 
 export const businessUseStepSchema = z.object({
     businessDescription: z.string().min(1, "Please describe your business"),
+});
+
+export const personalContextStepSchema = z.object({
+    personalContext: z.string().min(1, "Please tell us a bit about yourself"),
 });
 
 export const goalsStepSchema = z.object({
@@ -91,6 +96,7 @@ export const STEP_SCHEMAS: Record<StepId, z.ZodTypeAny> = {
     "user-name": userNameStepSchema,
     "timezone": timezoneStepSchema,
     "business-use": businessUseStepSchema,
+    "personal-context": personalContextStepSchema,
     "goals": goalsStepSchema,
     "workflows": workflowsStepSchema,
     "tools": toolsStepSchema,
@@ -109,6 +115,7 @@ export const onboardingSchema = welcomeStepSchema
     .merge(userNameStepSchema)
     .merge(timezoneStepSchema)
     .merge(businessUseStepSchema.partial()) // conditional step — personal users skip it
+    .merge(personalContextStepSchema.partial()) // conditional step — business users skip it
     .merge(goalsStepSchema)
     .merge(workflowsStepSchema)
     .merge(toolsStepSchema)
@@ -125,6 +132,18 @@ export const onboardingSchema = welcomeStepSchema
                 code: z.ZodIssueCode.custom,
                 message: "Please describe your business",
                 path: ["businessDescription"],
+            });
+        }
+        
+        // personalContext is only required for personal users
+        if (
+            data.usageType === "personal" &&
+            (!data.personalContext || data.personalContext.trim() === "")
+        ) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Please tell us a bit about yourself",
+                path: ["personalContext"],
             });
         }
     });
