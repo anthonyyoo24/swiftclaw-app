@@ -2,13 +2,11 @@
 
 import { Input } from "@/components/ui/Input";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
+import { useWizardField } from "../hooks/useWizardField";
 
-interface UserNameStepProps {
-    value: string;
-    onChange: (value: string) => void;
-}
+export function UserNameStep() {
+    const { value, onChange } = useWizardField("userName");
 
-export function UserNameStep({ value, onChange }: UserNameStepProps) {
     return (
         <div className="w-full max-w-lg mx-auto space-y-10 animate-in fade-in slide-in-from-right-4 duration-300">
             <StepHeader
@@ -25,7 +23,7 @@ export function UserNameStep({ value, onChange }: UserNameStepProps) {
                     id="user-name"
                     type="text"
                     placeholder="e.g. Anthony"
-                    value={value}
+                    value={value ?? ""}
                     onChange={(e) => onChange(e.target.value)}
                     autoFocus
                     variant="glass"
@@ -33,7 +31,7 @@ export function UserNameStep({ value, onChange }: UserNameStepProps) {
                 />
             </div>
 
-            {value.trim() && (
+            {value && value.trim() && (
                 <p className="text-center text-neutral-400 text-sm animate-in fade-in duration-300">
                     Nice to meet you, <span className="text-white font-medium">{value.trim()}</span> 👋
                 </p>

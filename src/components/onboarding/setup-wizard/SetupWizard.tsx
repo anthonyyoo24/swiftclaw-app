@@ -234,70 +234,28 @@ export function SetupWizard() {
     };
 
     const renderStep = () => {
-        const setValue = methods.setValue;
         switch (currentStep?.id) {
             case "welcome":
                 return <WelcomeStep />;
             case "usage-type":
-                return (
-                    <UsageTypeStep
-                        value={formValues.usageType}
-                        onChange={(v) => setValue("usageType", v, { shouldValidate: true })}
-                    />
-                );
+                return <UsageTypeStep />;
             case "user-name":
-                return (
-                    <UserNameStep
-                        value={formValues.userName ?? ""}
-                        onChange={(v) => setValue("userName", v, { shouldValidate: true })}
-                    />
-                );
+                return <UserNameStep />;
             case "timezone":
-                return (
-                    <TimezoneStep
-                        value={formValues.timezone ?? ""}
-                        onChange={(v) => setValue("timezone", v, { shouldValidate: true })}
-                    />
-                );
+                return <TimezoneStep />;
             case "business-use":
-                return (
-                    <BusinessUseStep
-                        value={formValues.businessDescription ?? ""}
-                        onChange={(v) => setValue("businessDescription", v, { shouldValidate: true })}
-                    />
-                );
+                return <BusinessUseStep />;
             case "goals":
-                return (
-                    <GoalsStep
-                        value={formValues.goals ?? ""}
-                        onChange={(v) => setValue("goals", v, { shouldValidate: true })}
-                    />
-                );
+                return <GoalsStep />;
             case "workflows":
-                return (
-                    <WorkflowsStep
-                        value={formValues.workflows ?? []}
-                        onChange={(v) => setValue("workflows", v, { shouldValidate: true })}
-                    />
-                );
+                return <WorkflowsStep />;
             case "tools":
-                return (
-                    <ToolsStep
-                        value={formValues.tools ?? []}
-                        onChange={(v) => setValue("tools", v, { shouldValidate: true })}
-                    />
-                );
+                return <ToolsStep />;
             case "character":
                 return (
                     <CharacterSelectionView
-                        selectedTemplateIds={(formValues.agentTemplateIds as AgentTemplateId[]) ?? []}
                         recommendedTemplates={recommendedTemplates}
                         otherTemplates={otherTemplates}
-                        onSelect={(id) => {
-                            const current = (formValues.agentTemplateIds as AgentTemplateId[]) ?? [];
-                            const next = current.includes(id) ? current.filter(tId => tId !== id) : [...current, id];
-                            setValue("agentTemplateIds", next, { shouldValidate: true });
-                        }}
                     />
                 );
             case "ai-brain":

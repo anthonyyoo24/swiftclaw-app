@@ -3,11 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/Textarea";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
-
-interface WorkflowsStepProps {
-    value: string[];
-    onChange: (value: string[]) => void;
-}
+import { useWizardField } from "../hooks/useWizardField";
 
 interface WorkflowOption {
     id: string;
@@ -32,14 +28,16 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
 
 const CUSTOM_PREFIX = "__CUSTOM__:";
 
-export function WorkflowsStep({ value, onChange }: WorkflowsStepProps) {
+export function WorkflowsStep() {
+    const { value: rawValue, onChange } = useWizardField("workflows");
+    const value = rawValue || [];
     const customEntryIndex = value.findIndex(v => v.startsWith(CUSTOM_PREFIX));
     const isCustomActive = customEntryIndex !== -1;
     const customText = isCustomActive ? value[customEntryIndex].slice(CUSTOM_PREFIX.length) : "";
 
     const togglePreset = (id: string) => {
         if (value.includes(id)) {
-            onChange(value.filter((v) => v !== id));
+            onChange(value.filter((v: string) => v !== id));
         } else {
             onChange([...value, id]);
         }
@@ -47,7 +45,7 @@ export function WorkflowsStep({ value, onChange }: WorkflowsStepProps) {
 
     const toggleOther = () => {
         if (isCustomActive) {
-            onChange(value.filter((_, i) => i !== customEntryIndex));
+            onChange(value.filter((_: string, i: number) => i !== customEntryIndex));
         } else {
             onChange([...value, CUSTOM_PREFIX]);
         }

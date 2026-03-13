@@ -1,7 +1,10 @@
+"use client";
+
 import { AgentTemplateId } from "../schema";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
+import { useWizardField } from "../hooks/useWizardField";
 
 export interface Template {
     id: AgentTemplateId;
@@ -98,18 +101,24 @@ export const TEMPLATES: Template[] = [
 ];
 
 interface CharacterSelectionViewProps {
-    selectedTemplateIds: AgentTemplateId[];
     recommendedTemplates: AgentTemplateId[];
     otherTemplates: AgentTemplateId[];
-    onSelect: (id: AgentTemplateId) => void;
 }
 
 export function CharacterSelectionView({
-    selectedTemplateIds,
     recommendedTemplates,
     otherTemplates,
-    onSelect,
 }: CharacterSelectionViewProps) {
+    const { value: rawValue, onChange } = useWizardField("agentTemplateIds");
+    const selectedTemplateIds = (rawValue as AgentTemplateId[]) || [];
+
+    const handleSelect = (id: AgentTemplateId) => {
+        const next = selectedTemplateIds.includes(id)
+            ? selectedTemplateIds.filter(tId => tId !== id)
+            : [...selectedTemplateIds, id];
+        onChange(next);
+    };
+
     const renderTemplateCard = (templateId: AgentTemplateId, isRecommended: boolean = false) => {
         const template = TEMPLATES.find(t => t.id === templateId);
         if (!template) return null;
@@ -119,7 +128,7 @@ export function CharacterSelectionView({
         return (
             <button
                 key={template.id}
-                onClick={() => onSelect(template.id)}
+                onClick={() => handleSelect(template.id)}
                 type="button"
                 aria-pressed={isSelected}
                 className={cn(

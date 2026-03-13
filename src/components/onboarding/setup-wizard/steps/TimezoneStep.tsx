@@ -4,11 +4,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { CustomDropdown } from "@/components/ui/CustomDropdown";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
-
-interface TimezoneStepProps {
-    value: string;
-    onChange: (value: string) => void;
-}
+import { useWizardField } from "../hooks/useWizardField";
 
 /** Groups timezones by region for a cleaner UX in the select list. */
 const COMMON_TIMEZONES = [
@@ -37,7 +33,8 @@ const COMMON_TIMEZONES = [
     { value: "Pacific/Auckland", label: "New Zealand Time (NZST) — Auckland" },
 ];
 
-export function TimezoneStep({ value, onChange }: TimezoneStepProps) {
+export function TimezoneStep() {
+    const { value, onChange } = useWizardField("timezone");
     const [detectedTimezone, setDetectedTimezone] = useState<string | null>(null);
 
     useEffect(() => {

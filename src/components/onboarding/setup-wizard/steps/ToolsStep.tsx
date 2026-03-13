@@ -5,11 +5,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { Plus, X } from "lucide-react";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
-
-interface ToolsStepProps {
-    value: string[];
-    onChange: (value: string[]) => void;
-}
+import { useWizardField } from "../hooks/useWizardField";
 
 interface ToolOption {
     id: string;
@@ -80,14 +76,16 @@ function ToolIcon({ src, alt, label }: ToolIconProps) {
     );
 }
 
-export function ToolsStep({ value, onChange }: ToolsStepProps) {
+export function ToolsStep() {
+    const { value: rawValue, onChange } = useWizardField("tools");
+    const value = rawValue || [];
     const [isAddingCustom, setIsAddingCustom] = useState(false);
     const [customInputValue, setCustomInputValue] = useState("");
     const [addedCustomTools, setAddedCustomTools] = useState<string[]>([]);
 
     const toggle = (id: string) => {
         if (value.includes(id)) {
-            onChange(value.filter((v) => v !== id));
+            onChange(value.filter((v: string) => v !== id));
         } else {
             onChange([...value, id]);
         }
@@ -111,7 +109,7 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
         e.stopPropagation(); // prevent toggling selection
         setAddedCustomTools((prev) => prev.filter((t) => t !== id));
         if (value.includes(id)) {
-            onChange(value.filter((v) => v !== id));
+            onChange(value.filter((v: string) => v !== id));
         }
     };
 
@@ -135,7 +133,7 @@ export function ToolsStep({ value, onChange }: ToolsStepProps) {
                                 "transition-all duration-150 hover:-translate-y-0.5",
                                 isSelected
                                     ? "bg-white/10 border-white shadow-md"
-                                    : "bg-white/5 border-white/10 hover:border-white/30"
+                                    : "bg-white/5 border-white/10 text-neutral-400 hover:border-white/30 hover:text-neutral-200"
                             )}
                         >
                             <div className={cn(

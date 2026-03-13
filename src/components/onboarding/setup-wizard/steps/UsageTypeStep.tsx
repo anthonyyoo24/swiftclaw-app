@@ -5,11 +5,7 @@ import { useRef } from "react";
 import { Building2, User } from "lucide-react";
 import type { UsageType } from "../schema";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
-
-interface UsageTypeStepProps {
-    value: UsageType | undefined;
-    onChange: (value: UsageType) => void;
-}
+import { useWizardField } from "../hooks/useWizardField";
 
 interface UsageOption {
     id: UsageType;
@@ -39,7 +35,8 @@ const OPTIONS: UsageOption[] = [
     },
 ];
 
-export function UsageTypeStep({ value, onChange }: UsageTypeStepProps) {
+export function UsageTypeStep() {
+    const { value, onChange } = useWizardField("usageType");
     const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
