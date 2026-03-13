@@ -95,6 +95,7 @@ export function WorkflowsStep() {
             {isCustomActive && (
                 <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
                     <Textarea
+                        aria-label="Custom workflow description"
                         value={customText}
                         onChange={(e) => handleCustomChange(e.target.value)}
                         placeholder="Describe the workflow you want to automate..."
