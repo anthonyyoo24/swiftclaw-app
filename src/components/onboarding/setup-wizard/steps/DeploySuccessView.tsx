@@ -2,9 +2,29 @@
 
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
+import { useEffect, useState } from "react";
 
 export function DeploySuccessView() {
     const router = useRouter();
+    const [secondsLeft, setSecondsLeft] = useState(5);
+
+    useEffect(() => {
+        // Set onboarding as complete when this view is reached
+        localStorage.setItem("onboardingComplete", "true");
+
+        // Countdown timer for auto-navigation
+        const timer = setInterval(() => {
+            setSecondsLeft((prev) => Math.max(0, prev - 1));
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
+        if (secondsLeft === 0) {
+            router.push("/");
+        }
+    }, [secondsLeft, router]);
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 min-h-100">
@@ -45,22 +65,31 @@ export function DeploySuccessView() {
                 Agent Deployed Successfully
             </h2>
 
-            <p className="text-neutral-400 text-center max-w-sm mb-12">
+            <p className="text-neutral-400 text-center max-w-sm mb-8">
                 Your SwiftClaw agent is live and securely connected to your selected services.
-                Let&apos;s move on and teach it how to behave.
+                Redirecting to your dashboard shortly...
             </p>
 
-            <button
-                type="button"
-                onClick={() => router.push('/onboarding/personalize')}
-                className="group relative inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3.5 rounded-full text-base font-medium shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] focus:outline-none focus-visible:ring-2 focus:ring-emerald-500/50 active:scale-[0.98] transition-all duration-300 overflow-hidden cursor-pointer"
-            >
-                <div className="absolute inset-0 bg-linear-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                <span className="relative z-10 flex items-center gap-3">
-                    Personalize My Agent
-                    <Icon icon="solar:arrow-right-linear" className="text-xl transition-transform group-hover:translate-x-1" />
-                </span>
-            </button>
+            <div className="flex flex-col items-center gap-6">
+                <button
+                    type="button"
+                    onClick={() => router.push('/')}
+                    className="group relative inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-10 py-4 rounded-full text-base font-medium shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] focus:outline-none focus-visible:ring-2 focus:ring-emerald-500/50 active:scale-[0.98] transition-all duration-300 overflow-hidden cursor-pointer"
+                >
+                    <div className="absolute inset-0 bg-linear-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                    <span className="relative z-10 flex items-center gap-3">
+                        Go to Dashboard
+                        <Icon icon="solar:arrow-right-linear" className="text-xl transition-transform group-hover:translate-x-1" />
+                    </span>
+                </button>
+
+                <div className="flex items-center gap-2 text-neutral-500 text-sm font-medium animate-pulse">
+                    <span>Redirecting in</span>
+                    <span className="w-5 text-center text-emerald-500 tabular-nums">{secondsLeft}</span>
+                    <span>seconds</span>
+                </div>
+            </div>
+
             <style jsx>{`
                 @keyframes pop-in {
                     0% {

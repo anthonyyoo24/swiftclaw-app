@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Icon } from "@iconify/react";
+import { cn } from "@/lib/utils";
 
 export interface DropdownOption {
     id: string;
@@ -15,12 +16,14 @@ interface CustomDropdownProps {
     onChange: (value: string) => void;
     label?: string;
     placeholder?: string;
+    size?: "default" | "lg";
 }
 
-export function CustomDropdown({ options, value, onChange, label, placeholder = "Select an option" }: CustomDropdownProps) {
+export function CustomDropdown({ options, value, onChange, label, placeholder = "Select an option", size = "default" }: CustomDropdownProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [shouldRender, setShouldRender] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const selectedOption = options.find((opt) => opt.id === value);
@@ -70,12 +73,17 @@ export function CustomDropdown({ options, value, onChange, label, placeholder = 
             )}
 
             <button
+                ref={buttonRef}
                 type="button"
                 onClick={toggleDropdown}
-                className={`w-full relative flex items-center justify-between border rounded-xl pl-4 pr-10 py-3 text-sm transition-all cursor-pointer shadow-sm focus:outline-none focus:ring-1 focus:border-blue-500/50 focus:ring-blue-500/50 group ${isOpen
-                    ? "bg-white/5 border-blue-500/50 text-white ring-1 ring-blue-500/50"
-                    : "bg-[#0a0a0c] border-white/10 text-white hover:bg-white/5"
-                    }`}
+                className={cn(
+                    "w-full relative flex items-center justify-between border rounded-xl transition-all cursor-pointer focus:outline-none group shadow-sm",
+                    "focus-visible:border-blue-500/50 focus-visible:ring-1 focus-visible:ring-blue-500/50",
+                    size === "default" ? "pl-4 pr-10 py-3 text-sm" : "px-4 pr-10 h-14 text-lg",
+                    isOpen 
+                        ? "bg-white/5 border-blue-500/50 text-white ring-1 ring-blue-500/50" 
+                        : "bg-white/5 border-white/10 text-white hover:border-white/30"
+                )}
             >
                 <div className="flex items-center gap-3">
                     {selectedOption?.icon && (
@@ -83,14 +91,25 @@ export function CustomDropdown({ options, value, onChange, label, placeholder = 
                             {selectedOption.icon}
                         </div>
                     )}
-                    <span className={`font-medium ${!selectedOption ? "text-neutral-500" : ""}`}>
+                    <span
+                        className={cn(
+                            "font-medium",
+                            !selectedOption && size === "default" && "text-neutral-500",
+                            !selectedOption && size === "lg" && "text-neutral-600 font-normal"
+                        )}
+                    >
                         {displayLabel}
                     </span>
                 </div>
                 <div className="absolute inset-y-0 right-0 flex items-center px-4">
                     <Icon
                         icon="solar:alt-arrow-down-linear"
-                        className={`text-lg text-neutral-500 group-hover:text-neutral-300 transition-all duration-200 ${isOpen ? "rotate-180 text-white" : ""}`}
+                        className={cn(
+                            "transition-all duration-200",
+                            size === "default" ? "text-lg text-neutral-500" : "text-xl text-neutral-400 group-hover:text-neutral-300",
+                            !isOpen && size === "default" && "group-hover:text-neutral-300",
+                            isOpen && "rotate-180 text-white"
+                        )}
                     />
                 </div>
             </button>
@@ -101,16 +120,19 @@ export function CustomDropdown({ options, value, onChange, label, placeholder = 
                     ? "animate-in fade-in zoom-in-95 duration-200"
                     : "animate-out fade-out zoom-out-95 duration-200 fill-mode-forwards"
                     }`}>
-                    <div className="p-1.5 space-y-0.5">
+                    <div className="p-1.5 space-y-0.5 max-h-64 overflow-y-auto">
                         {options.map((option) => (
                             <button
                                 key={option.id}
                                 type="button"
                                 onClick={() => handleSelect(option.id)}
-                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group cursor-pointer ${option.id === value
-                                    ? "bg-blue-500/10 text-blue-400"
-                                    : "text-neutral-400 hover:bg-white/5 hover:text-white"
-                                    }`}
+                                className={cn(
+                                    "w-full flex items-center justify-between px-3 rounded-lg font-medium transition-colors group cursor-pointer",
+                                    size === "lg" ? "py-3 text-base" : "py-2.5 text-sm",
+                                    option.id === value
+                                        ? "bg-blue-500/10 text-blue-400"
+                                        : "text-neutral-400 hover:bg-white/5 hover:text-white"
+                                )}
                             >
                                 <div className="flex items-center gap-3">
                                     {option.icon && (

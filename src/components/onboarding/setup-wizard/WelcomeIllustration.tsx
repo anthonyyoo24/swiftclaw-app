@@ -11,7 +11,7 @@ export function WelcomeIllustration() {
                 style={{ overflow: "visible" }}
             >
                 <path
-                    d="M 15 25 C 40 25, 20 75, 50 75 C 80 75, 60 25, 85 25"
+                    d="M 15 25 C 40 25, 20 66, 50 66 C 80 66, 60 25, 85 25"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
@@ -21,41 +21,41 @@ export function WelcomeIllustration() {
                 />
             </svg>
 
-            {/* Icon 1: Circuitry (Top Left) */}
+            {/* Icon 1: User Context (Top Left) */}
             <div className="absolute left-[15%] top-[25%] -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-2xl bg-[#09090b] border border-blue-500/40 flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.3)] z-10">
-                <Icon icon="solar:cpu-linear" className="text-2xl text-blue-400" />
+                <Icon icon="lucide:user" className="text-2xl text-blue-400" />
                 <div className="absolute top-full mt-4 left-1/2 -translate-x-1/2 w-48 text-center flex flex-col items-center pointer-events-none">
                     <span className="text-white text-sm font-semibold">
-                        System Configuration
+                        User Context
                     </span>
                     <span className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-                        Define the technical foundations.
+                        Tell us about yourself, your business, and your goals.
                     </span>
                 </div>
             </div>
 
             {/* Icon 2: Brain (Middle Bottom) */}
-            <div className="absolute left-[50%] top-[75%] -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-2xl bg-[#09090b] border border-blue-500/40 flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.3)] z-10">
-                <Icon icon="lucide:brain" className="text-2xl text-blue-400" />
+            <div className="absolute left-[50%] top-[66%] -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-2xl bg-[#09090b] border border-blue-500/40 flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.3)] z-10">
+                <Icon icon="lucide:bot" className="text-2xl text-blue-400" />
                 <div className="absolute top-full mt-4 left-1/2 -translate-x-1/2 w-48 text-center flex flex-col items-center pointer-events-none">
                     <span className="text-white text-sm font-semibold">
-                        Agent Personalization
+                        Agent Selection
                     </span>
                     <span className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-                        Refine the personality and voice.
+                        Choose from a list of tailored agents.
                     </span>
                 </div>
             </div>
 
-            {/* Icon 3: Handshake (Top Right) */}
+            {/* Icon 3: System Configuration (Top Right) */}
             <div className="absolute left-[85%] top-[25%] -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-2xl bg-[#09090b] border border-blue-500/40 flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.3)] z-10">
-                <Icon icon="lucide:handshake" className="text-2xl text-blue-400" />
+                <Icon icon="solar:cpu-linear" className="text-2xl text-blue-400" />
                 <div className="absolute top-full mt-4 left-1/2 -translate-x-1/2 text-center flex flex-col items-center pointer-events-none w-48">
                     <span className="text-white text-sm font-semibold">
-                        Define the Relationship
+                        System Configuration
                     </span>
                     <span className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-                        Establish how you and your agent will work together.
+                        Define the technical foundations.
                     </span>
                 </div>
             </div>

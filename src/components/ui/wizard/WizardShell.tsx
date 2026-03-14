@@ -23,6 +23,10 @@ export interface WizardShellProps {
     onReset?: () => void;
     /** The specific wizard's step content. */
     children: React.ReactNode;
+    /** Optional title to show in the header. Defaults to "Setup Wizard" */
+    title?: string;
+    /** The action style to use for the final step button */
+    submitAction?: 'deploy' | 'save';
 }
 
 /**
@@ -42,6 +46,8 @@ export function WizardShell({
     onStepClick,
     onReset,
     children,
+    title = "Setup Wizard",
+    submitAction = 'deploy',
 }: WizardShellProps) {
     return (
         <div className="bg-[#09090b] opacity-[0.99] w-full flex flex-col h-screen text-white font-sans relative overflow-hidden">
@@ -66,7 +72,7 @@ export function WizardShell({
                     <div className="flex items-center gap-2.5">
                         <span className="font-medium text-sm text-white">SwiftClaw</span>
                         <span className="text-neutral-700">/</span>
-                        <span className="text-neutral-400 font-medium text-sm">Setup Wizard</span>
+                        <span className="text-neutral-400 font-medium text-sm">{title}</span>
                     </div>
                 </div>
 
@@ -100,21 +106,30 @@ export function WizardShell({
                     onStepClick={onStepClick}
                 />
 
-                <main className="flex-1 p-8 sm:p-12 lg:p-16 overflow-y-auto flex flex-col bg-transparent">
-                    <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col relative z-10">
-                        {children}
-
-                        {(deployState === 'idle') && (
-                            <WizardFooter
-                                currentStepIndex={currentStepIndex}
-                                totalSteps={steps.length}
-                                canProgress={canProgress}
-                                isDeploying={isDeploying}
-                                onBack={onBack}
-                                onNext={onNext}
-                            />
-                        )}
+                <main className="flex-1 flex flex-col overflow-hidden bg-transparent">
+                    {/* Scrollable content area */}
+                    <div className="flex-1 overflow-y-auto px-8 sm:px-12 lg:px-16 pt-8 sm:pt-12 lg:pt-16 pb-8">
+                        <div className="max-w-2xl w-full mx-auto relative z-10">
+                            {children}
+                        </div>
                     </div>
+
+                    {/* Footer pinned to the bottom of the right pane */}
+                    {(deployState === 'idle') && (
+                        <div className="shrink-0 px-8 sm:px-12 lg:px-16 pb-8 bg-transparent">
+                            <div className="max-w-2xl w-full mx-auto">
+                                <WizardFooter
+                                    currentStepIndex={currentStepIndex}
+                                    totalSteps={steps.length}
+                                    canProgress={canProgress}
+                                    isDeploying={isDeploying}
+                                    onBack={onBack}
+                                    onNext={onNext}
+                                    submitAction={submitAction}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </main>
             </div>
         </div>

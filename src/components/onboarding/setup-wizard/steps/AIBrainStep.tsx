@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import { Icon } from "@iconify/react";
+import { Input } from "@/components/ui/Input";
 import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
 import { Anthropic, OpenAI, Google } from "@lobehub/icons";
-import { StepHeader } from "@/components/onboarding/StepHeader";
-import type { OnboardingFormValues } from "@/components/onboarding/schema";
+import { StepHeader } from "@/components/onboarding/shared/StepHeader";
+import type { OnboardingFormValues } from "@/components/onboarding/setup-wizard/schema";
 
 export const PROVIDER_OPTIONS: DropdownOption[] = [
     {
@@ -57,7 +58,8 @@ export function AIBrainStep() {
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
             <StepHeader
-                icon="solar:cpu-linear"
+                // icon="solar:cpu-linear"
+                icon="lucide:brain"
                 title="AI Brain Selection"
                 description="This selection defines the core intelligence of your SwiftClaw agent. You can change your provider and model later in the settings."
             />
@@ -71,25 +73,27 @@ export function AIBrainStep() {
                             <CustomDropdown
                                 label="LLM Provider"
                                 options={PROVIDER_OPTIONS}
-                                value={field.value}
+                                value={field.value ?? ""}
                                 onChange={handleProviderChange}
                                 placeholder="Select provider..."
                             />
                         )}
                     />
-                    <Controller
-                        name="aiModel"
-                        control={control}
-                        render={({ field }) => (
-                            <CustomDropdown
-                                label="Model Version"
-                                options={MODEL_OPTIONS[provider] || []}
-                                value={field.value}
-                                onChange={(v) => field.onChange(v)}
-                                placeholder="Select model..."
-                            />
-                        )}
-                    />
+                    {provider && (
+                        <Controller
+                            name="aiModel"
+                            control={control}
+                            render={({ field }) => (
+                                <CustomDropdown
+                                    label="Model Version"
+                                    options={MODEL_OPTIONS[provider] || []}
+                                    value={field.value ?? ""}
+                                    onChange={(v) => field.onChange(v)}
+                                    placeholder="Select model..."
+                                />
+                            )}
+                        />
+                    )}
                 </div>
 
                 {/* API Key Input */}
@@ -105,13 +109,14 @@ export function AIBrainStep() {
                             name="aiApiKey"
                             control={control}
                             render={({ field }) => (
-                                <input
+                                <Input
                                     {...field}
                                     type={showApiKey ? "text" : "password"}
                                     autoComplete="off"
                                     spellCheck={false}
                                     placeholder="sk-ant-..."
-                                    className="w-full pl-11 pr-12 py-3 bg-[#0a0a0c] border border-white/10 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/5 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm"
+                                    variant="glass"
+                                    className="pl-11 pr-12 py-3 shadow-sm"
                                 />
                             )}
                         />

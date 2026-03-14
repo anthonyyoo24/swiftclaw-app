@@ -15,8 +15,8 @@ interface WizardSidebarProps {
 
 export function WizardSidebar({ steps, currentStepIndex, maxVisitedIndex, canProgress, onStepClick }: WizardSidebarProps) {
     return (
-        <aside className="w-[320px] border-r border-white/5 bg-linear-to-br from-white/2 to-transparent px-10 pt-14 pb-10 hidden lg:block overflow-y-auto shrink-0">
-            <nav className="relative pt-8">
+        <aside className="w-[320px] border-r border-white/5 bg-linear-to-br from-white/2 to-transparent px-10 pt-8 pb-8 hidden lg:block overflow-y-auto shrink-0">
+            <nav className="relative">
                 {steps.map((step, index) => {
                     // A step is "done" if we've either passed it or previously reached it.
                     const isDone = index < currentStepIndex || (index > currentStepIndex && index <= maxVisitedIndex);
