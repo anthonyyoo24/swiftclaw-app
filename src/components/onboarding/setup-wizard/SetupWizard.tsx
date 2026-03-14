@@ -5,7 +5,7 @@ import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { WizardShell } from "@/components/ui/wizard/WizardShell";
 import { toast } from "sonner";
 
-import { STEP_SCHEMAS, onboardingSchema, type OnboardingFormValues, type AgentTemplateId } from "./schema";
+import { STEP_SCHEMAS, onboardingSchema, type OnboardingFormValues, type AgentTemplateId, type StepId } from "./schema";
 
 // Setup Steps
 import { WelcomeStep } from "./steps/WelcomeStep";
@@ -30,20 +30,7 @@ import { CharacterSelectionView } from "./steps/CharacterSelectionView";
 // Step definitions
 // ---------------------------------------------------------------------------
 
-type StepId =
-    | "welcome"
-    | "usage-type"
-    | "user-name"
-    | "timezone"
-    | "business-use"
-    | "personal-context"
-    | "goals"
-    | "workflows"
-    | "tools"
-    | "character"
-    | "ai-brain"
-    | "channel-setup"
-    | "deploy";
+
 
 interface StepConfig {
     id: StepId;
@@ -121,6 +108,7 @@ export function SetupWizard() {
             userName: "",
             timezone: "",
             businessDescription: "",
+            personalContext: "",
             goals: "",
             workflows: [],
             tools: [],
@@ -174,7 +162,7 @@ export function SetupWizard() {
         if (currentStepIndex < steps.length - 1) {
             const nextIndex = currentStepIndex + 1;
             setCurrentStepIndex(nextIndex);
-            
+
             // Track that we've reached the next step
             setVisitedIds((prev) => {
                 const nextId = steps[nextIndex].id;
@@ -214,19 +202,19 @@ export function SetupWizard() {
             // Final submit validation
             const currentValues = methods.getValues();
             const result = onboardingSchema.safeParse(currentValues);
-            
+
             if (!result.success) {
                 // If the final validation fails (e.g. they somehow bypassed a step), 
                 // don't proceed to deploy. Surface the error to the UI.
                 const firstError = result.error.issues[0];
-                const friendlyMessage = firstError 
-                    ? `Please go back and check: ${firstError.message}` 
+                const friendlyMessage = firstError
+                    ? `Please go back and check: ${firstError.message}`
                     : "Please go back and ensure all required fields are filled out.";
-                
+
                 toast.error("Incomplete Setup", {
                     description: friendlyMessage
                 });
-                
+
                 console.error("Form validation failed before deploy:", result.error);
                 return;
             }
