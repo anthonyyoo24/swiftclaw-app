@@ -15,14 +15,14 @@ interface UsageOption {
     tags: { icon: string; label: string; position: string; iconClass: string }[];
     centerIcon: string;
     theme: {
-        base: string;
         borderSelected: string;
         shadowSelected: string;
         iconText: string;
         iconShadow: string;
+        centerNodeBorder: string;
         centerNodeBorderHover: string;
+        centerNodeShadow: string;
         centerNodeGlow: string;
-        syncText: string;
         bgSelectedShadow: string;
     };
     lines: { x1: string; y1: string; x2: string; y2: string }[];
@@ -32,17 +32,17 @@ const OPTIONS: UsageOption[] = [
     {
         id: "personal",
         title: "Personal",
-        subtitle: "Individual workspace tailored for personal projects, experiments, and rapid prototyping.",
+        subtitle: "Your personal AI companion for everyday productivity. Let agents streamline your life, from planning trips to managing your digital world.",
         icon: "lucide:user",
         theme: {
-            base: "emerald",
             borderSelected: "peer-checked:border-emerald-500/50",
             shadowSelected: "peer-checked:shadow-[0_0_40px_-10px_rgba(52,211,153,0.15)]",
             iconText: "text-emerald-500",
             iconShadow: "shadow-[0_0_15px_rgba(52,211,153,0.3)]",
+            centerNodeBorder: "border-emerald-500/30",
             centerNodeBorderHover: "hover:border-emerald-500/60",
+            centerNodeShadow: "shadow-[inset_0_0_10px_rgba(52,211,153,0)]",
             centerNodeGlow: "group-hover/node:shadow-[inset_0_0_10px_rgba(52,211,153,1)]",
-            syncText: "text-emerald-500",
             bgSelectedShadow: "bg-emerald-500/20"
         },
         centerIcon: "lucide:zap",
@@ -60,17 +60,17 @@ const OPTIONS: UsageOption[] = [
     {
         id: "business",
         title: "Business",
-        subtitle: "Enterprise-ready environment with advanced collaboration, security, and integration capabilities.",
+        subtitle: "Transform your business with an AI workforce. Deploy agents to automate sales funnels, administrative tasks, and content creation.",
         icon: "lucide:briefcase",
         theme: {
-            base: "blue",
             borderSelected: "peer-checked:border-blue-500/50",
             shadowSelected: "peer-checked:shadow-[0_0_40px_-10px_rgba(59,130,246,0.15)]",
             iconText: "text-blue-500",
             iconShadow: "shadow-[0_0_15px_rgba(59,130,246,0.3)]",
+            centerNodeBorder: "border-blue-500/30",
             centerNodeBorderHover: "hover:border-blue-500/60",
+            centerNodeShadow: "shadow-[inset_0_0_10px_rgba(59,130,246,0)]",
             centerNodeGlow: "group-hover/node:shadow-[inset_0_0_10px_rgba(59,130,246,1)]",
-            syncText: "text-blue-500",
             bgSelectedShadow: "bg-blue-500/20"
         },
         centerIcon: "lucide:network",
@@ -132,13 +132,12 @@ export function UsageTypeStep() {
                 `}
             </style>
 
-            <div className="mb-4">
-                <StepHeader
-                    title="How will you use SwiftClaw?"
-                    description="Tell us how you plan to use SwiftClaw so we can tailor your experience accordingly."
-                    icon="lucide:briefcase"
-                />
-            </div>
+            <StepHeader
+                title="How will you use SwiftClaw?"
+                description="Tell us how you plan to use SwiftClaw so we can tailor your experience accordingly."
+                icon="lucide:briefcase"
+                className="mb-12"
+            />
 
             <div
                 className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1"
@@ -153,7 +152,7 @@ export function UsageTypeStep() {
                         <label
                             key={option.id}
                             ref={(el) => { labelRefs.current[index] = el; }}
-                            className="relative block cursor-pointer group w-full animate-levitate h-[320px]"
+                            className="relative block cursor-pointer group w-full animate-levitate h-80"
                             style={{ animationDelay: index === 1 ? '1s' : '0s' }}
                             tabIndex={isSelected ? 0 : value === undefined && index === 0 ? 0 : -1}
                             role="radio"
@@ -186,12 +185,12 @@ export function UsageTypeStep() {
                                     <h2 className="text-[24px] uppercase font-semibold text-white tracking-tight font-bricolage mb-3">
                                         {option.title}
                                     </h2>
-                                    <p className="text-[14px] text-neutral-400 leading-relaxed max-w-[200px] relative z-10 font-space mb-6">
+                                    <p className="text-[14px] text-neutral-400 leading-relaxed max-w-50 relative z-10 font-space mb-6">
                                         {option.subtitle}
                                     </p>
                                 </div>
 
-                                <div className="absolute -top-16 right-0 sm:bottom-6 sm:right-6 w-[220px] h-[220px] scale-[0.65] sm:scale-[0.8] origin-bottom-right [perspective:1000px] flex items-center justify-center pointer-events-none z-0">
+                                <div className="absolute -top-16 right-0 sm:bottom-6 sm:right-6 w-55 h-55 scale-[0.65] sm:scale-[0.8] origin-bottom-right [perspective:1000px] flex items-center justify-center pointer-events-none z-0">
                                     <div className="flex [transform:rotateX(12deg)] transition-transform duration-500 w-full h-full pointer-events-auto relative items-center justify-center">
                                         <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
                                             {option.lines.map((line, i) => (
@@ -211,7 +210,7 @@ export function UsageTypeStep() {
 
                                         <div className={cn(
                                             "absolute z-10 w-6 h-6 rounded-lg bg-neutral-950 border flex items-center justify-center transition-all duration-300 group/node cursor-pointer",
-                                            option.theme.iconText === "text-emerald-500" ? "border-emerald-500/30" : "border-blue-500/30",
+                                            option.theme.centerNodeBorder,
                                             option.theme.centerNodeBorderHover
                                         )}>
                                             <div className={cn(
@@ -220,7 +219,7 @@ export function UsageTypeStep() {
                                             )}></div>
                                             <div className={cn(
                                                 "absolute inset-0 rounded-lg transition-shadow duration-300 pointer-events-none",
-                                                option.theme.iconText === "text-emerald-500" ? "shadow-[inset_0_0_10px_rgba(52,211,153,0)]" : "shadow-[inset_0_0_10px_rgba(59,130,246,0)]",
+                                                option.theme.centerNodeShadow,
                                                 option.theme.centerNodeGlow
                                             )}></div>
                                             <Icon icon={option.centerIcon} className={cn("text-[12px] relative z-10", option.theme.iconText)} />
