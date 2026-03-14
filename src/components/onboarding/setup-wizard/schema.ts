@@ -42,7 +42,7 @@ export const usageTypeStepSchema = z.object({
 });
 
 export const userNameStepSchema = z.object({
-    userName: z.string().min(1, "Name is required"),
+    userName: z.string().trim().min(1, "Name is required"),
 });
 
 export const timezoneStepSchema = z.object({
@@ -134,7 +134,7 @@ export const onboardingSchema = welcomeStepSchema
                 path: ["businessDescription"],
             });
         }
-        
+
         // personalContext is only required for personal users
         if (
             data.usageType === "personal" &&

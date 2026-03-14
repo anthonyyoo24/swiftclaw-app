@@ -32,6 +32,7 @@ export function TextareaStep({
 
             <div className="space-y-3">
                 <Textarea
+                    aria-label={title}
                     placeholder={placeholder}
                     value={value}
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}

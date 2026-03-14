@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { WizardShell } from "@/components/ui/wizard/WizardShell";
+import { toast } from "sonner";
 
 import { STEP_SCHEMAS, onboardingSchema, type OnboardingFormValues, type AgentTemplateId } from "./schema";
 
@@ -216,7 +217,16 @@ export function SetupWizard() {
             
             if (!result.success) {
                 // If the final validation fails (e.g. they somehow bypassed a step), 
-                // don't proceed to deploy. You could also log this or show a toast.
+                // don't proceed to deploy. Surface the error to the UI.
+                const firstError = result.error.issues[0];
+                const friendlyMessage = firstError 
+                    ? `Please go back and check: ${firstError.message}` 
+                    : "Please go back and ensure all required fields are filled out.";
+                
+                toast.error("Incomplete Setup", {
+                    description: friendlyMessage
+                });
+                
                 console.error("Form validation failed before deploy:", result.error);
                 return;
             }
