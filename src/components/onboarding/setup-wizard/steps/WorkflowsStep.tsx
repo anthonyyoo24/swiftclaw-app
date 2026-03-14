@@ -25,7 +25,7 @@ const BUSINESS_WORKFLOW_OPTIONS: WorkflowOption[] = [
     { id: "track-tasks", label: "Track tasks & project status", emoji: "✅" },
     { id: "triage-tickets", label: "Triage & route support tickets", emoji: "🎟️" },
     { id: "social-media", label: "Schedule & manage social posts", emoji: "📲" },
-    { id: "other", label: "Something custom", emoji: "⚡" },
+    { id: "other", label: "Something else", emoji: "⚡" },
 ];
 
 const PERSONAL_WORKFLOW_OPTIONS: WorkflowOption[] = [
@@ -40,7 +40,7 @@ const PERSONAL_WORKFLOW_OPTIONS: WorkflowOption[] = [
     { id: "write-journal", label: "Write journal entries", emoji: "📓" },
     { id: "find-news", label: "Find & summarize news", emoji: "🗞️" },
     { id: "brainstorm", label: "Brainstorm ideas", emoji: "💡" },
-    { id: "other", label: "Something custom", emoji: "⚡" },
+    { id: "other", label: "Something else", emoji: "⚡" },
 ];
 
 const CUSTOM_PREFIX = "__CUSTOM__:";
