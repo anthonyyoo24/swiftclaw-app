@@ -12,7 +12,7 @@ interface UsageOption {
     title: string;
     subtitle: string;
     icon: string;
-    tags: { icon: string; label: string; position: string; hoverBorder: string; hoverShadow: string; color: string; hoverTransform: string }[];
+    tags: { icon: string; label: string; position: string; iconClass: string }[];
     centerIcon: string;
     theme: {
         base: string;
@@ -25,7 +25,6 @@ interface UsageOption {
         syncText: string;
         bgSelectedShadow: string;
     };
-    pills: { left: string; center: string; right: string };
     lines: { x1: string; y1: string; x2: string; y2: string }[];
 }
 
@@ -46,17 +45,16 @@ const OPTIONS: UsageOption[] = [
             syncText: "text-emerald-500",
             bgSelectedShadow: "bg-emerald-500/20"
         },
-        pills: { left: "Local", center: "Sync", right: "Cloud" },
         centerIcon: "lucide:zap",
         tags: [
-            { icon: "logos:react", label: "React", position: "top-[20%] left-[20%]", hoverBorder: "group-hover/tag:border-blue-500", hoverShadow: "group-hover/tag:shadow-[0_10px_20px_-5px_rgba(59,130,246,0.5)]", color: "text-blue-500", hoverTransform: "group-hover/tag:rotate-180" },
-            { icon: "logos:figma", label: "Figma", position: "top-[30%] left-[80%]", hoverBorder: "group-hover/tag:border-purple-500", hoverShadow: "group-hover/tag:shadow-[0_10px_20px_-5px_rgba(168,85,247,0.5)]", color: "text-purple-500", hoverTransform: "group-hover/tag:scale-110" },
-            { icon: "logos:google-icon", label: "Google", position: "top-[80%] left-[50%]", hoverBorder: "group-hover/tag:border-red-500", hoverShadow: "group-hover/tag:shadow-[0_10px_20px_-5px_rgba(239,68,68,0.5)]", color: "text-red-500", hoverTransform: "group-hover/tag:-rotate-12" }
+            { icon: "simple-icons:notion", label: "Notion", position: "top-[30%] left-[30%]", iconClass: "text-white" },
+            { icon: "logos:figma", label: "Figma", position: "top-[35%] left-[70%]", iconClass: "" },
+            { icon: "logos:google-icon", label: "Google", position: "top-[70%] left-[50%]", iconClass: "" }
         ],
         lines: [
-            { x1: "50%", y1: "50%", x2: "20%", y2: "20%" },
-            { x1: "50%", y1: "50%", x2: "80%", y2: "30%" },
-            { x1: "50%", y1: "50%", x2: "50%", y2: "80%" }
+            { x1: "50%", y1: "50%", x2: "30%", y2: "30%" },
+            { x1: "50%", y1: "50%", x2: "70%", y2: "35%" },
+            { x1: "50%", y1: "50%", x2: "50%", y2: "70%" }
         ]
     },
     {
@@ -75,17 +73,16 @@ const OPTIONS: UsageOption[] = [
             syncText: "text-blue-500",
             bgSelectedShadow: "bg-blue-500/20"
         },
-        pills: { left: "Team", center: "Dist", right: "Global" },
         centerIcon: "lucide:network",
         tags: [
-            { icon: "logos:docker-icon", label: "Docker", position: "top-[70%] left-[25%]", hoverBorder: "group-hover/tag:border-blue-400", hoverShadow: "group-hover/tag:shadow-[0_10px_20px_-5px_rgba(96,165,250,0.5)]", color: "text-blue-400", hoverTransform: "group-hover/tag:scale-110" },
-            { icon: "logos:aws", label: "AWS", position: "top-[25%] left-[75%]", hoverBorder: "group-hover/tag:border-orange-500", hoverShadow: "group-hover/tag:shadow-[0_10px_20px_-5px_rgba(249,115,22,0.5)]", color: "text-orange-500", hoverTransform: "group-hover/tag:scale-110" },
-            { icon: "logos:github-icon", label: "GitHub", position: "top-[75%] left-[80%]", hoverBorder: "group-hover/tag:border-white", hoverShadow: "group-hover/tag:shadow-[0_10px_20px_-5px_rgba(255,255,255,0.5)]", color: "text-white", hoverTransform: "group-hover/tag:scale-110" }
+            { icon: "logos:docker-icon", label: "Docker", position: "top-[70%] left-[25%]", iconClass: "" },
+            { icon: "simple-icons:stripe", label: "Stripe", position: "top-[30%] left-[65%]", iconClass: "text-[#635BFF]" },
+            { icon: "mdi:github", label: "GitHub", position: "top-[70%] left-[75%]", iconClass: "text-white" }
         ],
         lines: [
             { x1: "50%", y1: "50%", x2: "25%", y2: "70%" },
-            { x1: "50%", y1: "50%", x2: "75%", y2: "25%" },
-            { x1: "50%", y1: "50%", x2: "80%", y2: "75%" }
+            { x1: "50%", y1: "50%", x2: "65%", y2: "30%" },
+            { x1: "50%", y1: "50%", x2: "75%", y2: "70%" }
         ]
     }
 ];
@@ -119,7 +116,7 @@ export function UsageTypeStep() {
     };
 
     return (
-        <div className="w-full max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="w-full max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-300 flex-1 flex flex-col relative z-10">
             <style>
                 {`
                 @keyframes dash {
@@ -134,14 +131,17 @@ export function UsageTypeStep() {
                 .font-space { font-family: 'Space Grotesk', sans-serif; }
                 `}
             </style>
-            <StepHeader
-                title="How will you use SwiftClaw?"
-                description="Tell us how you plan to use SwiftClaw so we can tailor your experience and default configurations."
-                icon="lucide:briefcase"
-            />
+
+            <div className="mb-4">
+                <StepHeader
+                    title="How will you use SwiftClaw?"
+                    description="Tell us how you plan to use SwiftClaw so we can tailor your experience accordingly."
+                    icon="lucide:briefcase"
+                />
+            </div>
 
             <div
-                className="grid grid-cols-1 sm:grid-cols-2 gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1"
                 role="radiogroup"
                 aria-label="Usage type"
                 onKeyDown={handleKeyDown}
@@ -153,8 +153,8 @@ export function UsageTypeStep() {
                         <label
                             key={option.id}
                             ref={(el) => { labelRefs.current[index] = el; }}
-                            className="relative block cursor-pointer group h-[600px] w-full"
-                            style={{ animation: 'levitate 6s ease-in-out infinite', animationDelay: index === 1 ? '1s' : '0s' }}
+                            className="relative block cursor-pointer group w-full animate-levitate h-[320px]"
+                            style={{ animationDelay: index === 1 ? '1s' : '0s' }}
                             tabIndex={isSelected ? 0 : value === undefined && index === 0 ? 0 : -1}
                             role="radio"
                             aria-checked={isSelected}
@@ -186,13 +186,13 @@ export function UsageTypeStep() {
                                     <h2 className="text-[24px] uppercase font-semibold text-white tracking-tight font-bricolage mb-3">
                                         {option.title}
                                     </h2>
-                                    <p className="text-[14px] text-neutral-400 leading-relaxed max-w-[320px] font-space mb-6">
+                                    <p className="text-[14px] text-neutral-400 leading-relaxed max-w-[200px] relative z-10 font-space mb-6">
                                         {option.subtitle}
                                     </p>
                                 </div>
 
-                                <div className="relative flex-1 mt-8 w-full [perspective:1000px] flex items-center justify-center pointer-events-none">
-                                    <div className="relative w-full h-full flex items-center justify-center [transform:rotateX(12deg)] transition-transform duration-500 pointer-events-auto">
+                                <div className="absolute -top-16 right-0 sm:bottom-6 sm:right-6 w-[220px] h-[220px] scale-[0.65] sm:scale-[0.8] origin-bottom-right [perspective:1000px] flex items-center justify-center pointer-events-none z-0">
+                                    <div className="flex [transform:rotateX(12deg)] transition-transform duration-500 w-full h-full pointer-events-auto relative items-center justify-center">
                                         <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
                                             {option.lines.map((line, i) => (
                                                 <line
@@ -230,16 +230,12 @@ export function UsageTypeStep() {
                                             <div
                                                 key={i}
                                                 className={cn(
-                                                    "absolute -translate-x-1/2 -translate-y-1/2 z-20 group/tag transition-all duration-300 hover:-translate-y-2 cursor-pointer",
+                                                    "absolute -translate-x-1/2 -translate-y-1/2 z-20 transition-all duration-300",
                                                     tag.position
                                                 )}
                                             >
-                                                <div className={cn(
-                                                    "flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/90 backdrop-blur-md border border-neutral-800 shadow-xl transition-all duration-300",
-                                                    tag.hoverBorder,
-                                                    tag.hoverShadow
-                                                )}>
-                                                    <Icon icon={tag.icon} className={cn("text-base transition-transform duration-500", tag.hoverTransform)} />
+                                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/90 backdrop-blur-md border border-neutral-800 shadow-xl transition-all duration-300">
+                                                    <Icon icon={tag.icon} className={cn("text-base", tag.iconClass)} />
                                                     <span className="text-[12px] font-medium text-white">
                                                         {tag.label}
                                                     </span>
