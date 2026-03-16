@@ -114,8 +114,11 @@ export const onboardingSchema = welcomeStepSchema
     .merge(usageTypeStepSchema)
     .merge(userNameStepSchema)
     .merge(timezoneStepSchema)
-    .merge(businessUseStepSchema.partial()) // conditional step — personal users skip it
-    .merge(personalContextStepSchema.partial()) // conditional step — business users skip it
+    // These are conditional steps — use z.string().optional() so that the empty
+    // string default value ("" from useForm) doesn't trigger the min(1) check.
+    // The superRefine below enforces the real conditional requirement.
+    .merge(z.object({ businessDescription: z.string().optional() }))
+    .merge(z.object({ personalContext: z.string().optional() }))
     .merge(goalsStepSchema)
     .merge(workflowsStepSchema)
     .merge(toolsStepSchema)
