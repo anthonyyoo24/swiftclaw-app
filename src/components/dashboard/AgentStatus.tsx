@@ -58,13 +58,8 @@ function AgentCard({ name, role, status, currentTask, isBlocked, isIdle, iconNam
 export function AgentStatus() {
     return (
         <aside className="w-75 border-r border-white/5 bg-transparent hidden md:flex flex-col shrink-0 z-10">
-            <div className="p-4 border-b border-white/5 flex flex-col gap-3 shrink-0">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-white tracking-tight">Agent Status</h2>
-                    <button className="w-7 h-7 rounded-md bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 flex items-center justify-center text-neutral-300 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white/10">
-                        <Icon icon="lucide:plus" className="text-sm" />
-                    </button>
-                </div>
+            <div className="h-14 px-6 border-b border-white/5 flex items-center shrink-0">
+                <h2 className="text-sm font-semibold text-white tracking-tight">Agent Status</h2>
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
