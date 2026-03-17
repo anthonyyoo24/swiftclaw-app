@@ -19,10 +19,9 @@ const BOTTOM_NAV: NavItem[] = [
 
 interface AppSidebarProps {
     isCollapsed?: boolean;
-    toggleCollapse?: () => void;
 }
 
-export function AppSidebar({ isCollapsed, toggleCollapse }: AppSidebarProps) {
+export function AppSidebar({ isCollapsed }: AppSidebarProps) {
     return (
         <aside className="w-full h-full bg-white/1 p-4 hidden lg:flex flex-col gap-1 z-10 transition-all duration-300">
             <nav className="flex-1 space-y-1">
@@ -49,20 +48,6 @@ export function AppSidebar({ isCollapsed, toggleCollapse }: AppSidebarProps) {
                         {!isCollapsed && <span className="truncate">{item.label}</span>}
                     </a>
                 ))}
-
-                {toggleCollapse && (
-                    <button
-                        onClick={toggleCollapse}
-                        className={`w-full group flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-neutral-500 hover:text-white hover:bg-white/5 font-medium text-sm transition-all ${isCollapsed ? 'justify-center px-0!' : ''}`}
-                        title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-                    >
-                        <Icon
-                            icon={isCollapsed ? "solar:double-alt-arrow-right-linear" : "solar:double-alt-arrow-left-linear"}
-                            className="text-[18px] shrink-0 group-hover:text-white transition-colors"
-                        />
-                        {!isCollapsed && <span className="truncate">Collapse</span>}
-                    </button>
-                )}
             </div>
         </aside>
     );
