@@ -10,25 +10,30 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
     { label: "Home", icon: "solar:home-2-linear", href: "/" },
     { label: "Scheduler", icon: "solar:calendar-mark-linear", href: "/scheduler" },
-    { label: "Skills", icon: "solar:cpu-linear", href: "/skills" },
+    { label: "Skills", icon: "solar:magic-stick-3-linear", href: "/skills" },
 ];
 
 const BOTTOM_NAV: NavItem[] = [
     { label: "Settings", icon: "solar:settings-linear", href: "/settings" },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+    isCollapsed?: boolean;
+    toggleCollapse?: () => void;
+}
+
+export function AppSidebar({ isCollapsed, toggleCollapse }: AppSidebarProps) {
     return (
-        <aside className="w-55 border-r border-white/5 bg-white/1 p-4 hidden lg:flex flex-col gap-1 z-10">
+        <aside className="w-full h-full bg-white/1 p-4 hidden lg:flex flex-col gap-1 z-10 transition-all duration-300">
             <nav className="flex-1 space-y-1">
                 {NAV_ITEMS.map((item) => (
                     <a
                         key={item.label}
                         href={item.href}
-                        className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 font-medium text-sm transition-all aria-[current=page]:bg-white/10 aria-[current=page]:text-white aria-[current=page]:border aria-[current=page]:border-white/5 aria-[current=page]:shadow-sm"
+                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 font-medium text-sm transition-all aria-[current=page]:bg-white/10 aria-[current=page]:text-white aria-[current=page]:border aria-[current=page]:border-white/5 aria-[current=page]:shadow-sm ${isCollapsed ? 'justify-center px-0!' : ''}`}
                     >
-                        <Icon icon={item.icon} className="text-[18px] group-hover:text-white transition-colors" />
-                        {item.label}
+                        <Icon icon={item.icon} className="text-[18px] shrink-0 group-hover:text-white transition-colors" />
+                        {!isCollapsed && <span className="truncate">{item.label}</span>}
                     </a>
                 ))}
             </nav>
@@ -38,12 +43,26 @@ export function AppSidebar() {
                     <a
                         key={item.label}
                         href={item.href}
-                        className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 font-medium text-sm transition-all"
+                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 font-medium text-sm transition-all ${isCollapsed ? 'justify-center px-0!' : ''}`}
                     >
-                        <Icon icon={item.icon} className="text-[18px] group-hover:text-white transition-colors" />
-                        {item.label}
+                        <Icon icon={item.icon} className="text-[18px] shrink-0 group-hover:text-white transition-colors" />
+                        {!isCollapsed && <span className="truncate">{item.label}</span>}
                     </a>
                 ))}
+
+                {toggleCollapse && (
+                    <button
+                        onClick={toggleCollapse}
+                        className={`w-full group flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-neutral-500 hover:text-white hover:bg-white/5 font-medium text-sm transition-all ${isCollapsed ? 'justify-center px-0!' : ''}`}
+                        title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                    >
+                        <Icon
+                            icon={isCollapsed ? "solar:double-alt-arrow-right-linear" : "solar:double-alt-arrow-left-linear"}
+                            className="text-[18px] shrink-0 group-hover:text-white transition-colors"
+                        />
+                        {!isCollapsed && <span className="truncate">Collapse</span>}
+                    </button>
+                )}
             </div>
         </aside>
     );
