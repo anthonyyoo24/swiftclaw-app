@@ -1,5 +1,5 @@
-import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
-import { AgentStatus } from "@/components/dashboard/AgentStatus";
+import { ActivityFeed } from "@/components/dashboard/home/ActivityFeed";
+import { AgentStatus } from "@/components/dashboard/home/AgentStatus";
 
 export default function HomePage() {
     return (
