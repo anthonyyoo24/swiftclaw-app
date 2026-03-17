@@ -9,8 +9,8 @@ export function DeploySuccessView() {
     const [secondsLeft, setSecondsLeft] = useState(5);
 
     useEffect(() => {
-        // Set onboarding as complete when this view is reached
-        localStorage.setItem("onboardingComplete", "true");
+        // Set onboarding as complete via cookie so middleware can read it on the server
+        document.cookie = "onboardingComplete=true; path=/; max-age=31536000; SameSite=Lax";
 
         // Countdown timer for auto-navigation
         const timer = setInterval(() => {
@@ -22,7 +22,7 @@ export function DeploySuccessView() {
 
     useEffect(() => {
         if (secondsLeft === 0) {
-            router.push("/dashboard");
+            router.push("/");
         }
     }, [secondsLeft, router]);
 
@@ -73,7 +73,7 @@ export function DeploySuccessView() {
             <div className="flex flex-col items-center gap-6">
                 <button
                     type="button"
-                    onClick={() => router.push('/dashboard')}
+                    onClick={() => router.push('/')}
                     className="group relative inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-10 py-4 rounded-full text-base font-medium shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] focus:outline-none focus-visible:ring-2 focus:ring-emerald-500/50 active:scale-[0.98] transition-all duration-300 overflow-hidden cursor-pointer"
                 >
                     <div className="absolute inset-0 bg-linear-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />

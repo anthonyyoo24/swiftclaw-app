@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@iconify/react";
+import { AppHeader } from "@/components/ui/AppHeader";
 import { WizardSidebar, WizardStep } from "./WizardSidebar";
 import { WizardFooter } from "./WizardFooter";
 
@@ -63,38 +64,30 @@ export function WizardShell({
                 />
             </div> */}
 
-            {/* Header */}
-            <header className="flex items-center justify-between px-6 sm:px-10 pt-14 pb-5 border-b border-white/5 bg-transparent z-10 shrink-0 drag">
-                <div className="flex items-center gap-4 no-drag">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
-                        <Icon icon="solar:bolt-linear" className="text-lg" />
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                        <span className="font-medium text-sm text-white">SwiftClaw</span>
-                        <span className="text-neutral-700">/</span>
-                        <span className="text-neutral-400 font-medium text-sm">{title}</span>
-                    </div>
-                </div>
-
-                <button
-                    type="button"
-                    onClick={() => {
-                        if (window.confirm("Are you sure you want to reset the wizard? All entered progress and credentials will be cleared.")) {
-                            onReset?.();
-                        }
-                    }}
-                    className="group flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all duration-300 cursor-pointer no-drag"
-                    title="Reset Wizard"
-                >
-                    <Icon
-                        icon="solar:restart-linear"
-                        className="text-lg text-neutral-500 group-hover:text-white group-hover:-rotate-45 transition-all duration-300"
-                    />
-                    <span className="text-sm font-medium text-neutral-400 group-hover:text-white transition-colors">
-                        Reset
-                    </span>
-                </button>
-            </header>
+            <AppHeader
+                subtitle={title}
+                className="px-6 sm:px-10 pt-14 pb-5 drag"
+                rightSlot={
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (window.confirm("Are you sure you want to reset the wizard? All entered progress and credentials will be cleared.")) {
+                                onReset?.();
+                            }
+                        }}
+                        className="group flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all duration-300 cursor-pointer no-drag"
+                        title="Reset Wizard"
+                    >
+                        <Icon
+                            icon="solar:restart-linear"
+                            className="text-lg text-neutral-500 group-hover:text-white group-hover:-rotate-45 transition-all duration-300"
+                        />
+                        <span className="text-sm font-medium text-neutral-400 group-hover:text-white transition-colors">
+                            Reset
+                        </span>
+                    </button>
+                }
+            />
 
             {/* Main Content Split */}
             <div className="flex flex-1 overflow-hidden z-10">
