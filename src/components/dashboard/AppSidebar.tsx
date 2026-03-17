@@ -14,7 +14,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
     { label: "Home", icon: "solar:home-2-linear", href: "/" },
     { label: "Tasks", icon: "solar:checklist-linear", href: "/tasks" },
-    { label: "Scheduler", icon: "solar:calendar-mark-linear", href: "/scheduler" },
+    // { label: "Scheduler", icon: "solar:calendar-mark-linear", href: "/scheduler" },
     { label: "Skills", icon: "solar:magic-stick-3-linear", href: "/skills" },
 ];
 

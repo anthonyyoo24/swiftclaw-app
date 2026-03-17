@@ -1,4 +1,5 @@
 import { Icon } from "@iconify/react";
+import { cn } from "@/lib/utils";
 
 interface AppHeaderProps {
     /** Text shown after the "/" separator, e.g. "Workspace" or "Setup Wizard" */
@@ -16,7 +17,10 @@ interface AppHeaderProps {
 export function AppHeader({ subtitle, rightSlot, className }: AppHeaderProps) {
     return (
         <header
-            className={`flex items-center justify-between px-6 sm:px-8 py-4 border-b border-white/5 bg-transparent z-20 shrink-0 ${className ?? ""}`}
+            className={cn(
+                "flex items-center justify-between px-5 py-4 border-b border-white/5 bg-transparent z-20 shrink-0",
+                className
+            )}
         >
             <div className="flex items-center gap-4">
                 {/* App Logo */}
