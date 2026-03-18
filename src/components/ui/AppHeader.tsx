@@ -1,11 +1,14 @@
 import { Icon } from "@iconify/react";
 import { cn } from "@/lib/utils";
+import { GatewayStatus, GatewayStatusType } from "./GatewayStatus";
 
 interface AppHeaderProps {
     /** Text shown after the "/" separator, e.g. "Workspace" or "Setup Wizard" */
     subtitle: string;
     /** Optional content rendered on the right side of the header */
     rightSlot?: React.ReactNode;
+    /** Current status of the gateway */
+    gatewayStatus?: GatewayStatusType;
     /** Extra className for the header element, useful for padding overrides */
     className?: string;
 }
@@ -14,7 +17,12 @@ interface AppHeaderProps {
  * Shared top-bar used by both the dashboard layout and the onboarding WizardShell.
  * Renders the SwiftClaw logo + "SwiftClaw / {subtitle}" breadcrumb.
  */
-export function AppHeader({ subtitle, rightSlot, className }: AppHeaderProps) {
+export function AppHeader({
+    subtitle,
+    rightSlot,
+    gatewayStatus = "error",
+    className
+}: AppHeaderProps) {
     return (
         <header
             className={cn(
@@ -34,7 +42,10 @@ export function AppHeader({ subtitle, rightSlot, className }: AppHeaderProps) {
                 </div>
             </div>
 
-            {rightSlot && <div className="flex items-center">{rightSlot}</div>}
+            <div className="flex items-center gap-6">
+                <GatewayStatus status={gatewayStatus} />
+                {rightSlot && <div className="flex items-center">{rightSlot}</div>}
+            </div>
         </header>
     );
 }
