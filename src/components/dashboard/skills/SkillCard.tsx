@@ -28,7 +28,7 @@ export function SkillCard({ skill }: SkillCardProps) {
     const { container, text } = themeStyles[skill.theme] || themeStyles.blue;
 
     return (
-        <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl cursor-pointer hover:bg-white/[0.04] transition-colors relative group flex flex-col h-full">
+        <div className="p-5 bg-white/2 border border-white/5 rounded-2xl cursor-pointer hover:bg-white/4 transition-colors relative group flex flex-col h-full">
             <div className="flex justify-between items-start mb-4">
                 <div className={`w-10 h-10 rounded-xl ${container} border flex items-center justify-center ${text}`}>
                     <Icon icon={skill.icon} className="text-lg" />
