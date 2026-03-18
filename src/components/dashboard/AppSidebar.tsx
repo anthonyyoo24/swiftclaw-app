@@ -30,7 +30,7 @@ export function AppSidebar({ isCollapsed }: AppSidebarProps) {
     const pathname = usePathname();
 
     return (
-        <aside className={`w-full h-full bg-white/1 p-4 hidden lg:flex flex-col gap-1 z-10 transition-all duration-300 ${isCollapsed ? 'px-0 items-center' : ''}`}>
+        <aside className={`w-full h-full bg-white/1 p-4 flex flex-col gap-1 z-10 transition-all duration-300 ${isCollapsed ? 'px-0 items-center' : ''}`}>
             <nav className="flex-1 space-y-1">
                 {NAV_ITEMS.map((item) => (
                     <Link

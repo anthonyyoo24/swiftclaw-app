@@ -18,12 +18,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 collapsedSize={4}
                 onCollapse={() => setIsCollapsed(true)}
                 onExpand={() => setIsCollapsed(false)}
+                className={isCollapsed ? "min-w-[64px] max-w-[64px]" : "min-w-[180px] max-w-[180px]"}
             >
                 <AppSidebar isCollapsed={isCollapsed} />
             </ResizablePanel>
-            
+
             <ResizableHandle withHandle />
-            
+
             <ResizablePanel defaultSize={80}>
                 <div className="flex flex-1 overflow-hidden h-full">
                     {children}
