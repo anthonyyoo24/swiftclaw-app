@@ -67,7 +67,7 @@ export function SkillsGrid() {
                             Create Custom Skill
                         </span>
                         <span className="block text-xs text-neutral-500">
-                            Define a new tool via API or function
+                            Define a new workflow
                         </span>
                     </div>
                 </button>
