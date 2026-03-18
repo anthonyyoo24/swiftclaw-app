@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 
 /**
- * Client-side guard for the (app) route group.
+ * Client-side guard for the (dashboard) route group.
  * In static-export (Electron) mode, server middleware is unavailable,
  * so we check the onboarding cookie client-side before rendering.
  * Renders null (blank) until the check completes, preventing dashboard flash.
