@@ -1,3 +1,5 @@
+"use client";
+
 import { Icon } from "@iconify/react";
 import { SkillCard, Skill } from "./SkillCard";
 
@@ -49,7 +51,11 @@ export const MOCK_SKILLS: Skill[] = [
     },
 ];
 
-export function SkillsGrid() {
+interface SkillsGridProps {
+    onOpenModal: () => void;
+}
+
+export function SkillsGrid({ onOpenModal }: SkillsGridProps) {
     return (
         <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
             <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5 pb-10">
@@ -58,7 +64,10 @@ export function SkillsGrid() {
                 ))}
 
                 {/* Create New Skill Card */}
-                <button className="p-5 bg-transparent cursor-pointer border border-dashed border-white/10 rounded-2xl hover:bg-white/2 hover:border-white/20 transition-all flex flex-col items-center justify-center min-h-55 gap-3 group h-full">
+                <button
+                    onClick={onOpenModal}
+                    className="p-5 bg-transparent cursor-pointer border border-dashed border-white/10 rounded-2xl hover:bg-white/2 hover:border-white/20 transition-all flex flex-col items-center justify-center min-h-55 gap-3 group h-full"
+                >
                     <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-neutral-400 group-hover:text-white group-hover:bg-white/10 transition-colors shadow-sm">
                         <Icon icon="lucide:plus" className="text-xl" />
                     </div>

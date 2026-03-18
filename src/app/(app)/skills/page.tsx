@@ -1,16 +1,14 @@
-import { SkillsHeader } from "@/components/dashboard/skills/SkillsHeader";
-import { SkillsGrid } from "@/components/dashboard/skills/SkillsGrid";
+import { SkillsPageClient } from "@/components/dashboard/skills/SkillsPageClient";
 
 export const metadata = {
     title: "Skills | SwiftClaw",
-    description: "Manage agent skills",
+    description: "Manage agent skills and define custom workflows.",
 };
 
 export default function SkillsPage() {
     return (
         <main className="flex-1 flex flex-col bg-transparent relative min-w-0 h-full">
-            <SkillsHeader />
-            <SkillsGrid />
+            <SkillsPageClient />
         </main>
     );
 }
