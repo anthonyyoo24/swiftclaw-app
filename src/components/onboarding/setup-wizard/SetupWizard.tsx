@@ -233,6 +233,9 @@ export function SetupWizard() {
     };
 
     const handleReset = () => {
+        // Clear onboarding cookie
+        document.cookie = "onboardingComplete=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
+        
         methods.reset();
         setCurrentStepIndex(0);
         setVisitedIds(new Set(["welcome"]));

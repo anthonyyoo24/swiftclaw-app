@@ -1,3 +1,5 @@
+"use client";
+
 import { Icon } from "@iconify/react";
 import { cn } from "@/lib/utils";
 import { GatewayStatus, GatewayStatusType } from "./GatewayStatus";
@@ -11,6 +13,10 @@ interface AppHeaderProps {
     gatewayStatus?: GatewayStatusType;
     /** Extra className for the header element, useful for padding overrides */
     className?: string;
+    /** Whether to show the Reset Onboarding button. Defaults to true. */
+    showReset?: boolean;
+    /** Optional callback when the Reset button is clicked. If not provided, it clears the cookie and redirects to /onboarding. */
+    onReset?: () => void;
 }
 
 /**
@@ -21,8 +27,22 @@ export function AppHeader({
     subtitle,
     rightSlot,
     gatewayStatus = "error",
-    className
+    className,
+    showReset = true,
+    onReset
 }: AppHeaderProps) {
+
+    const handleResetOnboarding = () => {
+        if (onReset) {
+            onReset();
+            return;
+        }
+
+        // Default behavior: Clear the onboarding cookie and hard redirect
+        document.cookie = "onboardingComplete=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
+        window.location.href = "/onboarding";
+    };
+
     return (
         <header
             className={cn(
@@ -43,6 +63,22 @@ export function AppHeader({
             </div>
 
             <div className="flex items-center gap-6">
+                {showReset && (
+                    <>
+                        <button
+                            onClick={handleResetOnboarding}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/10 active:bg-white/15 transition-all duration-200 group no-drag cursor-pointer border border-transparent hover:border-white/10"
+                            title="Reset Onboarding Flow"
+                        >
+                            <Icon
+                                icon="solar:restart-linear"
+                                className="text-sm transition-transform group-hover:rotate-180 duration-500"
+                            />
+                            Reset
+                        </button>
+                        <div className="h-4 w-px bg-white/10 mx-1" />
+                    </>
+                )}
                 <GatewayStatus status={gatewayStatus} />
                 {rightSlot && <div className="flex items-center">{rightSlot}</div>}
             </div>

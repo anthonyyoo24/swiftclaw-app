@@ -1,6 +1,5 @@
 "use client";
 
-import { Icon } from "@iconify/react";
 import { AppHeader } from "@/components/ui/AppHeader";
 import { WizardSidebar, WizardStep } from "./WizardSidebar";
 import { WizardFooter } from "./WizardFooter";
@@ -55,26 +54,11 @@ export function WizardShell({
             <AppHeader
                 subtitle={title}
                 className="pt-14 pb-5 drag"
-                rightSlot={
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (window.confirm("Are you sure you want to reset the wizard? All entered progress and credentials will be cleared.")) {
-                                onReset?.();
-                            }
-                        }}
-                        className="group flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all duration-300 cursor-pointer no-drag"
-                        title="Reset Wizard"
-                    >
-                        <Icon
-                            icon="solar:restart-linear"
-                            className="text-lg text-neutral-500 group-hover:text-white group-hover:-rotate-45 transition-all duration-300"
-                        />
-                        <span className="text-sm font-medium text-neutral-400 group-hover:text-white transition-colors">
-                            Reset
-                        </span>
-                    </button>
-                }
+                onReset={() => {
+                    if (window.confirm("Are you sure you want to reset the wizard? All entered progress and credentials will be cleared.")) {
+                        onReset?.();
+                    }
+                }}
             />
 
             {/* Main Content Split */}
