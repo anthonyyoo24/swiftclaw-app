@@ -129,7 +129,7 @@ const TemplateCard = ({ template, isSelected, onSelect }: TemplateCardProps) => 
     >
         {/* Gradient overlay */}
         <div className={cn(
-            "absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 transition-opacity duration-300 pointer-events-none",
+            "absolute inset-0 rounded-2xl bg-linear-to-br opacity-0 transition-opacity duration-300 pointer-events-none",
             template.color,
             isSelected ? "opacity-100" : "group-hover:opacity-100"
         )} />
@@ -185,7 +185,7 @@ const SarahLeadCard = ({ template }: SarahLeadCardProps) => (
         />
 
         {/* Subtle warm gradient overlay */}
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 pointer-events-none" />
+        <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-amber-500/10 to-orange-500/10 pointer-events-none" />
 
         {/* Crown badge */}
         <div className="absolute -top-3 left-6 px-3 py-1 rounded-full shadow-lg border border-amber-400/30 flex items-center gap-1.5 z-10"
@@ -249,7 +249,7 @@ export function CharacterSelectionView({
         <div className="w-full max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-right-4 duration-300">
             <StepHeader
                 title="Meet Your Team"
-                description="Sarah leads your agents and delegates tasks based on what you need."
+                description="Sarah is your lead agent and the only one you'll need to communicate with. She'll manage your team and delegate tasks based on your needs."
                 icon="lucide:bot"
             />
 
