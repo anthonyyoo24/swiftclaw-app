@@ -70,6 +70,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     onDragging={(dragging) => { isDraggingRef.current = dragging; }}
                 >
                     <button
+                        type="button"
+                        aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                         onClick={toggleSidebar}
                         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-8 bg-neutral-900 border border-white/10 rounded-full flex items-center justify-center text-neutral-400 hover:text-white transition-all hover:scale-110 z-50 group"
                     >
