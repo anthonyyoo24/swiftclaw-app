@@ -154,9 +154,11 @@ function ModalContent({ isOpen, onClose }: CreateSkillModalProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Sync isVisible state when modal closes
-    if (!isOpen && isVisible) {
-        setIsVisible(false);
-    }
+    useEffect(() => {
+        if (!isOpen && isVisible) {
+            setIsVisible(false);
+        }
+    }, [isOpen, isVisible]);
 
     // Animate in after mount
     useEffect(() => {
@@ -378,9 +380,11 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
     }, []);
 
     // Immediately sync shouldRender when isOpen becomes true
-    if (isOpen && !shouldRender) {
-        setShouldRender(true);
-    }
+    useEffect(() => {
+        if (isOpen && !shouldRender) {
+            setShouldRender(true);
+        }
+    }, [isOpen, shouldRender]);
 
     // Keep DOM alive during exit animation
     useEffect(() => {
