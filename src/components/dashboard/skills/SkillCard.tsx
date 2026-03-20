@@ -64,7 +64,11 @@ export function SkillCard({ skill }: SkillCardProps) {
                         <span className="text-[11px] font-medium">Disabled</span>
                     </div>
                 )}
-                <button className="text-neutral-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100">
+                <button
+                    type="button"
+                    aria-label={`Open settings for ${skill.title}`}
+                    className="text-neutral-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                >
                     <Icon icon="lucide:settings-2" className="text-sm" />
                 </button>
             </div>
