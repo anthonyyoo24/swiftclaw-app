@@ -57,7 +57,7 @@ function AgentCard({ name, role, status, currentTask, isBlocked, isIdle, iconNam
 
 export function AgentStatus() {
     return (
-        <aside className="w-75 border-r border-white/5 bg-transparent hidden md:flex flex-col shrink-0 z-10">
+        <aside className="w-[300px] border-r border-white/5 bg-transparent hidden md:flex flex-col shrink-0 z-10">
             <div className="h-14 px-6 border-b border-white/5 flex items-center shrink-0">
                 <h2 className="text-sm font-semibold text-white tracking-tight">Agent Status</h2>
             </div>
