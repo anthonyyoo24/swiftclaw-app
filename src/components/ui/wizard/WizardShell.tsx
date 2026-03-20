@@ -54,6 +54,7 @@ export function WizardShell({
             <AppHeader
                 subtitle={title}
                 className="pt-14 pb-5 drag"
+                showGatewayStatus={false}
                 onReset={() => {
                     if (window.confirm("Are you sure you want to reset the wizard? All entered progress and credentials will be cleared.")) {
                         onReset?.();

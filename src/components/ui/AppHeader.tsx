@@ -15,6 +15,8 @@ interface AppHeaderProps {
     className?: string;
     /** Whether to show the Reset Onboarding button. Defaults to true. */
     showReset?: boolean;
+    /** Whether to show the Gateway Status. Defaults to true. */
+    showGatewayStatus?: boolean;
     /** Optional callback when the Reset button is clicked. If not provided, it clears the cookie and redirects to /onboarding. */
     onReset?: () => void;
 }
@@ -29,6 +31,7 @@ export function AppHeader({
     gatewayStatus = "error",
     className,
     showReset = true,
+    showGatewayStatus = true,
     onReset
 }: AppHeaderProps) {
 
@@ -62,24 +65,26 @@ export function AppHeader({
                 </div>
             </div>
 
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
                 {showReset && (
-                    <>
-                        <button
-                            onClick={handleResetOnboarding}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/10 active:bg-white/15 transition-all duration-200 group no-drag cursor-pointer border border-transparent hover:border-white/10"
-                            title="Reset Onboarding Flow"
-                        >
-                            <Icon
-                                icon="solar:restart-linear"
-                                className="text-sm transition-transform group-hover:rotate-180 duration-500"
-                            />
-                            Reset
-                        </button>
-                        <div className="h-4 w-px bg-white/10 mx-1" />
-                    </>
+                    <button
+                        onClick={handleResetOnboarding}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/10 active:bg-white/15 transition-all duration-200 group no-drag cursor-pointer border border-transparent hover:border-white/10"
+                        title="Reset Onboarding Flow"
+                    >
+                        <Icon
+                            icon="solar:restart-linear"
+                            className="text-sm transition-transform group-hover:rotate-180 duration-500"
+                        />
+                        Reset
+                    </button>
                 )}
-                <GatewayStatus status={gatewayStatus} />
+
+                {showReset && showGatewayStatus && (
+                    <div className="h-4 w-px bg-white/10 mx-0.5" />
+                )}
+
+                {showGatewayStatus && <GatewayStatus status={gatewayStatus} />}
                 {rightSlot && <div className="flex items-center">{rightSlot}</div>}
             </div>
         </header>
