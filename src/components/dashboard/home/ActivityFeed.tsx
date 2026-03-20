@@ -107,7 +107,7 @@ export function ActivityFeed() {
     return (
         <main className="flex-1 flex flex-col bg-transparent relative min-w-0">
             {/* Header */}
-            <div className="h-14 border-b border-white/5 flex items-center px-6 shrink-0 bg-white/1 backdrop-blur-sm z-10">
+            <div className="h-14 border-b border-white/5 flex items-center px-6 shrink-0 bg-white/[0.01] backdrop-blur-sm z-10">
                 <h3 className="text-sm font-semibold text-white tracking-tight">Activity Feed</h3>
             </div>
 
