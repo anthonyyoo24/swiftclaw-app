@@ -6,7 +6,10 @@ export function TasksHeader() {
             <h3 className="text-sm font-semibold text-white tracking-tight">
                 Tasks
             </h3>
-            <button className="flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors border border-white/5">
+            <button
+                type="button"
+                className="flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors border border-white/5"
+            >
                 <Icon icon="lucide:plus" className="text-sm" />
                 New Task
             </button>
