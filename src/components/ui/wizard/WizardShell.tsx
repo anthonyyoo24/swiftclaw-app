@@ -1,6 +1,6 @@
 "use client";
 
-import { Icon } from "@iconify/react";
+import { AppHeader } from "@/components/ui/AppHeader";
 import { WizardSidebar, WizardStep } from "./WizardSidebar";
 import { WizardFooter } from "./WizardFooter";
 
@@ -51,50 +51,16 @@ export function WizardShell({
 }: WizardShellProps) {
     return (
         <div className="bg-[#09090b] opacity-[0.99] w-full flex flex-col h-screen text-white font-sans relative overflow-hidden">
-            {/* Background effects */}
-            {/* <div className="pointer-events-none absolute inset-0 -z-10">
-                <div className="absolute inset-0 bg-linear-to-b from-transparent via-black/50 to-black" />
-                <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2">
-                    <div className="w-[50rem] h-[50rem] rounded-full bg-blue-600/10 blur-[120px] mix-blend-screen animate-pulse duration-[4000ms]" />
-                </div>
-                <div
-                    className="absolute inset-0 opacity-[0.15]"
-                    style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "24px 24px" }}
-                />
-            </div> */}
-
-            {/* Header */}
-            <header className="flex items-center justify-between px-6 sm:px-10 pt-14 pb-5 border-b border-white/5 bg-transparent z-10 shrink-0 drag">
-                <div className="flex items-center gap-4 no-drag">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
-                        <Icon icon="solar:bolt-linear" className="text-lg" />
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                        <span className="font-medium text-sm text-white">SwiftClaw</span>
-                        <span className="text-neutral-700">/</span>
-                        <span className="text-neutral-400 font-medium text-sm">{title}</span>
-                    </div>
-                </div>
-
-                <button
-                    type="button"
-                    onClick={() => {
-                        if (window.confirm("Are you sure you want to reset the wizard? All entered progress and credentials will be cleared.")) {
-                            onReset?.();
-                        }
-                    }}
-                    className="group flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all duration-300 cursor-pointer no-drag"
-                    title="Reset Wizard"
-                >
-                    <Icon
-                        icon="solar:restart-linear"
-                        className="text-lg text-neutral-500 group-hover:text-white group-hover:-rotate-45 transition-all duration-300"
-                    />
-                    <span className="text-sm font-medium text-neutral-400 group-hover:text-white transition-colors">
-                        Reset
-                    </span>
-                </button>
-            </header>
+            <AppHeader
+                subtitle={title}
+                className="pt-14 pb-5 drag"
+                showGatewayStatus={false}
+                onReset={() => {
+                    if (window.confirm("Are you sure you want to reset the wizard? All entered progress and credentials will be cleared.")) {
+                        onReset?.();
+                    }
+                }}
+            />
 
             {/* Main Content Split */}
             <div className="flex flex-1 overflow-hidden z-10">

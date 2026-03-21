@@ -25,6 +25,7 @@ import { GoalsStep } from "./steps/GoalsStep";
 import { WorkflowsStep } from "./steps/WorkflowsStep";
 import { ToolsStep } from "./steps/ToolsStep";
 import { CharacterSelectionView } from "./steps/CharacterSelectionView";
+import { dispatchOnboardingStatusChanged } from "@/hooks/useOnboardingStatus";
 
 // ---------------------------------------------------------------------------
 // Step definitions
@@ -96,6 +97,7 @@ export function SetupWizard() {
         return () => {
             if (deployTimeoutRef.current) {
                 clearTimeout(deployTimeoutRef.current);
+                deployTimeoutRef.current = null;
             }
         };
     }, []);
@@ -112,7 +114,7 @@ export function SetupWizard() {
             goals: "",
             workflows: [],
             tools: [],
-            agentTemplateIds: [],
+            agentTemplateIds: ["sarah"],
             // Setup
             aiProvider: "",
             aiModel: "",
@@ -222,7 +224,10 @@ export function SetupWizard() {
             setDeployState('loading');
 
             // Clear any existing timer just in case
-            if (deployTimeoutRef.current) clearTimeout(deployTimeoutRef.current);
+            if (deployTimeoutRef.current) {
+                clearTimeout(deployTimeoutRef.current);
+                deployTimeoutRef.current = null;
+            }
 
             deployTimeoutRef.current = setTimeout(() => {
                 setDeployState('success');
@@ -233,12 +238,18 @@ export function SetupWizard() {
     };
 
     const handleReset = () => {
+        // Clear onboarding cookie
+        const isSecure = typeof window !== "undefined" && window.isSecureContext;
+        document.cookie = `onboardingComplete=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax${isSecure ? "; Secure" : ""}`;
+        dispatchOnboardingStatusChanged();
+        
         methods.reset();
         setCurrentStepIndex(0);
         setVisitedIds(new Set(["welcome"]));
         setDeployState('idle');
         if (deployTimeoutRef.current) {
             clearTimeout(deployTimeoutRef.current);
+            deployTimeoutRef.current = null;
         }
     };
 
