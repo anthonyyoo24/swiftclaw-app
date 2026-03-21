@@ -19,7 +19,7 @@ export function SkillsPageClient() {
         <>
             <SkillsHeader onNewSkill={handleOpenModal} />
             <SkillsGrid onOpenModal={handleOpenModal} />
-            <CreateSkillModal isOpen={isModalOpen} onClose={handleCloseModal} />
+            {isModalOpen && <CreateSkillModal isOpen={isModalOpen} onClose={handleCloseModal} />}
         </>
     );
 }

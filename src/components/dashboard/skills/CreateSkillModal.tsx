@@ -61,7 +61,7 @@ function DropZone({ isDragging, error, onDragOver, onDragLeave, onDrop, onBrowse
                 tabIndex={0}
                 aria-label="Upload file drop zone"
                 onClick={onBrowse}
-                onKeyDown={(e) => e.key === "Enter" && onBrowse()}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onBrowse()}
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
                 onDrop={onDrop}
@@ -210,7 +210,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent
                 className="bg-[#09090b] border-white/10 p-0 sm:max-w-[32.5rem] overflow-hidden rounded-[24px] gap-0 text-white shadow-2xl shadow-black/60"
-                showCloseButton={false} 
+                showCloseButton={false}
             >
                 {/* ── Header ── */}
                 <DialogHeader className="px-6 py-4 border-b border-white/5 bg-white/1 shrink-0 flex flex-row items-center justify-between">
