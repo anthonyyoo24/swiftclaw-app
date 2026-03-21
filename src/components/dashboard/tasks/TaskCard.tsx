@@ -38,7 +38,7 @@ export function TaskCard({
     const iconStyles = colorStyles[assigneeColor].iconBg;
 
     return (
-        <div className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer shadow-sm flex flex-col min-h-[120px]">
+        <div className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer shadow-sm flex flex-col min-h-30">
             <div className="flex items-center justify-between mb-2">
                 <span className={`px-2 py-0.5 rounded-md border text-[10px] font-medium ${styles.tag}`}>
                     {tagLabel}
@@ -63,7 +63,7 @@ export function TaskCard({
                         </div>
                     )}
                 </div>
-                <div className={`relative flex items-center justify-center w-6 h-6 rounded-full border ${assigneeColor === 'neutral' && assigneeIcon === 'lucide:user' ? 'bg-white/10 border-white/20 border-dashed text-neutral-400' : iconStyles}`}>
+                <div className={`relative flex items-center justify-center w-6 h-6 rounded-full border ${iconStyles}`}>
                     <Icon icon={assigneeIcon} className="text-[10px]" />
                 </div>
             </div>
