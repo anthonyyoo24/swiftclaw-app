@@ -61,7 +61,12 @@ function DropZone({ isDragging, error, onDragOver, onDragLeave, onDrop, onBrowse
                 tabIndex={0}
                 aria-label="Upload file drop zone"
                 onClick={onBrowse}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onBrowse()}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onBrowse();
+                    }
+                }}
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
                 onDrop={onDrop}

@@ -144,6 +144,7 @@ const TemplateCard = ({ template, isSelected, onSelect }: TemplateCardProps) => 
                             src={template.avatar}
                             alt={template.title}
                             fill
+                            sizes="48px"
                             className="object-cover"
                         />
                     </div>
@@ -202,6 +203,7 @@ const SarahLeadCard = ({ template }: SarahLeadCardProps) => (
                             src={template.avatar}
                             alt={template.title}
                             fill
+                            sizes="48px"
                             className="object-cover"
                         />
                     </div>
