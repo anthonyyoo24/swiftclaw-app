@@ -112,7 +112,7 @@ export function SetupWizard() {
             goals: "",
             workflows: [],
             tools: [],
-            agentTemplateIds: [],
+            agentTemplateIds: ["sarah"],
             // Setup
             aiProvider: "",
             aiModel: "",

@@ -242,6 +242,13 @@ export function CharacterSelectionView({
         const next = selectedTemplateIds.includes(id)
             ? selectedTemplateIds.filter(tId => tId !== id)
             : [...selectedTemplateIds, id];
+        
+        // Ensure Sarah (Lead Agent) is always included if she was already there
+        // or if she's expected to be permanent.
+        if (selectedTemplateIds.includes(SARAH_ID) && !next.includes(SARAH_ID)) {
+            next.push(SARAH_ID);
+        }
+        
         onChange(next);
     };
 
