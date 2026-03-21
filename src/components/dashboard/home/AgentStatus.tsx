@@ -14,8 +14,6 @@ interface AgentCardProps {
     role: string;
     status: AgentStatus;
     currentTask: string;
-    isBlocked?: boolean;
-    isIdle?: boolean;
     iconName: string;
     colorClass: {
         bg: string;
@@ -24,7 +22,9 @@ interface AgentCardProps {
     };
 }
 
-function AgentCard({ name, role, status, currentTask, isBlocked, isIdle, iconName, colorClass }: AgentCardProps) {
+function AgentCard({ name, role, status, currentTask, iconName, colorClass }: AgentCardProps) {
+    const isBlocked = status === "blocked";
+    const isIdle = status === "idle";
     const isActive = status === "active";
     return (
         <div className={`p-3 rounded-xl border transition-all ${isActive ? "bg-white/5 border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]" : "hover:bg-white/5 border-transparent"}`}>
@@ -76,7 +76,6 @@ export function AgentStatus() {
                     role="Developer"
                     status="blocked"
                     currentTask="Blocked on PR review"
-                    isBlocked
                     iconName="lucide:code-2"
                     colorClass={{ bg: "bg-purple-500/20", border: "border-purple-500/30", text: "text-purple-400" }}
                 />
@@ -85,7 +84,6 @@ export function AgentStatus() {
                     role="Copywriter"
                     status="idle"
                     currentTask="Idle"
-                    isIdle
                     iconName="lucide:pen-tool"
                     colorClass={{ bg: "bg-orange-500/20", border: "border-orange-500/30", text: "text-orange-400" }}
                 />

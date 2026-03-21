@@ -63,9 +63,6 @@ export function GatewayStatus({ status, className }: GatewayStatusProps) {
             config.color,
             className
         )}>
-            {/* Status Dot */}
-            {/* <div className={cn("size-1.5 rounded-full", config.dotColor)} /> */}
-
             <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-bold tracking-widest uppercase opacity-80 leading-none">
                     Gateway
