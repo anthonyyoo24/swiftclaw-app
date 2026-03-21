@@ -3,6 +3,7 @@
 import { Icon } from "@iconify/react";
 import { cn } from "@/lib/utils";
 import { GatewayStatus, GatewayStatusType } from "./GatewayStatus";
+import { dispatchOnboardingStatusChanged } from "@/hooks/useOnboardingStatus";
 
 interface AppHeaderProps {
     /** Text shown after the "/" separator, e.g. "Workspace" or "Setup Wizard" */
@@ -43,6 +44,7 @@ export function AppHeader({
 
         // Default behavior: Clear the onboarding cookie and hard redirect
         document.cookie = "onboardingComplete=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
+        dispatchOnboardingStatusChanged();
         window.location.href = "/onboarding";
     };
 

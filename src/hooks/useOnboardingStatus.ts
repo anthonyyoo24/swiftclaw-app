@@ -2,9 +2,24 @@ import { useSyncExternalStore } from "react";
 
 const ONBOARDING_COOKIE = "onboardingComplete";
 
-// A no-op subscribe function since cookies don't emit change events we can easily listen to.
-// We only need to read it once on mount for our routing guards.
-const emptySubscribe = () => () => {};
+const ONBOARDING_CHANGED_EVENT = "onboarding-status-changed";
+
+/**
+ * Dispatches a custom window event to notify all useOnboardingStatus hooks 
+ * that the cookie has been mutated and they should re-read it.
+ */
+export const dispatchOnboardingStatusChanged = () => {
+    if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(ONBOARDING_CHANGED_EVENT));
+    }
+};
+
+const subscribe = (callback: () => void) => {
+    if (typeof window === "undefined") return () => { };
+
+    window.addEventListener(ONBOARDING_CHANGED_EVENT, callback);
+    return () => window.removeEventListener(ONBOARDING_CHANGED_EVENT, callback);
+};
 
 const getSnapshot = () => {
     if (typeof document === "undefined") return null;
@@ -21,7 +36,7 @@ export type OnboardingStatus = "loading" | "complete" | "incomplete";
  * and then resolves to 'complete' or 'incomplete' based on the cookie.
  */
 export function useOnboardingStatus(): OnboardingStatus {
-    const cookieStr = useSyncExternalStore(emptySubscribe, getSnapshot, getServerSnapshot);
+    const cookieStr = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
     
     if (cookieStr === null) {
         return "loading";

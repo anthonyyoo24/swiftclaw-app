@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { useEffect, useState } from "react";
+import { dispatchOnboardingStatusChanged } from "@/hooks/useOnboardingStatus";
 
 export function DeploySuccessView() {
     const router = useRouter();
@@ -11,6 +12,7 @@ export function DeploySuccessView() {
     useEffect(() => {
         // Set onboarding as complete via cookie so middleware can read it on the server
         document.cookie = "onboardingComplete=true; path=/; max-age=31536000; SameSite=Lax";
+        dispatchOnboardingStatusChanged();
 
         // Countdown timer for auto-navigation
         const timer = setInterval(() => {
