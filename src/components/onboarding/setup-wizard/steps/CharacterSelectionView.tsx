@@ -173,8 +173,6 @@ const SarahLeadCard = ({ template }: SarahLeadCardProps) => (
     <div className="relative group text-left px-6 py-5 rounded-2xl flex flex-col w-full h-full"
         style={{
             background: "linear-gradient(135deg, rgba(251,191,36,0.08) 0%, rgba(251,146,60,0.08) 100%)",
-            border: "1px solid",
-            borderImageSlice: 1,
         }}
     >
         {/* Gold/amber gradient border via box-shadow + outline trick */}
@@ -249,9 +247,8 @@ export function CharacterSelectionView({
             ? selectedTemplateIds.filter(tId => tId !== id)
             : [...selectedTemplateIds, id];
 
-        // Ensure Sarah (Lead Agent) is always included if she was already there
-        // or if she's expected to be permanent.
-        if (selectedTemplateIds.includes(SARAH_ID) && !next.includes(SARAH_ID)) {
+        // Ensure Sarah (Lead Agent) is always included.
+        if (!next.includes(SARAH_ID)) {
             next.push(SARAH_ID);
         }
 
