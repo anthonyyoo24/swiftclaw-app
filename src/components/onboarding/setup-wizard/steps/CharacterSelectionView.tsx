@@ -229,7 +229,12 @@ export function CharacterSelectionView({
     const { value: rawValue, onChange } = useWizardField("agentTemplateIds");
     const selectedTemplateIds = (rawValue as AgentTemplateId[]) || [];
 
-    const sarahTemplate = TEMPLATES.find(t => t.id === SARAH_ID)!;
+    const sarahTemplate = TEMPLATES.find(t => t.id === SARAH_ID);
+
+    if (!sarahTemplate) {
+        console.error(`Lead agent template with ID "${SARAH_ID}" not found.`);
+        return null;
+    }
 
     // Filter out Sarah and combine all other team agents into a single list
     const teamAgents = [...recommendedTemplates, ...otherTemplates]
