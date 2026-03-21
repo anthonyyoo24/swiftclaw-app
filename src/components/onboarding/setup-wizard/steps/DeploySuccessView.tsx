@@ -11,12 +11,21 @@ export function DeploySuccessView() {
 
     useEffect(() => {
         // Set onboarding as complete via cookie so middleware can read it on the server
-        document.cookie = "onboardingComplete=true; path=/; max-age=31536000; SameSite=Lax";
+        const isSecure = typeof window !== "undefined" && window.isSecureContext;
+        const cookieSuffix = `; path=/; max-age=31536000; SameSite=Lax${isSecure ? "; Secure" : ""}`;
+        document.cookie = `onboardingComplete=true${cookieSuffix}`;
         dispatchOnboardingStatusChanged();
 
         // Countdown timer for auto-navigation
         const timer = setInterval(() => {
-            setSecondsLeft((prev) => Math.max(0, prev - 1));
+            setSecondsLeft((prev) => {
+                const next = prev - 1;
+                if (next <= 0) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return next;
+            });
         }, 1000);
 
         return () => clearInterval(timer);
