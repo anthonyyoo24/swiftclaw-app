@@ -97,6 +97,7 @@ export function SetupWizard() {
         return () => {
             if (deployTimeoutRef.current) {
                 clearTimeout(deployTimeoutRef.current);
+                deployTimeoutRef.current = null;
             }
         };
     }, []);
@@ -223,7 +224,10 @@ export function SetupWizard() {
             setDeployState('loading');
 
             // Clear any existing timer just in case
-            if (deployTimeoutRef.current) clearTimeout(deployTimeoutRef.current);
+            if (deployTimeoutRef.current) {
+                clearTimeout(deployTimeoutRef.current);
+                deployTimeoutRef.current = null;
+            }
 
             deployTimeoutRef.current = setTimeout(() => {
                 setDeployState('success');
@@ -244,6 +248,7 @@ export function SetupWizard() {
         setDeployState('idle');
         if (deployTimeoutRef.current) {
             clearTimeout(deployTimeoutRef.current);
+            deployTimeoutRef.current = null;
         }
     };
 
