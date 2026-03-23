@@ -22,7 +22,8 @@ function createWindow() {
         webPreferences: {
             preload: join(__dirname, '../preload/index.js'),
             sandbox: false
-        }
+        },
+        backgroundColor: '#09090b'
     })
 
     mainWindow.on('ready-to-show', () => {
