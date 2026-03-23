@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
 import log from 'electron-log'
+import { setupIpcHandlers } from './ipc-handlers'
 
 log.transports.file.level = 'info'
 log.transports.console.level = 'debug'
@@ -36,6 +37,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+    setupIpcHandlers()
     createWindow()
 
     app.on('activate', function () {
