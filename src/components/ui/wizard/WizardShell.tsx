@@ -15,7 +15,7 @@ export interface WizardShellProps {
      */
     canProgress: boolean;
     isDeploying?: boolean;
-    deployState?: 'idle' | 'loading' | 'success';
+    deployState?: 'idle' | 'loading' | 'success' | 'error';
     onNext: () => void;
     onBack: () => void;
     onStepClick?: (index: number) => void;
@@ -101,3 +101,4 @@ export function WizardShell({
         </div>
     );
 }
+

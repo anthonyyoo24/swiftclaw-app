@@ -9,13 +9,16 @@ export function DeploySuccessView() {
     const router = useRouter();
     const [secondsLeft, setSecondsLeft] = useState(5);
 
-    useEffect(() => {
-        // Set onboarding as complete via cookie so middleware can read it on the server
+    /** Mark onboarding as complete and navigate to dashboard */
+    const navigateToDashboard = () => {
         const isSecure = typeof window !== "undefined" && window.isSecureContext;
         const cookieSuffix = `; path=/; max-age=31536000; SameSite=Lax${isSecure ? "; Secure" : ""}`;
         document.cookie = `onboardingComplete=true${cookieSuffix}`;
         dispatchOnboardingStatusChanged();
+        router.push("/");
+    };
 
+    useEffect(() => {
         // Countdown timer for auto-navigation
         const timer = setInterval(() => {
             setSecondsLeft((prev) => {
@@ -33,9 +36,10 @@ export function DeploySuccessView() {
 
     useEffect(() => {
         if (secondsLeft === 0) {
-            router.push("/");
+            navigateToDashboard();
         }
-    }, [secondsLeft, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [secondsLeft]);
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 min-h-100">
@@ -84,7 +88,7 @@ export function DeploySuccessView() {
             <div className="flex flex-col items-center gap-6">
                 <button
                     type="button"
-                    onClick={() => router.push('/')}
+                    onClick={navigateToDashboard}
                     className="group relative inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-10 py-4 rounded-full text-base font-medium shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] focus:outline-none focus-visible:ring-2 focus:ring-emerald-500/50 active:scale-[0.98] transition-all duration-300 overflow-hidden cursor-pointer"
                 >
                     <div className="absolute inset-0 bg-linear-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />

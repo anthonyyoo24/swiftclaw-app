@@ -3,28 +3,62 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 
-const LOADING_MESSAGES = [
-    "Starting your deployment...",
-    "Connecting to your AI provider...",
-    "Establishing channel connection...",
-    "Finalizing agent startup...",
+const UI_STEPS = [
+    "Authenticating with Provider...",
+    "Linking your Channels...",
+    "Assembling Workspaces...",
+    "Personalizing Profile...",
+    "Finalizing agent startup..."
 ];
+
+const TOTAL_STEPS = UI_STEPS.length;
 
 interface DeployProgressViewProps {
     duration: number;
 }
 
+/**
+ * Pure visual component for the deployment loading animation.
+ * Auto-advances through UI_STEPS at equal intervals based on `duration`.
+ * The parent (SetupWizard) owns the state machine and will unmount this
+ * component when deployment succeeds or fails.
+ */
 export function DeployProgressView({ duration }: DeployProgressViewProps) {
-    const [messageIndex, setMessageIndex] = useState(0);
+    const [displayedStep, setDisplayedStep] = useState(0);
 
+    const stepDuration = duration / TOTAL_STEPS;
+
+    // Auto-advance through steps on a timer
     useEffect(() => {
-        const messageInterval = duration / LOADING_MESSAGES.length;
-        const interval = setInterval(() => {
-            setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-        }, messageInterval);
+        // Kick off the first step shortly after mount
+        const initialTimeout = setTimeout(() => {
+            setDisplayedStep(1);
+        }, 50);
 
-        return () => clearInterval(interval);
-    }, [duration]);
+        // Then advance through remaining steps at equal intervals
+        const interval = setInterval(() => {
+            setDisplayedStep((prev) => {
+                const next = prev + 1;
+                if (next >= TOTAL_STEPS) {
+                    clearInterval(interval);
+                    return TOTAL_STEPS;
+                }
+                return next;
+            });
+        }, stepDuration);
+
+        return () => {
+            clearTimeout(initialTimeout);
+            clearInterval(interval);
+        };
+    }, [stepDuration]);
+
+    // Derived display logic — cap at 98% so the bar never fully completes
+    // before the parent transitions to the success view
+    const rawPercent = Math.min((displayedStep / TOTAL_STEPS) * 100, 98);
+
+    const messageIndex = Math.min(Math.max(0, displayedStep - 1), TOTAL_STEPS - 1);
+    const currentMessage = UI_STEPS[messageIndex];
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 min-h-100">
@@ -50,7 +84,7 @@ export function DeployProgressView({ duration }: DeployProgressViewProps) {
                 aria-live="polite"
             >
                 <p className="text-neutral-400 transition-opacity duration-300">
-                    {LOADING_MESSAGES[messageIndex]}
+                    {currentMessage}
                 </p>
             </div>
 
@@ -61,25 +95,17 @@ export function DeployProgressView({ duration }: DeployProgressViewProps) {
                 aria-label="Deployment progress"
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={Math.round(((messageIndex + 1) / LOADING_MESSAGES.length) * 100)}
-                aria-valuetext={LOADING_MESSAGES[messageIndex]}
+                aria-valuenow={Math.round(rawPercent)}
+                aria-valuetext={currentMessage}
             >
                 <div
-                    className="h-full bg-linear-to-r from-blue-500 to-indigo-500 rounded-full absolute left-0 top-0 w-full animate-[linear-fill_var(--fill-duration)_linear_forwards]"
+                    className="h-full bg-linear-to-r from-blue-500 to-indigo-500 rounded-full absolute left-0 top-0 transition-all ease-linear"
                     style={{
-                        transform: 'translateX(-100%)',
-                        ['--fill-duration' as string]: `${duration}ms`
-                    } as React.CSSProperties}
+                        width: `${rawPercent}%`,
+                        transitionDuration: `${stepDuration}ms`
+                    }}
                 />
             </div>
-
-            <style jsx>{`
-                @keyframes linear-fill {
-                    to {
-                        transform: translateX(0%);
-                    }
-                }
-            `}</style>
         </div>
     );
 }

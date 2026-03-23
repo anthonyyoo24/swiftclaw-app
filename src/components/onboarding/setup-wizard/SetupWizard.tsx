@@ -14,6 +14,7 @@ import { ChannelSetupStep } from "./steps/ChannelSetupStep";
 import { DeploymentStep } from "./steps/DeploymentStep";
 import { DeployProgressView } from "./steps/DeployProgressView";
 import { DeploySuccessView } from "./steps/DeploySuccessView";
+import { DeployErrorView } from "./steps/DeployErrorView";
 
 // Personalization Steps
 import { UsageTypeStep } from "./steps/UsageTypeStep";
@@ -89,18 +90,11 @@ const DEPLOY_DURATION_MS = 10000;
 export function SetupWizard() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [visitedIds, setVisitedIds] = useState<Set<StepId>>(new Set(["welcome"]));
-    const [deployState, setDeployState] = useState<'idle' | 'loading' | 'success'>('idle');
+    const [deployState, setDeployState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [deployError, setDeployError] = useState<string>("");
     const deployTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    // Clear the timer on unmount to avoid stale redirects or side effects
-    useEffect(() => {
-        return () => {
-            if (deployTimeoutRef.current) {
-                clearTimeout(deployTimeoutRef.current);
-                deployTimeoutRef.current = null;
-            }
-        };
-    }, []);
+    const backendSuccessRef = useRef(false);
+    const timerFinishedRef = useRef(false);
 
     const methods = useForm<OnboardingFormValues>({
         mode: "onChange",
@@ -123,6 +117,71 @@ export function SetupWizard() {
             channelToken: "",
         },
     });
+
+    // Manage deployment process IPC listeners
+    useEffect(() => {
+        if (deployState !== 'loading') {
+            return () => {
+                if (deployTimeoutRef.current) {
+                    clearTimeout(deployTimeoutRef.current);
+                    deployTimeoutRef.current = null;
+                }
+            };
+        }
+
+        let cleanupIpc: (() => void) | undefined;
+
+        const checkComplete = () => {
+            if (timerFinishedRef.current && backendSuccessRef.current) {
+                setDeployState('success');
+            }
+        };
+
+        // 1. Force the 10 second minimum UI experience
+        timerFinishedRef.current = false;
+        deployTimeoutRef.current = setTimeout(() => {
+            timerFinishedRef.current = true;
+            checkComplete();
+        }, DEPLOY_DURATION_MS);
+
+        // 2. Connect to backend
+        if (typeof window !== 'undefined' && window.electron?.ipcRenderer) {
+            backendSuccessRef.current = false;
+            
+            cleanupIpc = window.electron.ipcRenderer.on('deployment:success', () => {
+                backendSuccessRef.current = true;
+                checkComplete();
+            });
+
+            const errorCleanup = window.electron.ipcRenderer.on('deployment:error', (data: unknown) => {
+                const typedData = data as { message?: string };
+                if (deployTimeoutRef.current) clearTimeout(deployTimeoutRef.current);
+                setDeployError(typedData?.message || "An unknown error occurred during deployment.");
+                setDeployState('error');
+            });
+
+            // Start the deployment logic
+            const currentValues = methods.getValues();
+            const result = onboardingSchema.safeParse(currentValues);
+            if (result.success) {
+                window.electron.ipcRenderer.send('deployment:start', result.data);
+            }
+
+            const originalCleanup = cleanupIpc;
+            cleanupIpc = () => {
+                if (originalCleanup) originalCleanup();
+                if (errorCleanup) errorCleanup();
+            }
+        } else {
+            // Web mode fallback
+            backendSuccessRef.current = true;
+        }
+
+        return () => {
+            if (deployTimeoutRef.current) clearTimeout(deployTimeoutRef.current);
+            if (cleanupIpc) cleanupIpc();
+        };
+    }, [deployState, methods]);
 
     const formValues = useWatch({ control: methods.control });
     const isBusiness = formValues.usageType === "business";
@@ -222,16 +281,7 @@ export function SetupWizard() {
             }
 
             setDeployState('loading');
-
-            // Clear any existing timer just in case
-            if (deployTimeoutRef.current) {
-                clearTimeout(deployTimeoutRef.current);
-                deployTimeoutRef.current = null;
-            }
-
-            deployTimeoutRef.current = setTimeout(() => {
-                setDeployState('success');
-            }, DEPLOY_DURATION_MS);
+            // Effect will handle timer and IPC call
         } else {
             goNext();
         }
@@ -242,7 +292,7 @@ export function SetupWizard() {
         const isSecure = typeof window !== "undefined" && window.isSecureContext;
         document.cookie = `onboardingComplete=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax${isSecure ? "; Secure" : ""}`;
         dispatchOnboardingStatusChanged();
-        
+
         methods.reset();
         setCurrentStepIndex(0);
         setVisitedIds(new Set(["welcome"]));
@@ -287,6 +337,7 @@ export function SetupWizard() {
             case "deploy":
                 if (deployState === 'loading') return <DeployProgressView duration={DEPLOY_DURATION_MS} />;
                 if (deployState === 'success') return <DeploySuccessView />;
+                if (deployState === 'error') return <DeployErrorView error={deployError} onRetry={() => setDeployState('idle')} />;
                 return (
                     <DeploymentStep
                         aiProvider={formValues.aiProvider ?? ""}
