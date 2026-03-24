@@ -110,6 +110,8 @@ export function SetupWizard() {
             tools: [],
             agentTemplateIds: ["sarah"],
             // Setup
+            aiAuthType: "apiKey",
+            isAiAuthenticated: false,
             aiProvider: "",
             aiModel: "",
             aiApiKey: "",

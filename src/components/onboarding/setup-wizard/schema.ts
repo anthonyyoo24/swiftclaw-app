@@ -76,9 +76,26 @@ export const characterStepSchema = z.object({
 });
 
 export const aiBrainStepSchema = z.object({
+    aiAuthType: z.enum(["apiKey", "oauth"]),
+    isAiAuthenticated: z.boolean(),
     aiProvider: z.string().min(1, "Please select an AI provider"),
     aiModel: z.string().min(1, "Please select a model"),
-    aiApiKey: z.string().min(5, "API Key must be at least 5 characters"),
+    aiApiKey: z.string().optional(),
+}).superRefine((data, ctx) => {
+    if (data.aiAuthType === "apiKey" && (!data.aiApiKey || data.aiApiKey.length < 5)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "API Key must be at least 5 characters",
+            path: ["aiApiKey"],
+        });
+    }
+    if (data.aiAuthType === "oauth" && !data.isAiAuthenticated) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Please connect your account to proceed",
+            path: ["isAiAuthenticated"], // This path can be used to show error near the Connect button
+        });
+    }
 });
 
 export const channelSetupStepSchema = z.object({
