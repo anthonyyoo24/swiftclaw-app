@@ -5,7 +5,7 @@ import { useFormContext, Controller } from "react-hook-form";
 import { Icon } from "@iconify/react";
 import { Input } from "@/components/ui/Input";
 import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
-import { Anthropic, OpenAI, Google } from "@lobehub/icons";
+import { Anthropic, OpenAI } from "@lobehub/icons";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 import type { OnboardingFormValues } from "@/components/onboarding/setup-wizard/schema";
 
@@ -14,8 +14,6 @@ export const PROVIDER_OPTIONS: DropdownOption[] = [
     { id: "openai-codex", label: "OpenAI Codex (Browser Login)", icon: <OpenAI size={20} className="w-5 h-5 text-[#10A37F]" /> },
     { id: "anthropic-api", label: "Anthropic (API Key)", icon: <Anthropic size={20} className="w-5 h-5 text-[#D97757]" /> },
     { id: "anthropic-oauth", label: "Anthropic (Browser Login)", icon: <Anthropic size={20} className="w-5 h-5 text-[#D97757]" /> },
-    { id: "google-api", label: "Google Gemini (API Key)", icon: <Google size={20} className="w-5 h-5 text-[#4285F4]" /> },
-    { id: "antigravity-oauth", label: "AntiGravity (Google OAuth)", icon: <Google size={20} className="w-5 h-5 text-[#4285F4]" /> },
 ];
 
 export const MODEL_OPTIONS: Record<string, DropdownOption[]> = {
@@ -46,18 +44,6 @@ export const MODEL_OPTIONS: Record<string, DropdownOption[]> = {
         { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
         { id: "claude-opus-4-5", label: "Claude Opus 4.5" },
         { id: "claude-sonnet-4-5", label: "Claude Sonnet 4.5" },
-    ],
-    "google-api": [
-        { id: "gemini-3.1-pro", label: "Gemini 3.1 Pro" },
-        { id: "gemini-3.1-flash", label: "Gemini 3.1 Flash" },
-        { id: "gemini-3-pro-preview", label: "Gemini 3 Pro Preview" },
-    ],
-    "antigravity-oauth": [
-        { id: "gemini-3.1-pro-high", label: "Gemini 3.1 Pro (High)" },
-        { id: "gemini-3.1-pro-low", label: "Gemini 3.1 Pro (Low)" },
-        { id: "gemini-3-pro-high", label: "Gemini 3 Pro (High)" },
-        { id: "gemini-3-pro-low", label: "Gemini 3 Pro (Low)" },
-        { id: "gemini-3.1-flash", label: "Gemini 3.1 Flash" },
     ],
 };
 

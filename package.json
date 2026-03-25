@@ -26,7 +26,6 @@
     ]
   },
   "dependencies": {
-    "@google/gemini-cli": "^0.34.0",
     "@hookform/resolvers": "^5.2.2",
     "@iconify/react": "^6.0.2",
     "@lobehub/icons": "^5.0.1",

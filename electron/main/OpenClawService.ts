@@ -27,7 +27,6 @@ interface OAuthProviderEntry {
 
 const OAUTH_PROVIDER_MAP: Record<string, OAuthProviderEntry> = {
     'openai-codex': { provider: 'openai-codex' },
-    'antigravity-oauth': { provider: 'google-gemini-cli' },
     'anthropic-oauth': { provider: 'anthropic', method: 'setup-token' },
 };
 
@@ -45,43 +44,14 @@ export class OpenClawService {
         this.event.reply('deployment:progress', { step, label });
     }
 
-    /**
-     * Extracts the OAuth Client ID and Secret from the bundled @google/gemini-cli-core package.
-     * OpenClaw's `resolveOAuthClientConfig()` checks env vars FIRST, so by injecting these
-     * we completely bypass the broken `findInPath("gemini")` PATH resolution issue.
-     */
-    private extractGeminiCredentials(): { clientId: string; clientSecret: string } | null {
-        try {
-            const oauth2Path = require.resolve('@google/gemini-cli-core/dist/src/code_assist/oauth2.js');
-            const content = fs.readFileSync(oauth2Path, 'utf8');
-
-            const idMatch = content.match(/(\d+-[a-z0-9]+\.apps\.googleusercontent\.com)/);
-            const secretMatch = content.match(/(GOCSPX-[A-Za-z0-9_-]+)/);
-
-            if (idMatch && secretMatch) {
-                console.log('[OAuth] Extracted Gemini CLI credentials from bundled package');
-                return { clientId: idMatch[1], clientSecret: secretMatch[1] };
-            }
-        } catch (err) {
-            console.warn('[OAuth] Could not extract Gemini CLI credentials:', err);
-        }
-        return null;
-    }
 
     /**
      * Builds the environment for spawned CLI processes.
      * Injects Gemini OAuth credentials as env vars if this is a Gemini auth flow.
      */
-    private buildCliEnv(isGemini: boolean): NodeJS.ProcessEnv {
+    private buildCliEnv(): NodeJS.ProcessEnv {
         const env: NodeJS.ProcessEnv = { ...process.env };
 
-        if (isGemini) {
-            const creds = this.extractGeminiCredentials();
-            if (creds) {
-                env.GEMINI_CLI_OAUTH_CLIENT_ID = creds.clientId;
-                env.GEMINI_CLI_OAUTH_CLIENT_SECRET = creds.clientSecret;
-            }
-        }
 
         return env;
     }
@@ -115,8 +85,7 @@ export class OpenClawService {
                 beforeMtime = fs.statSync(configPath).mtimeMs;
             }
 
-            const isGemini = entry.provider === 'google-gemini-cli';
-            const envForCli = this.buildCliEnv(isGemini);
+            const envForCli = this.buildCliEnv();
             let cliCommand = `npx -y openclaw@latest models auth login --provider ${entry.provider}`;
             if (entry.method) {
                 cliCommand += ` --method ${entry.method}`;
@@ -357,9 +326,6 @@ exit [lindex $result 3]
                 if (aiProvider === 'anthropic-api') {
                     authChoice = 'apiKey';
                     apiKeyFlag = '--anthropic-api-key';
-                } else if (aiProvider === 'google-api') {
-                    authChoice = 'gemini-api-key';
-                    apiKeyFlag = '--gemini-api-key';
                 } else if (aiProvider === 'openai-api') {
                     authChoice = 'openai-api-key';
                     apiKeyFlag = '--openai-api-key';
