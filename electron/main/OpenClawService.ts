@@ -7,6 +7,9 @@ import os from 'os';
 
 const execAsync = promisify(exec);
 
+/** Prefix for Anthropic setup-token values (used to detect the token in CLI output) */
+const ANTHROPIC_TOKEN_PREFIX = 'sk-ant-oat01-';
+
 export interface DeploymentPayload {
     aiAuthType: 'apiKey' | 'oauth';
     isAiAuthenticated: boolean;
@@ -18,10 +21,16 @@ export interface DeploymentPayload {
     agentTemplateIds: string[];
 }
 
-/** Maps our UI provider IDs to the OpenClaw CLI `--provider` flag values */
-const OAUTH_PROVIDER_MAP: Record<string, string> = {
-    'openai-codex': 'openai-codex',
-    'antigravity-oauth': 'google-gemini-cli',
+/** Maps our UI provider IDs to the OpenClaw CLI `--provider` and optional `--method` flags */
+interface OAuthProviderEntry {
+    provider: string;
+    method?: string;
+}
+
+const OAUTH_PROVIDER_MAP: Record<string, OAuthProviderEntry> = {
+    'openai-codex': { provider: 'openai-codex' },
+    'antigravity-oauth': { provider: 'google-gemini-cli' },
+    'anthropic-oauth': { provider: 'anthropic', method: 'setup-token' },
 };
 
 
@@ -83,9 +92,9 @@ export class OpenClawService {
      * Executes the OAuth authentication flow using the bundled OpenClaw CLI.
      */
     async authenticate(provider: string) {
-        const authChoice = OAUTH_PROVIDER_MAP[provider];
+        const entry = OAUTH_PROVIDER_MAP[provider];
 
-        if (!authChoice) {
+        if (!entry) {
             this.event.reply('auth:oauth:complete', {
                 success: false,
                 error: `Invalid OAuth provider: ${provider}`,
@@ -93,27 +102,36 @@ export class OpenClawService {
             return;
         }
 
-        try {
-            console.log(`[OAuth] Starting native Expect-driven TTY flow for provider: ${authChoice}`);
+        // Anthropic uses a two-stage flow: run `claude setup-token` to open browser,
+        // then pipe the captured token into OpenClaw.
+        if (provider === 'anthropic-oauth') {
+            return this.authenticateAnthropic();
+        }
 
-            const configPath = path.join(os.homedir(), '.openclaw', 'config.json');
+        try {
+            console.log(`[OAuth] Starting native Expect-driven TTY flow for provider: ${entry.provider}`);
+
+            const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
             let beforeMtime = 0;
             if (fs.existsSync(configPath)) {
                 beforeMtime = fs.statSync(configPath).mtimeMs;
             }
 
-            const isGemini = authChoice === 'google-gemini-cli';
+            const isGemini = entry.provider === 'google-gemini-cli';
             const envForCli = this.buildCliEnv(isGemini);
-            const cliCommand = `npx -y openclaw@latest models auth login --provider ${authChoice}`;
+            let cliCommand = `npx -y openclaw@latest models auth login --provider ${entry.provider}`;
+            if (entry.method) {
+                cliCommand += ` --method ${entry.method}`;
+            }
 
             // macOS / Linux: Route through 'expect' to simulate a TTY invisibly in the background.
             // This satisfies the `process.stdin.isTTY` check inside OpenClaw and auto-answers
-            // the Gemini CLI caution prompt with "y".
+            // any interactive confirmation prompts (Gemini caution, etc.) with "y".
             const expectScript = `
 spawn -noecho bash -c "${cliCommand}"
 set timeout 300
 expect {
-    "Continue with Google Gemini CLI OAuth" {
+    -re "Continue with.*\\?" {
         send "y\\r"
         exp_continue
     }
@@ -174,6 +192,138 @@ exit [lindex $result 3]
     }
 
     /**
+     * Automated Anthropic OAuth flow:
+     * Stage 1 — Run `claude setup-token` (opens browser for OAuth) and capture the token from stdout.
+     * Stage 2 — Pipe the captured token into `openclaw models auth paste-token --provider anthropic`.
+     */
+    private async authenticateAnthropic() {
+        try {
+            console.log('[OAuth/Anthropic] Starting two-stage automated flow');
+
+            const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
+            let beforeMtime = 0;
+            if (fs.existsSync(configPath)) {
+                beforeMtime = fs.statSync(configPath).mtimeMs;
+            }
+
+            // ── Stage 1: Run `claude setup-token` and capture the token ──
+            console.log('[OAuth/Anthropic] Stage 1: Running `claude setup-token` to open browser...');
+
+            const capturedToken = await new Promise<string>((resolve, reject) => {
+                const stage1Script = `
+spawn -noecho claude setup-token
+set timeout 300
+expect eof
+`;
+                this.cliProcess = spawn('expect', ['-c', stage1Script], {
+                    stdio: ['ignore', 'pipe', 'pipe'],
+                    env: { ...process.env },
+                });
+
+                let token = '';
+
+                this.cliProcess.stdout?.on('data', (data: Buffer) => {
+                    const text = data.toString();
+                    console.log(`[OAuth/Anthropic Stage1]: ${text.trim()}`);
+
+                    // Scan each line for the setup-token
+                    for (const line of text.split(/\r?\n/)) {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith(ANTHROPIC_TOKEN_PREFIX) && trimmed.length >= 80) {
+                            token = trimmed;
+                            console.log('[OAuth/Anthropic] Captured setup-token from CLI output');
+                        }
+                    }
+                });
+
+                this.cliProcess.stderr?.on('data', (data: Buffer) => {
+                    const line = data.toString().trim();
+                    if (line) console.error(`[OAuth/Anthropic Stage1 stderr]: ${line}`);
+                });
+
+                this.cliProcess.on('close', (code) => {
+                    if (this.wasCancelled) {
+                        reject(new Error('Cancelled'));
+                        return;
+                    }
+                    if (token) {
+                        resolve(token);
+                    } else {
+                        reject(new Error(
+                            `claude setup-token exited (code ${code ?? 'unknown'}) without producing a token. ` +
+                            `Is the Claude CLI installed and authenticated?`
+                        ));
+                    }
+                });
+            });
+
+            if (this.wasCancelled) return;
+
+            // ── Stage 2: Pipe the token into OpenClaw paste-token ──
+            console.log('[OAuth/Anthropic] Stage 2: Registering token with OpenClaw...');
+
+            const stage2Script = `
+spawn -noecho bash -c "npx -y openclaw@latest models auth paste-token --provider anthropic"
+set timeout 60
+expect {
+    -re "Paste token" {
+        send "${capturedToken}\\r"
+        exp_continue
+    }
+    eof
+}
+catch wait result
+exit [lindex $result 3]
+`;
+
+            this.cliProcess = spawn('expect', ['-c', stage2Script], {
+                stdio: ['ignore', 'pipe', 'pipe'],
+                env: { ...process.env },
+            });
+
+            this.cliProcess.stdout?.on('data', (data: Buffer) => {
+                const line = data.toString().trim();
+                if (line) console.log(`[OAuth/Anthropic Stage2]: ${line}`);
+            });
+            this.cliProcess.stderr?.on('data', (data: Buffer) => {
+                const line = data.toString().trim();
+                if (line) console.error(`[OAuth/Anthropic Stage2 stderr]: ${line}`);
+            });
+
+            await new Promise<void>((resolve, reject) => {
+                this.cliProcess!.on('close', (code) => {
+                    if (this.wasCancelled) { reject(new Error('Cancelled')); return; }
+                    if (code === 0) { resolve(); } else { reject(new Error(`paste-token exited with code ${code}`)); }
+                });
+            });
+
+            // ── Verify config was updated ──
+            let afterMtime = 0;
+            if (fs.existsSync(configPath)) {
+                afterMtime = fs.statSync(configPath).mtimeMs;
+            }
+
+            if (afterMtime > 0 && afterMtime > beforeMtime) {
+                console.log('[OAuth/Anthropic] Config updated – authentication complete');
+                this.event.reply('auth:oauth:complete', { success: true });
+            } else if (!this.wasCancelled) {
+                throw new Error('Authentication completed but config was not updated.');
+            }
+
+        } catch (error: unknown) {
+            if (this.wasCancelled) return;
+            console.error('[OAuth/Anthropic] Error:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Anthropic authentication failed';
+            this.event.reply('auth:oauth:complete', { success: false, error: errorMessage });
+        } finally {
+            if (this.cliProcess && !this.cliProcess.killed) {
+                this.cliProcess.kill();
+            }
+            this.cliProcess = null;
+        }
+    }
+
+    /**
      * Terminate any active CLI process (e.g. if the user cancels or closes the window).
      */
     cancel() {
@@ -198,7 +348,8 @@ exit [lindex $result 3]
                 if (!payload.isAiAuthenticated) {
                     throw new Error("OAuth authentication was not completed successfully.");
                 }
-                const authChoice = OAUTH_PROVIDER_MAP[payload.aiProvider] || payload.aiProvider;
+                const entry = OAUTH_PROVIDER_MAP[payload.aiProvider];
+                const authChoice = entry?.provider || payload.aiProvider;
                 onboardCmd = `npx openclaw onboard --non-interactive --accept-risk --auth-choice ${authChoice} --model ${payload.aiModel} --skip-channels --skip-skills`;
             } else {
                 // API Key Flow
