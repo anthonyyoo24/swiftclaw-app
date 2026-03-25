@@ -223,7 +223,7 @@ export function AIBrainStep() {
                         </label>
 
                         {isAiAuthenticated ? (
-                            <div className="flex items-center gap-3 p-4 rounded-xl border border-green-500/20 bg-green-500/10 text-green-400">
+                            <div className="flex items-center gap-3 p-4 pr-5 rounded-xl border border-green-500/20 bg-green-500/10 text-green-400 w-fit">
                                 <Icon icon="solar:check-circle-bold" className="text-xl" />
                                 <span className="font-medium text-sm">Successfully Connected</span>
                             </div>
