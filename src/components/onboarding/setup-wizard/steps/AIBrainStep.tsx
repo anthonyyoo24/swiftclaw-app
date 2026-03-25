@@ -96,6 +96,11 @@ export function AIBrainStep() {
         window.electron.ipcRenderer.send('auth:oauth:start', { provider });
     };
 
+    const handleCancelClick = () => {
+        setIsConnecting(false);
+        window.electron.ipcRenderer.send('auth:oauth:cancel');
+    };
+
     // Robust IPC Listener Management
     useEffect(() => {
         if (typeof window === 'undefined' || !window.electron?.ipcRenderer) return;
@@ -223,24 +228,36 @@ export function AIBrainStep() {
                                 <span className="font-medium text-sm">Successfully Connected</span>
                             </div>
                         ) : (
-                            <button
-                                type="button"
-                                onClick={handleConnectClick}
-                                disabled={isConnecting}
-                                className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border border-neutral-700 bg-neutral-800/50 hover:bg-neutral-800 text-neutral-200 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isConnecting ? (
-                                    <>
-                                        <Icon icon="lucide:loader-2" className="text-xl animate-spin text-blue-400" />
-                                        <span>Waiting for browser login...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Icon icon="solar:link-bold" className="text-xl text-blue-400" />
-                                        <span>Click to connect via browser</span>
-                                    </>
+                            <div className="flex items-center gap-4">
+                                <button
+                                    type="button"
+                                    onClick={handleConnectClick}
+                                    disabled={isConnecting}
+                                    className="inline-flex items-center justify-center cursor-pointer gap-2 px-8 py-2.5 rounded-full bg-blue-500 text-white hover:bg-blue-400 transition-all font-medium disabled:opacity-80 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(59,130,246,0.2)]"
+                                >
+                                    {isConnecting ? (
+                                        <>
+                                            <Icon icon="lucide:loader-2" className="text-xl animate-spin" />
+                                            <span>Waiting for browser login...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Icon icon="solar:link-bold" className="text-xl" />
+                                            <span>Connect via Browser</span>
+                                        </>
+                                    )}
+                                </button>
+
+                                {isConnecting && (
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelClick}
+                                        className="px-6 py-2.5 cursor-pointer rounded-full border border-white/10 text-neutral-400 hover:text-white hover:bg-white/5 transition-all text-sm font-medium"
+                                    >
+                                        Cancel
+                                    </button>
                                 )}
-                            </button>
+                            </div>
                         )}
 
                         {authError && (
