@@ -7,8 +7,6 @@ import os from 'os';
 
 const execAsync = promisify(exec);
 
-/** Prefix for Anthropic setup-token values (used to detect the token in CLI output) */
-const ANTHROPIC_TOKEN_PREFIX = 'sk-ant-oat01-';
 
 export interface DeploymentPayload {
     aiAuthType: 'apiKey' | 'oauth';
@@ -220,20 +218,12 @@ expect eof
                     env: { ...process.env },
                 });
 
-                let token = '';
+                let stdoutBuffer = '';
 
                 this.cliProcess.stdout?.on('data', (data: Buffer) => {
                     const text = data.toString();
                     console.log(`[OAuth/Anthropic Stage1]: ${text.trim()}`);
-
-                    // Scan each line for the setup-token
-                    for (const line of text.split(/\r?\n/)) {
-                        const trimmed = line.trim();
-                        if (trimmed.startsWith(ANTHROPIC_TOKEN_PREFIX) && trimmed.length >= 80) {
-                            token = trimmed;
-                            console.log('[OAuth/Anthropic] Captured setup-token from CLI output');
-                        }
-                    }
+                    stdoutBuffer += text;
                 });
 
                 this.cliProcess.stderr?.on('data', (data: Buffer) => {
@@ -246,8 +236,13 @@ expect eof
                         reject(new Error('Cancelled'));
                         return;
                     }
-                    if (token) {
-                        resolve(token);
+                    // Use a regex directly on the raw buffer to extract the token.
+                    // This is robust against ANSI escape codes and control characters
+                    // that `expect` injects around the token line, which break line-based parsing.
+                    const tokenMatch = stdoutBuffer.match(/sk-ant-oat01-[A-Za-z0-9_-]{60,}/);
+                    if (tokenMatch) {
+                        console.log('[OAuth/Anthropic] Captured setup-token from CLI output');
+                        resolve(tokenMatch[0]);
                     } else {
                         reject(new Error(
                             `claude setup-token exited (code ${code ?? 'unknown'}) without producing a token. ` +
