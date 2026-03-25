@@ -28,6 +28,7 @@ const OAUTH_PROVIDER_MAP: Record<string, string> = {
 export class OpenClawService {
     private event: IpcMainEvent;
     private cliProcess: ChildProcess | null = null;
+    private wasCancelled = false;
 
     constructor(event: IpcMainEvent) {
         this.event = event;
@@ -154,11 +155,12 @@ exit [lindex $result 3]
             if (afterMtime > 0 && afterMtime > beforeMtime) {
                 console.log(`[OAuth] CLI exited successfully – authentication complete`);
                 this.event.reply('auth:oauth:complete', { success: true });
-            } else {
+            } else if (!this.wasCancelled) {
                 console.log(`[OAuth] CLI exited but config.json was not updated. Code: ${exitCode}`);
                 throw new Error(`Authentication cancelled or failed.`);
             }
         } catch (error: unknown) {
+            if (this.wasCancelled) return;
             console.error('[OAuth] Error:', error);
             const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
             this.event.reply('auth:oauth:complete', { success: false, error: errorMessage });
@@ -175,6 +177,7 @@ exit [lindex $result 3]
      * Terminate any active CLI process (e.g. if the user cancels or closes the window).
      */
     cancel() {
+        this.wasCancelled = true;
         if (this.cliProcess && !this.cliProcess.killed) {
             console.log('[OAuth] Forcefully terminating active CLI process');
             this.cliProcess.kill('SIGTERM');
