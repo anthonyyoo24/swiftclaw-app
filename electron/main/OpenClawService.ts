@@ -32,16 +32,19 @@ const OAUTH_PROVIDER_MAP: Record<string, OAuthProviderEntry> = {
 
 
 export class OpenClawService {
-    private event: IpcMainEvent;
     private cliProcess: ChildProcess | null = null;
     private wasCancelled = false;
 
-    constructor(event: IpcMainEvent) {
-        this.event = event;
+    private resetState() {
+        this.wasCancelled = false;
+        if (this.cliProcess && !this.cliProcess.killed) {
+            this.cliProcess.kill();
+        }
+        this.cliProcess = null;
     }
 
-    private emitProgress(step: number, label: string) {
-        this.event.reply('deployment:progress', { step, label });
+    private emitProgress(event: IpcMainEvent, step: number, label: string) {
+        event.reply('deployment:progress', { step, label });
     }
 
 
@@ -59,11 +62,17 @@ export class OpenClawService {
     /**
      * Executes the OAuth authentication flow using the bundled OpenClaw CLI.
      */
-    async authenticate(provider: string) {
+    async authenticate(event: IpcMainEvent, provider: string) {
+        if (this.cliProcess) {
+            console.warn('[OpenClawService] Operation already in progress, ignoring.');
+            event.reply('auth:oauth:complete', { success: false, error: 'An operation is already in progress.' });
+            return;
+        }
+        this.resetState();
         const entry = OAUTH_PROVIDER_MAP[provider];
 
         if (!entry) {
-            this.event.reply('auth:oauth:complete', {
+            event.reply('auth:oauth:complete', {
                 success: false,
                 error: `Invalid OAuth provider: ${provider}`,
             });
@@ -73,7 +82,7 @@ export class OpenClawService {
         // Anthropic uses a two-stage flow: run `claude setup-token` to open browser,
         // then pipe the captured token into OpenClaw.
         if (provider === 'anthropic-oauth') {
-            return this.authenticateAnthropic();
+            return this.authenticateAnthropic(event);
         }
 
         try {
@@ -139,7 +148,7 @@ exit [lindex $result 3]
 
             if (afterMtime > 0 && afterMtime > beforeMtime) {
                 console.log(`[OAuth] CLI exited successfully – authentication complete`);
-                this.event.reply('auth:oauth:complete', { success: true });
+                event.reply('auth:oauth:complete', { success: true });
             } else if (!this.wasCancelled) {
                 console.log(`[OAuth] CLI exited but config.json was not updated. Code: ${exitCode}`);
                 throw new Error(`Authentication cancelled or failed.`);
@@ -148,7 +157,7 @@ exit [lindex $result 3]
             if (this.wasCancelled) return;
             console.error('[OAuth] Error:', error);
             const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
-            this.event.reply('auth:oauth:complete', { success: false, error: errorMessage });
+            event.reply('auth:oauth:complete', { success: false, error: errorMessage });
         } finally {
             // Ensure process is always cleaned up, even if cancel() already handled it
             if (this.cliProcess && !this.cliProcess.killed) {
@@ -163,7 +172,7 @@ exit [lindex $result 3]
      * Stage 1 — Run `claude setup-token` (opens browser for OAuth) and capture the token from stdout.
      * Stage 2 — Pipe the captured token into `openclaw models auth paste-token --provider anthropic`.
      */
-    private async authenticateAnthropic() {
+    private async authenticateAnthropic(event: IpcMainEvent) {
         try {
             console.log('[OAuth/Anthropic] Starting two-stage automated flow');
 
@@ -184,7 +193,7 @@ expect eof
 `;
                 this.cliProcess = spawn('expect', ['-c', stage1Script], {
                     stdio: ['ignore', 'pipe', 'pipe'],
-                    env: { ...process.env },
+                    env: this.buildCliEnv(),
                 });
 
                 let stdoutBuffer = '';
@@ -242,7 +251,7 @@ exit [lindex $result 3]
 
             this.cliProcess = spawn('expect', ['-c', stage2Script], {
                 stdio: ['ignore', 'pipe', 'pipe'],
-                env: { ...process.env },
+                env: this.buildCliEnv(),
             });
 
             this.cliProcess.stdout?.on('data', (data: Buffer) => {
@@ -269,7 +278,7 @@ exit [lindex $result 3]
 
             if (afterMtime > 0 && afterMtime > beforeMtime) {
                 console.log('[OAuth/Anthropic] Config updated – authentication complete');
-                this.event.reply('auth:oauth:complete', { success: true });
+                event.reply('auth:oauth:complete', { success: true });
             } else if (!this.wasCancelled) {
                 throw new Error('Authentication completed but config was not updated.');
             }
@@ -278,7 +287,7 @@ exit [lindex $result 3]
             if (this.wasCancelled) return;
             console.error('[OAuth/Anthropic] Error:', error);
             const errorMessage = error instanceof Error ? error.message : 'Anthropic authentication failed';
-            this.event.reply('auth:oauth:complete', { success: false, error: errorMessage });
+            event.reply('auth:oauth:complete', { success: false, error: errorMessage });
         } finally {
             if (this.cliProcess && !this.cliProcess.killed) {
                 this.cliProcess.kill();
@@ -299,12 +308,18 @@ exit [lindex $result 3]
         }
     }
 
-    async deploy(payload: DeploymentPayload) {
+    async deploy(event: IpcMainEvent, payload: DeploymentPayload) {
+        if (this.cliProcess) {
+            console.warn('[OpenClawService] Operation already in progress, ignoring.');
+            event.reply('deployment:error', { message: 'An operation is already in progress.' });
+            return;
+        }
+        this.resetState();
         try {
             console.log('Orchestrating deployment for:', payload.agentTemplateIds);
 
             // Step 1: Auth (UI Step 1 -> Phase 2 OpenClaw Bootstrapping)
-            this.emitProgress(1, 'Bootstrapping core OpenClaw configuration...');
+            this.emitProgress(event, 1, 'Bootstrapping core OpenClaw configuration...');
 
             let onboardCmd: string;
 
@@ -334,42 +349,42 @@ exit [lindex $result 3]
                 onboardCmd = `npx openclaw onboard --non-interactive --accept-risk --auth-choice ${authChoice} ${apiKeyFlag} "${apiKey}" --model ${payload.aiModel} --skip-channels --skip-skills`;
             }
 
-            const { stdout, stderr } = await execAsync(onboardCmd);
+            const { stdout, stderr } = await execAsync(onboardCmd, { env: this.buildCliEnv() });
             if (stderr && stderr.trim()) {
                 console.warn(`Command stderr: ${stderr}`);
             }
             console.log(`Command stdout: ${stdout}`);
 
             // Step 2: Channels (UI Step 2 -> roughly 2s)
-            this.emitProgress(2, 'Executing channels add...');
+            this.emitProgress(event, 2, 'Executing channels add...');
             await new Promise(r => setTimeout(r, 2000));
 
             // Step 3: Workspaces (UI Step 3 -> roughly 2s)
-            this.emitProgress(3, 'Creating agent workspaces...');
+            this.emitProgress(event, 3, 'Creating agent workspaces...');
             await new Promise(r => setTimeout(r, 2000));
 
             // Steps 4-7: UI Step 4 -> roughly 2s total
-            this.emitProgress(4, 'Writing USER.md...');
+            this.emitProgress(event, 4, 'Writing USER.md...');
             await new Promise(r => setTimeout(r, 500));
 
-            this.emitProgress(5, 'Writing AGENTS.md...');
+            this.emitProgress(event, 5, 'Writing AGENTS.md...');
             await new Promise(r => setTimeout(r, 500));
 
-            this.emitProgress(6, 'Copying SOUL.md templates...');
+            this.emitProgress(event, 6, 'Copying SOUL.md templates...');
             await new Promise(r => setTimeout(r, 500));
 
-            this.emitProgress(7, 'Creating symlinks...');
+            this.emitProgress(event, 7, 'Creating symlinks...');
             await new Promise(r => setTimeout(r, 500));
 
             // Step 8: Gateway Startup & Health Checks (UI Step 5 -> roughly 2s)
-            this.emitProgress(8, 'Starting Gateway & Health Checks...');
+            this.emitProgress(event, 8, 'Starting Gateway & Health Checks...');
             await new Promise(r => setTimeout(r, 2000));
 
-            this.event.reply('deployment:success', { success: true });
+            event.reply('deployment:success', { success: true });
 
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during deployment.';
-            this.event.reply('deployment:error', { message: errorMessage });
+            event.reply('deployment:error', { message: errorMessage });
         }
     }
 }
