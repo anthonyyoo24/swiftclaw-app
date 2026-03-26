@@ -3,7 +3,7 @@
 import { Icon } from "@iconify/react";
 import { Anthropic, OpenAI, Google } from "@lobehub/icons";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
-import { PROVIDER_OPTIONS, MODEL_OPTIONS } from "./AIBrainStep";
+import { PROVIDER_OPTIONS, MODEL_OPTIONS } from "@/constants/ai-ui";
 import { CHANNELS } from "./ChannelSetupStep";
 import { AgentTemplateId } from "../schema";
 import { TEMPLATES, Template } from "./CharacterSelectionView";

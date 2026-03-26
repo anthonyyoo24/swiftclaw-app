@@ -8,27 +8,9 @@ import os from 'os';
 const execAsync = promisify(exec);
 
 
-export interface DeploymentPayload {
-    aiAuthType: 'apiKey' | 'oauth';
-    isAiAuthenticated: boolean;
-    aiProvider: string;
-    aiModel: string;
-    aiApiKey?: string;
-    selectedChannel?: 'discord' | 'telegram' | 'whatsapp';
-    channelToken?: string;
-    agentTemplateIds: string[];
-}
-
-/** Maps our UI provider IDs to the OpenClaw CLI `--provider` and optional `--method` flags */
-interface OAuthProviderEntry {
-    provider: string;
-    method?: string;
-}
-
-const OAUTH_PROVIDER_MAP: Record<string, OAuthProviderEntry> = {
-    'openai-codex': { provider: 'openai-codex' },
-    'anthropic-oauth': { provider: 'anthropic', method: 'setup-token' },
-};
+import { DeploymentPayload } from '../../src/types/ai';
+import { OAUTH_PROVIDER_MAP } from '../../src/constants/ai-core';
+import { IPC_EVENTS } from '../../src/constants/ipc';
 
 
 export class OpenClawService {
@@ -44,7 +26,7 @@ export class OpenClawService {
     }
 
     private emitProgress(event: IpcMainEvent, step: number, label: string) {
-        event.reply('deployment:progress', { step, label });
+        event.reply(IPC_EVENTS.DEPLOYMENT_PROGRESS, { step, label });
     }
 
 
@@ -65,14 +47,14 @@ export class OpenClawService {
     async authenticate(event: IpcMainEvent, provider: string) {
         if (this.cliProcess) {
             console.warn('[OpenClawService] Operation already in progress, ignoring.');
-            event.reply('auth:oauth:complete', { success: false, error: 'An operation is already in progress.' });
+            event.reply(IPC_EVENTS.AUTH_OAUTH_COMPLETE, { success: false, error: 'An operation is already in progress.' });
             return;
         }
         this.resetState();
         const entry = OAUTH_PROVIDER_MAP[provider];
 
         if (!entry) {
-            event.reply('auth:oauth:complete', {
+            event.reply(IPC_EVENTS.AUTH_OAUTH_COMPLETE, {
                 success: false,
                 error: `Invalid OAuth provider: ${provider}`,
             });
@@ -148,7 +130,7 @@ exit [lindex $result 3]
 
             if (afterMtime > 0 && afterMtime > beforeMtime) {
                 console.log(`[OAuth] CLI exited successfully – authentication complete`);
-                event.reply('auth:oauth:complete', { success: true });
+                event.reply(IPC_EVENTS.AUTH_OAUTH_COMPLETE, { success: true });
             } else if (!this.wasCancelled) {
                 console.log(`[OAuth] CLI exited but config.json was not updated. Code: ${exitCode}`);
                 throw new Error(`Authentication cancelled or failed.`);
@@ -157,7 +139,7 @@ exit [lindex $result 3]
             if (this.wasCancelled) return;
             console.error('[OAuth] Error:', error);
             const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
-            event.reply('auth:oauth:complete', { success: false, error: errorMessage });
+            event.reply(IPC_EVENTS.AUTH_OAUTH_COMPLETE, { success: false, error: errorMessage });
         } finally {
             // Ensure process is always cleaned up, even if cancel() already handled it
             if (this.cliProcess && !this.cliProcess.killed) {
@@ -278,7 +260,7 @@ exit [lindex $result 3]
 
             if (afterMtime > 0 && afterMtime > beforeMtime) {
                 console.log('[OAuth/Anthropic] Config updated – authentication complete');
-                event.reply('auth:oauth:complete', { success: true });
+                event.reply(IPC_EVENTS.AUTH_OAUTH_COMPLETE, { success: true });
             } else if (!this.wasCancelled) {
                 throw new Error('Authentication completed but config was not updated.');
             }
@@ -287,7 +269,7 @@ exit [lindex $result 3]
             if (this.wasCancelled) return;
             console.error('[OAuth/Anthropic] Error:', error);
             const errorMessage = error instanceof Error ? error.message : 'Anthropic authentication failed';
-            event.reply('auth:oauth:complete', { success: false, error: errorMessage });
+            event.reply(IPC_EVENTS.AUTH_OAUTH_COMPLETE, { success: false, error: errorMessage });
         } finally {
             if (this.cliProcess && !this.cliProcess.killed) {
                 this.cliProcess.kill();
@@ -311,7 +293,7 @@ exit [lindex $result 3]
     async deploy(event: IpcMainEvent, payload: DeploymentPayload) {
         if (this.cliProcess) {
             console.warn('[OpenClawService] Operation already in progress, ignoring.');
-            event.reply('deployment:error', { message: 'An operation is already in progress.' });
+            event.reply(IPC_EVENTS.DEPLOYMENT_ERROR, { message: 'An operation is already in progress.' });
             return;
         }
         this.resetState();
@@ -380,11 +362,11 @@ exit [lindex $result 3]
             this.emitProgress(event, 8, 'Starting Gateway & Health Checks...');
             await new Promise(r => setTimeout(r, 2000));
 
-            event.reply('deployment:success', { success: true });
+            event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });
 
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during deployment.';
-            event.reply('deployment:error', { message: errorMessage });
+            event.reply(IPC_EVENTS.DEPLOYMENT_ERROR, { message: errorMessage });
         }
     }
 }
