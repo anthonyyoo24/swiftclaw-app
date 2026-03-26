@@ -150,12 +150,12 @@ export function SetupWizard() {
         if (typeof window !== 'undefined' && window.electron?.ipcRenderer) {
             backendSuccessRef.current = false;
             
-            cleanupIpc = window.electron.ipcRenderer.on('deployment:success', () => {
+            cleanupIpc = window.electron.ipcRenderer.onDeploymentSuccess(() => {
                 backendSuccessRef.current = true;
                 checkComplete();
             });
 
-            const errorCleanup = window.electron.ipcRenderer.on('deployment:error', (data: unknown) => {
+            const errorCleanup = window.electron.ipcRenderer.onDeploymentError((data: unknown) => {
                 const typedData = data as { message?: string };
                 if (deployTimeoutRef.current) clearTimeout(deployTimeoutRef.current);
                 setDeployError(typedData?.message || "An unknown error occurred during deployment.");
@@ -166,7 +166,7 @@ export function SetupWizard() {
             const currentValues = methods.getValues();
             const result = onboardingSchema.safeParse(currentValues);
             if (result.success) {
-                window.electron.ipcRenderer.send('deployment:start', result.data);
+                window.electron.ipcRenderer.sendDeploymentStart(result.data);
             }
 
             const originalCleanup = cleanupIpc;

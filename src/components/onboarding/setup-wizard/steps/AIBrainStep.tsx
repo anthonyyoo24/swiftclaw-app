@@ -8,7 +8,6 @@ import { CustomDropdown } from "@/components/ui/CustomDropdown";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 import type { OnboardingFormValues } from "@/components/onboarding/setup-wizard/schema";
 import { PROVIDER_OPTIONS, MODEL_OPTIONS } from "@/constants/ai-ui";
-import { IPC_EVENTS } from "@/constants/ipc";
 
 export function AIBrainStep() {
     const { control, setValue, watch, formState: { errors } } = useFormContext<OnboardingFormValues>();
@@ -42,19 +41,19 @@ export function AIBrainStep() {
         if (!provider) return;
         setIsConnecting(true);
         setAuthError(null);
-        window.electron.ipcRenderer.send(IPC_EVENTS.AUTH_OAUTH_START, { provider });
+        window.electron.ipcRenderer.sendAuthOauthStart({ provider });
     };
 
     const handleCancelClick = () => {
         setIsConnecting(false);
-        window.electron.ipcRenderer.send(IPC_EVENTS.AUTH_OAUTH_CANCEL);
+        window.electron.ipcRenderer.sendAuthOauthCancel();
     };
 
     // Robust IPC Listener Management
     useEffect(() => {
         if (typeof window === 'undefined' || !window.electron?.ipcRenderer) return;
 
-        const cleanup = window.electron.ipcRenderer.on(IPC_EVENTS.AUTH_OAUTH_COMPLETE, (data: unknown) => {
+        const cleanup = window.electron.ipcRenderer.onAuthOauthComplete((data: unknown) => {
             const result = data as { success: boolean; error?: string };
             setIsConnecting(false);
             if (result.success) {
@@ -70,7 +69,7 @@ export function AIBrainStep() {
             if (cleanup) cleanup();
             // If the user leaves the step while connecting, we should ideally tell the backend to cancel
             if (isConnecting) {
-                window.electron.ipcRenderer.send(IPC_EVENTS.AUTH_OAUTH_CANCEL);
+                window.electron.ipcRenderer.sendAuthOauthCancel();
             }
         };
     }, [provider, isConnecting, setValue]);

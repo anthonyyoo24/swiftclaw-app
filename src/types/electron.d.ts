@@ -1,8 +1,13 @@
+import { DeploymentPayload } from './ai';
+
 export interface ElectronAPI {
     ipcRenderer: {
-        send: (channel: string, ...args: unknown[]) => void;
-        on: (channel: string, func: (...args: unknown[]) => void) => () => void;
-        removeAllListeners: (channel: string) => void;
+        sendAuthOauthStart: (payload: { provider: string }) => void;
+        sendAuthOauthCancel: () => void;
+        onAuthOauthComplete: (callback: (data: { success: boolean; error?: string }) => void) => () => void;
+        sendDeploymentStart: (payload: DeploymentPayload) => void;
+onDeploymentSuccess: (callback: () => void) => () => void;
+        onDeploymentError: (callback: (data: { message?: string }) => void) => () => void;
     };
 }
 
