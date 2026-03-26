@@ -1,11 +1,8 @@
 import { IpcMainEvent } from 'electron';
-import { exec, spawn, type ChildProcess } from 'child_process';
-import { promisify } from 'util';
+import { spawn, type ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-
-const execAsync = promisify(exec);
 
 
 import { DeploymentPayload } from '../../src/types/ai';
@@ -290,6 +287,47 @@ exit [lindex $result 3]
         }
     }
 
+    /**
+     * Safely executes an npx command using an argument array to prevent shell injection.
+     */
+    private async runNpxCommand(args: string[], env: NodeJS.ProcessEnv): Promise<{ stdout: string; stderr: string }> {
+        return new Promise((resolve, reject) => {
+            const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+            console.log(`[OpenClawService] Executing: ${command} ${args.map(a => a.includes(' ') ? `"${a}"` : a).join(' ')}`);
+            
+            this.cliProcess = spawn(command, args, { 
+                env, 
+                shell: false,
+                stdio: ['ignore', 'pipe', 'pipe']
+            });
+
+            let stdout = '';
+            let stderr = '';
+
+            this.cliProcess.stdout?.on('data', (data) => {
+                stdout += data.toString();
+            });
+
+            this.cliProcess.stderr?.on('data', (data) => {
+                stderr += data.toString();
+            });
+
+            this.cliProcess.on('error', (err) => {
+                this.cliProcess = null;
+                reject(err);
+            });
+
+            this.cliProcess.on('close', (code) => {
+                this.cliProcess = null;
+                if (code !== 0) {
+                    reject(new Error(`Command failed with exit code ${code}\nStderr: ${stderr}`));
+                } else {
+                    resolve({ stdout, stderr });
+                }
+            });
+        });
+    }
+
     async deploy(event: IpcMainEvent, payload: DeploymentPayload) {
         if (this.cliProcess) {
             console.warn('[OpenClawService] Operation already in progress, ignoring.');
@@ -303,7 +341,8 @@ exit [lindex $result 3]
             // Step 1: Auth (UI Step 1 -> Phase 2 OpenClaw Bootstrapping)
             this.emitProgress(event, 1, 'Bootstrapping core OpenClaw configuration...');
 
-            let onboardCmd: string;
+            const baseArgs = ['openclaw', 'onboard', '--non-interactive', '--accept-risk'];
+            let onboardArgs: string[] = [];
 
             if (payload.aiAuthType === 'oauth') {
                 if (!payload.isAiAuthenticated) {
@@ -311,11 +350,16 @@ exit [lindex $result 3]
                 }
                 const entry = OAUTH_PROVIDER_MAP[payload.aiProvider];
                 const authChoice = entry?.provider || payload.aiProvider;
-                onboardCmd = `npx openclaw onboard --non-interactive --accept-risk --auth-choice ${authChoice} --model ${payload.aiModel} --skip-channels --skip-skills`;
+                onboardArgs = [
+                    ...baseArgs,
+                    '--auth-choice', authChoice,
+                    '--model', payload.aiModel,
+                    '--skip-channels', '--skip-skills'
+                ];
             } else {
                 // API Key Flow
                 const aiProvider = payload.aiProvider.toLowerCase();
-                const apiKey = payload.aiApiKey?.replace(/"/g, '\\"') || "";
+                const apiKey = payload.aiApiKey || "";
 
                 let authChoice = `${aiProvider}-api-key`;
                 let apiKeyFlag = `--${aiProvider}-api-key`;
@@ -328,10 +372,16 @@ exit [lindex $result 3]
                     apiKeyFlag = '--openai-api-key';
                 }
 
-                onboardCmd = `npx openclaw onboard --non-interactive --accept-risk --auth-choice ${authChoice} ${apiKeyFlag} "${apiKey}" --model ${payload.aiModel} --skip-channels --skip-skills`;
+                onboardArgs = [
+                    ...baseArgs,
+                    '--auth-choice', authChoice,
+                    apiKeyFlag, apiKey,
+                    '--model', payload.aiModel,
+                    '--skip-channels', '--skip-skills'
+                ];
             }
 
-            const { stdout, stderr } = await execAsync(onboardCmd, { env: this.buildCliEnv() });
+            const { stdout, stderr } = await this.runNpxCommand(onboardArgs, this.buildCliEnv());
             if (stderr && stderr.trim()) {
                 console.warn(`Command stderr: ${stderr}`);
             }
