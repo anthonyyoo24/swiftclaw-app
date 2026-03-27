@@ -341,7 +341,7 @@ exit [lindex $result 3]
             // Step 1: Auth (UI Step 1 -> Phase 2 OpenClaw Bootstrapping)
             this.emitProgress(event, 1, 'Bootstrapping core OpenClaw configuration...');
 
-            const baseArgs = ['openclaw', 'onboard', '--non-interactive', '--accept-risk'];
+            const baseArgs = ['openclaw@latest', 'onboard', '--non-interactive', '--accept-risk'];
             let onboardArgs: string[] = [];
 
             if (payload.aiAuthType === 'oauth') {
@@ -353,7 +353,6 @@ exit [lindex $result 3]
                 onboardArgs = [
                     ...baseArgs,
                     '--auth-choice', authChoice,
-                    '--model', payload.aiModel,
                     '--skip-channels', '--skip-skills'
                 ];
             } else {
@@ -376,7 +375,7 @@ exit [lindex $result 3]
                     ...baseArgs,
                     '--auth-choice', authChoice,
                     apiKeyFlag, apiKey,
-                    '--model', payload.aiModel,
+                    '--secret-input-mode', 'plaintext',
                     '--skip-channels', '--skip-skills'
                 ];
             }
@@ -386,6 +385,37 @@ exit [lindex $result 3]
                 console.warn(`Command stderr: ${stderr}`);
             }
             console.log(`Command stdout: ${stdout}`);
+
+            // Write the selected model to ~/.openclaw/openclaw.json
+            // openclaw onboard doesn't accept a --model flag; the default model
+            // must be written directly to the config file.
+            const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
+            const providerPrefix: Record<string, string> = {
+                'openai-api': 'openai',
+                'openai-codex': 'openai-codex',
+                'anthropic-api': 'anthropic',
+                'anthropic-oauth': 'anthropic',
+            };
+            const prefix = providerPrefix[payload.aiProvider] || payload.aiProvider;
+            const modelPrimary = `${prefix}/${payload.aiModel}`;
+
+            let config: Record<string, unknown> = {};
+            if (fs.existsSync(configPath)) {
+                try {
+                    config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+                } catch { /* start fresh if unparseable */ }
+            }
+
+            const agents = (config.agents ?? {}) as Record<string, unknown>;
+            const defaults = (agents.defaults ?? {}) as Record<string, unknown>;
+            const model = (defaults.model ?? {}) as Record<string, unknown>;
+            model.primary = modelPrimary;
+            defaults.model = model;
+            agents.defaults = defaults;
+            config.agents = agents;
+
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+            console.log(`[OpenClawService] Set default model to: ${modelPrimary}`);
 
             // Step 2: Channels (UI Step 2 -> roughly 2s)
             this.emitProgress(event, 2, 'Executing channels add...');
