@@ -412,6 +412,10 @@ exit [lindex $result 3]
                 const aiProvider = payload.aiProvider.toLowerCase();
                 const apiKey = payload.aiApiKey || "";
 
+                if (!apiKey) {
+                    throw new Error("API key is required for API key authentication.");
+                }
+
                 let authChoice = `${aiProvider}-api-key`;
                 let apiKeyFlag = `--${aiProvider}-api-key`;
 
