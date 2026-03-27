@@ -6,8 +6,8 @@ export interface DeploymentPayload {
     aiProvider: string;
     aiModel: string;
     aiApiKey?: string;
-    selectedChannel?: 'discord' | 'telegram' | 'whatsapp';
-    channelToken?: string;
+    selectedChannel: 'discord' | 'telegram' | 'whatsapp';
+    channelToken: string;
     agentTemplateIds: string[];
 }
 
