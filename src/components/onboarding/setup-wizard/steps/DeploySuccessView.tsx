@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { dispatchOnboardingStatusChanged } from "@/hooks/useOnboardingStatus";
 
 export function DeploySuccessView() {
@@ -10,13 +10,13 @@ export function DeploySuccessView() {
     const [secondsLeft, setSecondsLeft] = useState(5);
 
     /** Mark onboarding as complete and navigate to dashboard */
-    const navigateToDashboard = () => {
+    const navigateToDashboard = useCallback(() => {
         const isSecure = typeof window !== "undefined" && window.isSecureContext;
         const cookieSuffix = `; path=/; max-age=31536000; SameSite=Lax${isSecure ? "; Secure" : ""}`;
         document.cookie = `onboardingComplete=true${cookieSuffix}`;
         dispatchOnboardingStatusChanged();
         router.push("/");
-    };
+    }, [router]);
 
     useEffect(() => {
         // Countdown timer for auto-navigation
@@ -38,8 +38,7 @@ export function DeploySuccessView() {
         if (secondsLeft === 0) {
             navigateToDashboard();
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [secondsLeft]);
+    }, [secondsLeft, navigateToDashboard]);
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 min-h-100">
