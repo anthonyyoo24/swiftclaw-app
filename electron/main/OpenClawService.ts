@@ -10,6 +10,12 @@ import { OAUTH_PROVIDER_MAP } from '../../src/constants/ai-core';
 import { IPC_EVENTS } from '../../src/constants/ipc';
 
 
+/** Flags whose immediately following argument contains a secret value. */
+const SECRET_FLAGS = /^--(?:[\w-]*api[_-]?key|secret|token|password|auth[_-]?token)$/i;
+
+/** Fallback: redact any standalone value that looks like a long random credential (≥20 alphanum chars). */
+const SECRET_VALUE_PATTERN = /^[A-Za-z0-9_\-]{20,}$/;
+
 export class OpenClawService {
     private cliProcess: ChildProcess | null = null;
     private wasCancelled = false;
@@ -305,15 +311,42 @@ exit [lindex $result 3]
     }
 
     /**
+     * Returns a copy of `args` with sensitive values replaced by "<REDACTED>".
+     * Rule 1: Any value immediately following a known secret flag is redacted.
+     * Rule 2: Any non-flag standalone value matching a long credential pattern is redacted.
+     */
+    private sanitizeArgs(args: string[]): string[] {
+        const sanitized: string[] = [];
+        let redactNext = false;
+
+        for (const arg of args) {
+            if (redactNext) {
+                sanitized.push('<REDACTED>');
+                redactNext = false;
+            } else if (SECRET_FLAGS.test(arg)) {
+                sanitized.push(arg);     // keep the flag name visible
+                redactNext = true;       // redact its value on the next iteration
+            } else if (!arg.startsWith('-') && SECRET_VALUE_PATTERN.test(arg)) {
+                sanitized.push('<REDACTED>');
+            } else {
+                sanitized.push(arg);
+            }
+        }
+
+        return sanitized;
+    }
+
+    /**
      * Safely executes an npx command using an argument array to prevent shell injection.
      */
     private async runNpxCommand(args: string[], env: NodeJS.ProcessEnv): Promise<{ stdout: string; stderr: string }> {
         return new Promise((resolve, reject) => {
             const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-            console.log(`[OpenClawService] Executing: ${command} ${args.map(a => a.includes(' ') ? `"${a}"` : a).join(' ')}`);
-            
-            this.cliProcess = spawn(command, args, { 
-                env, 
+            const sanitizedArgs = this.sanitizeArgs(args);
+            console.log(`[OpenClawService] Executing: ${command} ${sanitizedArgs.map(a => a.includes(' ') ? `"${a}"` : a).join(' ')}`);
+
+            this.cliProcess = spawn(command, args, {
+                env,
                 shell: false,
                 stdio: ['ignore', 'pipe', 'pipe']
             });
@@ -367,10 +400,12 @@ exit [lindex $result 3]
                 }
                 const entry = OAUTH_PROVIDER_MAP[payload.aiProvider];
                 const authChoice = entry?.provider || payload.aiProvider;
+
+                //'--skip-health is temporary
                 onboardArgs = [
                     ...baseArgs,
                     '--auth-choice', authChoice,
-                    '--skip-channels', '--skip-skills'
+                    '--skip-channels', '--skip-skills', '--skip-health'
                 ];
             } else {
                 // API Key Flow
@@ -388,12 +423,13 @@ exit [lindex $result 3]
                     apiKeyFlag = '--openai-api-key';
                 }
 
+                //'--skip-health is temporary
                 onboardArgs = [
                     ...baseArgs,
                     '--auth-choice', authChoice,
                     apiKeyFlag, apiKey,
                     '--secret-input-mode', 'plaintext',
-                    '--skip-channels', '--skip-skills'
+                    '--skip-channels', '--skip-skills', '--skip-health'
                 ];
             }
 
