@@ -1,11 +1,15 @@
 import { Anthropic, OpenAI } from "@lobehub/icons";
 import type { DropdownOption } from "@/components/ui/CustomDropdown";
 
-export const PROVIDER_OPTIONS: DropdownOption[] = [
-    { id: "openai-api", label: "OpenAI (API Key)", icon: <OpenAI size={20} className="w-5 h-5 text-[#10A37F]" /> },
-    { id: "openai-codex", label: "OpenAI Codex (Browser Login)", icon: <OpenAI size={20} className="w-5 h-5 text-[#10A37F]" /> },
-    { id: "anthropic-api", label: "Anthropic (API Key)", icon: <Anthropic size={20} className="w-5 h-5 text-[#D97757]" /> },
-    { id: "anthropic-oauth", label: "Anthropic (Browser Login)", icon: <Anthropic size={20} className="w-5 h-5 text-[#D97757]" /> },
+export interface ProviderOption extends DropdownOption {
+    authType: "api" | "oauth";
+}
+
+export const PROVIDER_OPTIONS: ProviderOption[] = [
+    { id: "openai-api",      label: "OpenAI (API Key)",             authType: "api",   icon: <OpenAI size={20} className="w-5 h-5 text-[#10A37F]" /> },
+    { id: "openai-codex",    label: "OpenAI Codex (Browser Login)", authType: "oauth", icon: <OpenAI size={20} className="w-5 h-5 text-[#10A37F]" /> },
+    { id: "anthropic-api",   label: "Anthropic (API Key)",          authType: "api",   icon: <Anthropic size={20} className="w-5 h-5 text-[#D97757]" /> },
+    { id: "anthropic-oauth", label: "Anthropic (Browser Login)",    authType: "oauth", icon: <Anthropic size={20} className="w-5 h-5 text-[#D97757]" /> },
 ];
 
 export const MODEL_OPTIONS: Record<string, DropdownOption[]> = {

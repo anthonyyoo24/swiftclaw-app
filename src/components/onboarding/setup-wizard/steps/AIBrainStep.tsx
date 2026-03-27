@@ -28,10 +28,9 @@ export function AIBrainStep() {
         setValue("isAiAuthenticated", false, { shouldValidate: true });
         setAuthError(null);
 
-        // Derive auth type from the ID suffix
-        if (newProvider.endsWith("-oauth") || newProvider === "openai-codex") {
+        const selectedProvider = PROVIDER_OPTIONS.find(p => p.id === newProvider);
+        if (selectedProvider?.authType === "oauth") {
             setValue("aiAuthType", "oauth", { shouldValidate: true });
-            // For OAuth, clear the API key just in case
             setValue("aiApiKey", "", { shouldValidate: false });
         } else {
             setValue("aiAuthType", "apiKey", { shouldValidate: true });
