@@ -42,12 +42,12 @@ export function AIBrainStep() {
         if (!provider) return;
         setIsConnecting(true);
         setAuthError(null);
-        window.electron.ipcRenderer.sendAuthOauthStart({ provider });
+        window.electron?.ipcRenderer.sendAuthOauthStart({ provider });
     };
 
     const handleCancelClick = () => {
         setIsConnecting(false);
-        window.electron.ipcRenderer.sendAuthOauthCancel();
+        window.electron?.ipcRenderer.sendAuthOauthCancel();
     };
 
     // Mirror isConnecting into a ref so the IPC cleanup always reads a fresh value
@@ -75,7 +75,7 @@ export function AIBrainStep() {
             if (cleanup) cleanup();
             // If the user leaves the step while connecting, tell the backend to cancel
             if (connectingRef.current) {
-                window.electron.ipcRenderer.sendAuthOauthCancel();
+                window.electron?.ipcRenderer.sendAuthOauthCancel();
             }
         };
     }, [provider, setValue]);

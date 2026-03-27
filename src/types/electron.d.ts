@@ -13,6 +13,6 @@ onDeploymentSuccess: (callback: () => void) => () => void;
 
 declare global {
     interface Window {
-        electron: ElectronAPI;
+        electron?: ElectronAPI;
     }
 }
