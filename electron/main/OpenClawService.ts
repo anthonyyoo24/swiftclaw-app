@@ -74,6 +74,17 @@ export class OpenClawService {
             }
 
             const envForCli = this.buildCliEnv();
+
+            // Validate entry values against a strict allowlist before shell interpolation.
+            // entry.provider/method come from a hardcoded map, but guard against future changes.
+            const SAFE_ARG = /^[a-zA-Z0-9_-]+$/;
+            if (!SAFE_ARG.test(entry.provider)) {
+                throw new Error(`[OAuth] Unsafe provider value rejected: ${entry.provider}`);
+            }
+            if (entry.method && !SAFE_ARG.test(entry.method)) {
+                throw new Error(`[OAuth] Unsafe method value rejected: ${entry.method}`);
+            }
+
             let cliCommand = `npx -y openclaw@latest models auth login --provider ${entry.provider}`;
             if (entry.method) {
                 cliCommand += ` --method ${entry.method}`;
