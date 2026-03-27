@@ -211,6 +211,12 @@ expect eof
 
             if (this.wasCancelled) return;
 
+            if (!/^[A-Za-z0-9_-]+$/.test(capturedToken)) {
+                throw new Error(
+                    '[OAuth/Anthropic] Captured token contains unexpected characters; aborting to prevent script injection.'
+                );
+            }
+
             // ── Stage 2: Pipe the token into OpenClaw paste-token ──
             console.log('[OAuth/Anthropic] Stage 2: Registering token with OpenClaw...');
 
