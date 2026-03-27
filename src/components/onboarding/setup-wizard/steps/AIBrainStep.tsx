@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import { Icon } from "@iconify/react";
 import { Input } from "@/components/ui/Input";
@@ -14,6 +14,7 @@ export function AIBrainStep() {
     const [showApiKey, setShowApiKey] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
     const [authError, setAuthError] = useState<string | null>(null);
+    const connectingRef = useRef(false);
 
     const provider = watch("aiProvider");
     const aiAuthType = watch("aiAuthType");
@@ -49,6 +50,11 @@ export function AIBrainStep() {
         window.electron.ipcRenderer.sendAuthOauthCancel();
     };
 
+    // Mirror isConnecting into a ref so the IPC cleanup always reads a fresh value
+    useEffect(() => {
+        connectingRef.current = isConnecting;
+    }, [isConnecting]);
+
     // Robust IPC Listener Management
     useEffect(() => {
         if (typeof window === 'undefined' || !window.electron?.ipcRenderer) return;
@@ -67,12 +73,12 @@ export function AIBrainStep() {
 
         return () => {
             if (cleanup) cleanup();
-            // If the user leaves the step while connecting, we should ideally tell the backend to cancel
-            if (isConnecting) {
+            // If the user leaves the step while connecting, tell the backend to cancel
+            if (connectingRef.current) {
                 window.electron.ipcRenderer.sendAuthOauthCancel();
             }
         };
-    }, [provider, isConnecting, setValue]);
+    }, [provider, setValue]);
 
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
