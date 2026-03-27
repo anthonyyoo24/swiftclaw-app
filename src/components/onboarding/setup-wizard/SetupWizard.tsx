@@ -339,7 +339,7 @@ export function SetupWizard() {
             case "deploy":
                 if (deployState === 'loading') return <DeployProgressView duration={DEPLOY_DURATION_MS} />;
                 if (deployState === 'success') return <DeploySuccessView />;
-                if (deployState === 'error') return <DeployErrorView error={deployError} onRetry={() => setDeployState('idle')} />;
+                if (deployState === 'error') return <DeployErrorView error={deployError} onRetry={() => setDeployState('loading')} />;
                 return (
                     <DeploymentStep
                         aiProvider={formValues.aiProvider ?? ""}
