@@ -170,6 +170,13 @@ export function SetupWizard() {
                 // [UNREACHABLE] — handleStartDeployment validates before setDeployState('loading').
                 // Retained as a diagnostic safety net for future refactors.
                 console.error("[UNREACHABLE] Schema parse failed inside deploy effect.", result.error);
+                if (deployTimeoutRef.current) {
+                    clearTimeout(deployTimeoutRef.current);
+                    deployTimeoutRef.current = null;
+                }
+                if (errorCleanup) errorCleanup();
+                backendSuccessRef.current = false;
+                setTimeout(() => setDeployState('error'), 0);
                 return;
             }
 
