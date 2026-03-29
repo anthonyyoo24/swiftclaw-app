@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { WizardShell } from "@/components/ui/wizard/WizardShell";
 import { toast } from "sonner";
@@ -165,9 +165,16 @@ export function SetupWizard() {
             // Start the deployment logic
             const currentValues = methods.getValues();
             const result = onboardingSchema.safeParse(currentValues);
-            if (result.success) {
-                window.electron.ipcRenderer.sendDeploymentStart(result.data);
+
+            if (!result.success) {
+                // [UNREACHABLE] — handleStartDeployment validates before setDeployState('loading').
+                // Retained as a diagnostic safety net for future refactors.
+                console.error("[UNREACHABLE] Schema parse failed inside deploy effect.", result.error);
+                return;
             }
+
+            // Happy path: valid data — proceed to IPC
+            window.electron.ipcRenderer.sendDeploymentStart(result.data);
 
             const originalCleanup = cleanupIpc;
             cleanupIpc = () => {
@@ -244,6 +251,22 @@ export function SetupWizard() {
         }
     };
 
+    const handleStartDeployment = useCallback(() => {
+        const result = onboardingSchema.safeParse(methods.getValues());
+
+        if (!result.success) {
+            const firstError = result.error.issues[0];
+            const friendlyMessage = firstError
+                ? `Please go back and check: ${firstError.message}`
+                : "Please go back and ensure all required fields are filled out.";
+            toast.error("Incomplete Setup", { description: friendlyMessage });
+            console.error("Form validation failed before deploy:", result.error);
+            return;
+        }
+
+        setDeployState('loading');
+    }, [methods]);
+
     const handleStepClick = (index: number) => {
         if (deployState !== 'idle' || index === currentStepIndex) return;
 
@@ -262,28 +285,7 @@ export function SetupWizard() {
     const handleNextClick = () => {
         if (deployState !== 'idle' || !isCurrentStepValid) return;
         if (currentStepIndex === steps.length - 1) {
-            // Final submit validation
-            const currentValues = methods.getValues();
-            const result = onboardingSchema.safeParse(currentValues);
-
-            if (!result.success) {
-                // If the final validation fails (e.g. they somehow bypassed a step), 
-                // don't proceed to deploy. Surface the error to the UI.
-                const firstError = result.error.issues[0];
-                const friendlyMessage = firstError
-                    ? `Please go back and check: ${firstError.message}`
-                    : "Please go back and ensure all required fields are filled out.";
-
-                toast.error("Incomplete Setup", {
-                    description: friendlyMessage
-                });
-
-                console.error("Form validation failed before deploy:", result.error);
-                return;
-            }
-
-            setDeployState('loading');
-            // Effect will handle timer and IPC call
+            handleStartDeployment();
         } else {
             goNext();
         }
@@ -339,7 +341,7 @@ export function SetupWizard() {
             case "deploy":
                 if (deployState === 'loading') return <DeployProgressView duration={DEPLOY_DURATION_MS} />;
                 if (deployState === 'success') return <DeploySuccessView />;
-                if (deployState === 'error') return <DeployErrorView error={deployError} onRetry={() => setDeployState('loading')} />;
+                if (deployState === 'error') return <DeployErrorView error={deployError} onRetry={handleStartDeployment} />;
                 return (
                     <DeploymentStep
                         aiProvider={formValues.aiProvider ?? ""}
