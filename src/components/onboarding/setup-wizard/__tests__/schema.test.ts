@@ -70,6 +70,40 @@ describe('onboardingSchema', () => {
             onboardingSchema.safeParse({ ...VALID_PERSONAL, personalContext: '' }).success
         ).toBe(false);
     });
+
+    // ── AI-brain final guards (onboardingSchema re-enforces these because
+    //    .merge() does not carry over aiBrainStepSchema's superRefine) ─────────
+
+    it('rejects apiKey auth when aiApiKey is too short (< 5 chars)', () => {
+        const result = onboardingSchema.safeParse({ ...VALID_PERSONAL, aiApiKey: 'abc' });
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toContain('aiApiKey');
+    });
+
+    it('accepts apiKey auth when aiApiKey is exactly 5 chars', () => {
+        expect(onboardingSchema.safeParse({ ...VALID_PERSONAL, aiApiKey: 'abcde' }).success).toBe(true);
+    });
+
+    it('rejects oauth auth when isAiAuthenticated is false', () => {
+        const result = onboardingSchema.safeParse({
+            ...VALID_PERSONAL,
+            aiAuthType: 'oauth',
+            isAiAuthenticated: false,
+            aiApiKey: undefined,
+        });
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toContain('isAiAuthenticated');
+    });
+
+    it('accepts oauth auth when isAiAuthenticated is true', () => {
+        const result = onboardingSchema.safeParse({
+            ...VALID_PERSONAL,
+            aiAuthType: 'oauth',
+            isAiAuthenticated: true,
+            aiApiKey: undefined,
+        });
+        expect(result.success).toBe(true);
+    });
 });
 
 // ── Per-step schemas (STEP_SCHEMAS) ───────────────────────────────────────────

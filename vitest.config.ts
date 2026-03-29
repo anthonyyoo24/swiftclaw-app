@@ -4,19 +4,34 @@ import path from 'path';
 export default defineConfig({
     test: {
         globals: true,
-        environmentMatchGlobs: [
-            ['src/**/*.test.tsx', 'jsdom'],
-            ['src/**/*.test.ts', 'jsdom'],
-            ['electron/**/*.test.ts', 'node'],
+        projects: [
+            {
+                extends: true,
+                test: {
+                    name: 'web',
+                    environment: 'jsdom',
+                    include: ['src/**/*.test.{ts,tsx}'],
+                    setupFiles: ['./src/tests/setup.ts'],
+                },
+                resolve: {
+                    alias: {
+                        '@': path.resolve(__dirname, './src'),
+                    },
+                },
+            },
+            {
+                extends: true,
+                test: {
+                    name: 'electron',
+                    environment: 'node',
+                    include: ['electron/**/*.test.ts'],
+                },
+                resolve: {
+                    alias: {
+                        '@': path.resolve(__dirname, './src'),
+                    },
+                },
+            },
         ],
-        setupFiles: ['./src/tests/setup.ts'],
-        alias: {
-            '@': path.resolve(__dirname, './src'),
-        },
-    },
-    resolve: {
-        alias: {
-            '@': path.resolve(__dirname, './src'),
-        },
     },
 });
