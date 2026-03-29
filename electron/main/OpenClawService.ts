@@ -35,11 +35,9 @@ export class OpenClawService {
 
     /**
      * Builds the environment for spawned CLI processes.
-     * Injects Gemini OAuth credentials as env vars if this is a Gemini auth flow.
      */
     private buildCliEnv(): NodeJS.ProcessEnv {
         const env: NodeJS.ProcessEnv = { ...process.env };
-
 
         return env;
     }
