@@ -82,7 +82,7 @@ export const aiBrainStepSchema = z.object({
     aiModel: z.string().min(1, "Please select a model"),
     aiApiKey: z.string().trim().optional(),
 }).superRefine((data, ctx) => {
-    if (data.aiAuthType === "apiKey" && (!data.aiApiKey || data.aiApiKey.trim().length < 5)) {
+    if (data.aiAuthType === "apiKey" && (!data.aiApiKey || data.aiApiKey.length < 5)) {
         ctx.addIssue({
             code: "custom",
             message: "API Key must be at least 5 characters",
