@@ -75,14 +75,16 @@ export const characterStepSchema = z.object({
         .min(1, "Select at least one agent"),
 });
 
-export const aiBrainStepSchema = z.object({
-    aiAuthType: z.enum(["apiKey", "oauth"]),
-    isAiAuthenticated: z.boolean(),
-    aiProvider: z.string().min(1, "Please select an AI provider"),
-    aiModel: z.string().min(1, "Please select a model"),
-    aiApiKey: z.string().trim().optional(),
-}).superRefine((data, ctx) => {
-    if (data.aiAuthType === "apiKey" && (!data.aiApiKey || data.aiApiKey.length < 5)) {
+// Shared helper — called from both aiBrainStepSchema and onboardingSchema
+// because .merge() does not carry superRefine refinements forward.
+interface AiAuthData {
+    aiAuthType: "apiKey" | "oauth";
+    isAiAuthenticated: boolean;
+    aiApiKey?: string;
+}
+
+function validateAiAuth(data: AiAuthData, ctx: z.RefinementCtx): void {
+    if (data.aiAuthType === "apiKey" && (!data.aiApiKey || data.aiApiKey.trim().length < 5)) {
         ctx.addIssue({
             code: "custom",
             message: "API Key must be at least 5 characters",
@@ -93,10 +95,18 @@ export const aiBrainStepSchema = z.object({
         ctx.addIssue({
             code: "custom",
             message: "Please connect your account to proceed",
-            path: ["isAiAuthenticated"], // This path can be used to show error near the Connect button
+            path: ["isAiAuthenticated"],
         });
     }
-});
+}
+
+export const aiBrainStepSchema = z.object({
+    aiAuthType: z.enum(["apiKey", "oauth"]),
+    isAiAuthenticated: z.boolean(),
+    aiProvider: z.string().min(1, "Please select an AI provider"),
+    aiModel: z.string().min(1, "Please select a model"),
+    aiApiKey: z.string().trim().optional(),
+}).superRefine((data, ctx) => validateAiAuth(data, ctx));
 
 export const channelSetupStepSchema = z.object({
     selectedChannel: z.enum(SUPPORTED_CHANNEL_IDS, {
@@ -167,23 +177,6 @@ export const onboardingSchema = welcomeStepSchema
             });
         }
     })
-    .superRefine((data, ctx) => {
-        // aiBrainStepSchema's superRefine is not carried over by .merge(), so we
-        // re-enforce the ai-brain rules here as the final deploy-time guard.
-        if (data.aiAuthType === "apiKey" && (!data.aiApiKey || data.aiApiKey.trim().length < 5)) {
-            ctx.addIssue({
-                code: "custom",
-                message: "API Key must be at least 5 characters",
-                path: ["aiApiKey"],
-            });
-        }
-        if (data.aiAuthType === "oauth" && !data.isAiAuthenticated) {
-            ctx.addIssue({
-                code: "custom",
-                message: "Please connect your account to proceed",
-                path: ["isAiAuthenticated"],
-            });
-        }
-    });
+    .superRefine((data, ctx) => validateAiAuth(data, ctx));
 
 export type OnboardingFormValues = z.infer<typeof onboardingSchema>;
