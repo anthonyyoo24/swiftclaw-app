@@ -29,6 +29,18 @@ import { CharacterSelectionView } from "./steps/CharacterSelectionView";
 import { dispatchOnboardingStatusChanged } from "@/hooks/useOnboardingStatus";
 
 // ---------------------------------------------------------------------------
+// IPC payload types
+// ---------------------------------------------------------------------------
+
+interface DeploymentErrorPayload {
+    message?: string;
+}
+
+function isDeploymentErrorPayload(obj: unknown): obj is DeploymentErrorPayload {
+    return typeof obj === 'object' && obj !== null;
+}
+
+// ---------------------------------------------------------------------------
 // Step definitions
 // ---------------------------------------------------------------------------
 
@@ -131,8 +143,8 @@ export function SetupWizard() {
             });
 
             const errorCleanup = window.electron.ipcRenderer.onDeploymentError((data: unknown) => {
-                const typedData = data as { message?: string };
-                setDeployError(typedData?.message || "An unknown error occurred during deployment.");
+                const typed = isDeploymentErrorPayload(data) ? data : {};
+                setDeployError(typed.message || "An unknown error occurred during deployment.");
                 setDeployState('error');
             });
 
