@@ -157,9 +157,15 @@ export function SetupWizard() {
                 if (originalCleanup) originalCleanup();
                 if (errorCleanup) errorCleanup();
             };
-        } else {
-            // Web mode fallback
+        } else if (process.env.NODE_ENV === 'development') {
+            // Dev-only: simulate backend success when running outside Electron
             setTimeout(() => setBackendDone(true), 0);
+        } else {
+            // Fail closed — no Electron bridge available in production
+            setTimeout(() => {
+                setDeployError("Electron bridge is unavailable. Please restart the desktop app.");
+                setDeployState('error');
+            }, 0);
         }
 
         return () => {
