@@ -28,7 +28,11 @@ vi.mock('../steps/CharacterSelectionView', () => ({ CharacterSelectionView: () =
 vi.mock('../steps/AIBrainStep', () => ({ AIBrainStep: () => <div>AIBrain</div> }));
 vi.mock('../steps/ChannelSetupStep', () => ({ ChannelSetupStep: () => <div>Channel</div> }));
 vi.mock('../steps/DeploymentStep', () => ({ DeploymentStep: () => <div data-testid="step-deploy">Deploy</div> }));
-vi.mock('../steps/DeployProgressView', () => ({ DeployProgressView: () => <div data-testid="step-deploy-progress">Deploying...</div> }));
+vi.mock('../steps/DeployProgressView', () => ({
+    DeployProgressView: () => (
+        <div data-testid="step-deploy-progress">Deploying...</div>
+    ),
+}));
 vi.mock('../steps/DeploySuccessView', () => ({ DeploySuccessView: () => <div data-testid="step-deploy-success">Success</div> }));
 vi.mock('../steps/DeployErrorView', () => ({ DeployErrorView: ({ error }: { error: string }) => <div data-testid="step-deploy-error">{error}</div> }));
 vi.mock('../WelcomeIllustration', () => ({ WelcomeIllustration: () => null }));

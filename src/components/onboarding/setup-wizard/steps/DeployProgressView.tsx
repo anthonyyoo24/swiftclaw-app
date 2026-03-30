@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 
 const UI_STEPS = [
@@ -12,30 +12,41 @@ const UI_STEPS = [
 ];
 
 const TOTAL_STEPS = UI_STEPS.length;
+const COMPLETION_DURATION_MS = 250;
 
 interface DeployProgressViewProps {
     duration: number;
+    backendComplete: boolean;
+    onVisualComplete: () => void;
 }
 
 /**
- * Pure visual component for the deployment loading animation.
- * Auto-advances through UI_STEPS at equal intervals based on `duration`.
- * The parent (SetupWizard) owns the state machine and will unmount this
- * component when deployment succeeds or fails.
+ * Visual component for the deployment loading animation.
+ *
+ * Two-phase progress model:
+ *  - Phase 1 (timer-driven): auto-advances through UI_STEPS from 0% to 90% over `duration` ms.
+ *  - Phase 2 (backend-driven): triggered when `backendComplete` is true and Phase 1 has
+ *    finished. Animates from 90% to 100% over COMPLETION_DURATION_MS, then calls
+ *    `onVisualComplete` so the parent can transition to the success view.
+ *
+ * If `backendComplete` arrives before Phase 1 finishes, Phase 1 still runs to completion
+ * and Phase 2 starts immediately afterward.
  */
-export function DeployProgressView({ duration }: DeployProgressViewProps) {
+export function DeployProgressView({ duration, backendComplete, onVisualComplete }: DeployProgressViewProps) {
     const [displayedStep, setDisplayedStep] = useState(0);
+    const [completing, setCompleting] = useState(false);
+    const onVisualCompleteRef = useRef(onVisualComplete);
+    useEffect(() => { onVisualCompleteRef.current = onVisualComplete; }, [onVisualComplete]);
 
     const stepDuration = duration / TOTAL_STEPS;
+    const phase1Done = displayedStep >= TOTAL_STEPS;
 
-    // Auto-advance through steps on a timer
+    // Phase 1: timer-driven progress 0 → 90%
     useEffect(() => {
-        // Kick off the first step shortly after mount
         const initialTimeout = setTimeout(() => {
             setDisplayedStep(1);
         }, 50);
 
-        // Then advance through remaining steps at equal intervals
         const interval = setInterval(() => {
             setDisplayedStep((prev) => {
                 const next = prev + 1;
@@ -53,10 +64,26 @@ export function DeployProgressView({ duration }: DeployProgressViewProps) {
         };
     }, [stepDuration]);
 
-    // Derived display logic — cap at 98% so the bar never fully completes
-    // before the parent transitions to the success view
-    const rawPercent = Math.min((displayedStep / TOTAL_STEPS) * 100, 98);
+    // Trigger Phase 2 once Phase 1 is done and the backend has confirmed success.
+    // If backendComplete arrives early, this fires the moment Phase 1 finishes.
+    useEffect(() => {
+        if (phase1Done && backendComplete && !completing) {
+            setCompleting(true);
+        }
+    }, [phase1Done, backendComplete, completing]);
 
+    // After the 250ms completion animation, notify the parent to show the success view.
+    useEffect(() => {
+        if (!completing) return;
+        const timeout = setTimeout(() => {
+            onVisualCompleteRef.current();
+        }, COMPLETION_DURATION_MS);
+        return () => clearTimeout(timeout);
+    }, [completing]);
+
+    // Derived display values
+    const rawPercent = completing ? 100 : Math.min((displayedStep / TOTAL_STEPS) * 100, 90);
+    const transitionDuration = completing ? COMPLETION_DURATION_MS : stepDuration;
     const messageIndex = Math.min(Math.max(0, displayedStep - 1), TOTAL_STEPS - 1);
     const currentMessage = UI_STEPS[messageIndex];
 
@@ -102,7 +129,7 @@ export function DeployProgressView({ duration }: DeployProgressViewProps) {
                     className="h-full bg-linear-to-r from-blue-500 to-indigo-500 rounded-full absolute left-0 top-0 transition-all ease-linear"
                     style={{
                         width: `${rawPercent}%`,
-                        transitionDuration: `${stepDuration}ms`
+                        transitionDuration: `${transitionDuration}ms`
                     }}
                 />
             </div>

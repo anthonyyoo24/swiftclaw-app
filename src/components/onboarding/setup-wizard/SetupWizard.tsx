@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { WizardShell } from "@/components/ui/wizard/WizardShell";
 import { toast } from "sonner";
@@ -92,9 +92,7 @@ export function SetupWizard() {
     const [visitedIds, setVisitedIds] = useState<Set<StepId>>(new Set(["welcome"]));
     const [deployState, setDeployState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [deployError, setDeployError] = useState<string>("");
-    const deployTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const backendSuccessRef = useRef(false);
-    const timerFinishedRef = useRef(false);
+    const [backendDone, setBackendDone] = useState(false);
 
     const methods = useForm<OnboardingFormValues>({
         mode: "onChange",
@@ -122,42 +120,18 @@ export function SetupWizard() {
 
     // Manage deployment process IPC listeners
     useEffect(() => {
-        if (deployState !== 'loading') {
-            return () => {
-                if (deployTimeoutRef.current) {
-                    clearTimeout(deployTimeoutRef.current);
-                    deployTimeoutRef.current = null;
-                }
-            };
-        }
+        if (deployState !== 'loading') return;
 
         let cleanupIpc: (() => void) | undefined;
 
-        const checkComplete = () => {
-            if (timerFinishedRef.current && backendSuccessRef.current) {
-                setDeployState('success');
-            }
-        };
-
-        // 1. Force the 10 second minimum UI experience
-        timerFinishedRef.current = false;
-        deployTimeoutRef.current = setTimeout(() => {
-            timerFinishedRef.current = true;
-            checkComplete();
-        }, DEPLOY_DURATION_MS);
-
-        // 2. Connect to backend
+        // Connect to backend
         if (typeof window !== 'undefined' && window.electron?.ipcRenderer) {
-            backendSuccessRef.current = false;
-            
             cleanupIpc = window.electron.ipcRenderer.onDeploymentSuccess(() => {
-                backendSuccessRef.current = true;
-                checkComplete();
+                setBackendDone(true);
             });
 
             const errorCleanup = window.electron.ipcRenderer.onDeploymentError((data: unknown) => {
                 const typedData = data as { message?: string };
-                if (deployTimeoutRef.current) clearTimeout(deployTimeoutRef.current);
                 setDeployError(typedData?.message || "An unknown error occurred during deployment.");
                 setDeployState('error');
             });
@@ -170,12 +144,7 @@ export function SetupWizard() {
                 // [UNREACHABLE] — handleStartDeployment validates before setDeployState('loading').
                 // Retained as a diagnostic safety net for future refactors.
                 console.error("[UNREACHABLE] Schema parse failed inside deploy effect.", result.error);
-                if (deployTimeoutRef.current) {
-                    clearTimeout(deployTimeoutRef.current);
-                    deployTimeoutRef.current = null;
-                }
                 if (errorCleanup) errorCleanup();
-                backendSuccessRef.current = false;
                 setTimeout(() => setDeployState('error'), 0);
                 return;
             }
@@ -187,14 +156,13 @@ export function SetupWizard() {
             cleanupIpc = () => {
                 if (originalCleanup) originalCleanup();
                 if (errorCleanup) errorCleanup();
-            }
+            };
         } else {
             // Web mode fallback
-            backendSuccessRef.current = true;
+            setTimeout(() => setBackendDone(true), 0);
         }
 
         return () => {
-            if (deployTimeoutRef.current) clearTimeout(deployTimeoutRef.current);
             if (cleanupIpc) cleanupIpc();
         };
     }, [deployState, methods]);
@@ -271,6 +239,7 @@ export function SetupWizard() {
             return;
         }
 
+        setBackendDone(false);
         setDeployState('loading');
     }, [methods]);
 
@@ -307,11 +276,8 @@ export function SetupWizard() {
         methods.reset();
         setCurrentStepIndex(0);
         setVisitedIds(new Set(["welcome"]));
+        setBackendDone(false);
         setDeployState('idle');
-        if (deployTimeoutRef.current) {
-            clearTimeout(deployTimeoutRef.current);
-            deployTimeoutRef.current = null;
-        }
     };
 
     const renderStep = () => {
@@ -346,7 +312,13 @@ export function SetupWizard() {
             case "channel-setup":
                 return <ChannelSetupStep />;
             case "deploy":
-                if (deployState === 'loading') return <DeployProgressView duration={DEPLOY_DURATION_MS} />;
+                if (deployState === 'loading') return (
+                    <DeployProgressView
+                        duration={DEPLOY_DURATION_MS}
+                        backendComplete={backendDone}
+                        onVisualComplete={() => setDeployState('success')}
+                    />
+                );
                 if (deployState === 'success') return <DeploySuccessView />;
                 if (deployState === 'error') return <DeployErrorView error={deployError} onRetry={handleStartDeployment} />;
                 return (
