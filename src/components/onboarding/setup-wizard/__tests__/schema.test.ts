@@ -80,6 +80,12 @@ describe('onboardingSchema', () => {
         expect(result.error?.issues[0].path).toContain('aiApiKey');
     });
 
+    it('rejects apiKey auth when aiApiKey is whitespace-only', () => {
+        const result = onboardingSchema.safeParse({ ...VALID_PERSONAL, aiApiKey: '     ' });
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toContain('aiApiKey');
+    });
+
     it('accepts apiKey auth when aiApiKey is exactly 5 chars', () => {
         expect(onboardingSchema.safeParse({ ...VALID_PERSONAL, aiApiKey: 'abcde' }).success).toBe(true);
     });
