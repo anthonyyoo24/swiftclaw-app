@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { WizardShell } from "@/components/ui/wizard/WizardShell";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { ChannelSetupStep } from "./steps/ChannelSetupStep";
 import { DeploymentStep } from "./steps/DeploymentStep";
 import { DeployProgressView } from "./steps/DeployProgressView";
 import { DeploySuccessView } from "./steps/DeploySuccessView";
+import { DeployErrorView } from "./steps/DeployErrorView";
 
 // Personalization Steps
 import { UsageTypeStep } from "./steps/UsageTypeStep";
@@ -89,18 +90,9 @@ const DEPLOY_DURATION_MS = 10000;
 export function SetupWizard() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [visitedIds, setVisitedIds] = useState<Set<StepId>>(new Set(["welcome"]));
-    const [deployState, setDeployState] = useState<'idle' | 'loading' | 'success'>('idle');
-    const deployTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    // Clear the timer on unmount to avoid stale redirects or side effects
-    useEffect(() => {
-        return () => {
-            if (deployTimeoutRef.current) {
-                clearTimeout(deployTimeoutRef.current);
-                deployTimeoutRef.current = null;
-            }
-        };
-    }, []);
+    const [deployState, setDeployState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [deployError, setDeployError] = useState<string>("");
+    const [backendDone, setBackendDone] = useState(false);
 
     const methods = useForm<OnboardingFormValues>({
         mode: "onChange",
@@ -116,6 +108,8 @@ export function SetupWizard() {
             tools: [],
             agentTemplateIds: ["sarah"],
             // Setup
+            aiAuthType: "apiKey",
+            isAiAuthenticated: false,
             aiProvider: "",
             aiModel: "",
             aiApiKey: "",
@@ -123,6 +117,55 @@ export function SetupWizard() {
             channelToken: "",
         },
     });
+
+    // Manage deployment process IPC listeners
+    useEffect(() => {
+        if (deployState !== 'loading') return;
+
+        let cleanupIpc: (() => void) | undefined;
+
+        // Connect to backend
+        if (typeof window !== 'undefined' && window.electron?.ipcRenderer) {
+            cleanupIpc = window.electron.ipcRenderer.onDeploymentSuccess(() => {
+                setBackendDone(true);
+            });
+
+            const errorCleanup = window.electron.ipcRenderer.onDeploymentError((data: unknown) => {
+                const typedData = data as { message?: string };
+                setDeployError(typedData?.message || "An unknown error occurred during deployment.");
+                setDeployState('error');
+            });
+
+            // Start the deployment logic
+            const currentValues = methods.getValues();
+            const result = onboardingSchema.safeParse(currentValues);
+
+            if (!result.success) {
+                // [UNREACHABLE] — handleStartDeployment validates before setDeployState('loading').
+                // Retained as a diagnostic safety net for future refactors.
+                console.error("[UNREACHABLE] Schema parse failed inside deploy effect.", result.error);
+                if (errorCleanup) errorCleanup();
+                setTimeout(() => setDeployState('error'), 0);
+                return;
+            }
+
+            // Happy path: valid data — proceed to IPC
+            window.electron.ipcRenderer.sendDeploymentStart(result.data);
+
+            const originalCleanup = cleanupIpc;
+            cleanupIpc = () => {
+                if (originalCleanup) originalCleanup();
+                if (errorCleanup) errorCleanup();
+            };
+        } else {
+            // Web mode fallback
+            setTimeout(() => setBackendDone(true), 0);
+        }
+
+        return () => {
+            if (cleanupIpc) cleanupIpc();
+        };
+    }, [deployState, methods]);
 
     const formValues = useWatch({ control: methods.control });
     const isBusiness = formValues.usageType === "business";
@@ -183,6 +226,23 @@ export function SetupWizard() {
         }
     };
 
+    const handleStartDeployment = useCallback(() => {
+        const result = onboardingSchema.safeParse(methods.getValues());
+
+        if (!result.success) {
+            const firstError = result.error.issues[0];
+            const friendlyMessage = firstError
+                ? `Please go back and check: ${firstError.message}`
+                : "Please go back and ensure all required fields are filled out.";
+            toast.error("Incomplete Setup", { description: friendlyMessage });
+            console.error("Form validation failed before deploy:", result.error);
+            return;
+        }
+
+        setBackendDone(false);
+        setDeployState('loading');
+    }, [methods]);
+
     const handleStepClick = (index: number) => {
         if (deployState !== 'idle' || index === currentStepIndex) return;
 
@@ -201,37 +261,7 @@ export function SetupWizard() {
     const handleNextClick = () => {
         if (deployState !== 'idle' || !isCurrentStepValid) return;
         if (currentStepIndex === steps.length - 1) {
-            // Final submit validation
-            const currentValues = methods.getValues();
-            const result = onboardingSchema.safeParse(currentValues);
-
-            if (!result.success) {
-                // If the final validation fails (e.g. they somehow bypassed a step), 
-                // don't proceed to deploy. Surface the error to the UI.
-                const firstError = result.error.issues[0];
-                const friendlyMessage = firstError
-                    ? `Please go back and check: ${firstError.message}`
-                    : "Please go back and ensure all required fields are filled out.";
-
-                toast.error("Incomplete Setup", {
-                    description: friendlyMessage
-                });
-
-                console.error("Form validation failed before deploy:", result.error);
-                return;
-            }
-
-            setDeployState('loading');
-
-            // Clear any existing timer just in case
-            if (deployTimeoutRef.current) {
-                clearTimeout(deployTimeoutRef.current);
-                deployTimeoutRef.current = null;
-            }
-
-            deployTimeoutRef.current = setTimeout(() => {
-                setDeployState('success');
-            }, DEPLOY_DURATION_MS);
+            handleStartDeployment();
         } else {
             goNext();
         }
@@ -242,15 +272,12 @@ export function SetupWizard() {
         const isSecure = typeof window !== "undefined" && window.isSecureContext;
         document.cookie = `onboardingComplete=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax${isSecure ? "; Secure" : ""}`;
         dispatchOnboardingStatusChanged();
-        
+
         methods.reset();
         setCurrentStepIndex(0);
         setVisitedIds(new Set(["welcome"]));
+        setBackendDone(false);
         setDeployState('idle');
-        if (deployTimeoutRef.current) {
-            clearTimeout(deployTimeoutRef.current);
-            deployTimeoutRef.current = null;
-        }
     };
 
     const renderStep = () => {
@@ -285,8 +312,15 @@ export function SetupWizard() {
             case "channel-setup":
                 return <ChannelSetupStep />;
             case "deploy":
-                if (deployState === 'loading') return <DeployProgressView duration={DEPLOY_DURATION_MS} />;
+                if (deployState === 'loading') return (
+                    <DeployProgressView
+                        duration={DEPLOY_DURATION_MS}
+                        backendComplete={backendDone}
+                        onVisualComplete={() => setDeployState('success')}
+                    />
+                );
                 if (deployState === 'success') return <DeploySuccessView />;
+                if (deployState === 'error') return <DeployErrorView error={deployError} onRetry={handleStartDeployment} />;
                 return (
                     <DeploymentStep
                         aiProvider={formValues.aiProvider ?? ""}

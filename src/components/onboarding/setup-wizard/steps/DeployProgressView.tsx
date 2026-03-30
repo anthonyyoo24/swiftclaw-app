@@ -1,30 +1,91 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 
-const LOADING_MESSAGES = [
-    "Starting your deployment...",
-    "Connecting to your AI provider...",
-    "Establishing channel connection...",
-    "Finalizing agent startup...",
+const UI_STEPS = [
+    "Authenticating with Provider...",
+    "Linking your Channels...",
+    "Assembling Workspaces...",
+    "Personalizing Profile...",
+    "Finalizing agent startup..."
 ];
+
+const TOTAL_STEPS = UI_STEPS.length;
+const COMPLETION_DURATION_MS = 250;
 
 interface DeployProgressViewProps {
     duration: number;
+    backendComplete: boolean;
+    onVisualComplete: () => void;
 }
 
-export function DeployProgressView({ duration }: DeployProgressViewProps) {
-    const [messageIndex, setMessageIndex] = useState(0);
+/**
+ * Visual component for the deployment loading animation.
+ *
+ * Two-phase progress model:
+ *  - Phase 1 (timer-driven): auto-advances through UI_STEPS from 0% to 90% over `duration` ms.
+ *  - Phase 2 (backend-driven): triggered when `backendComplete` is true and Phase 1 has
+ *    finished. Animates from 90% to 100% over COMPLETION_DURATION_MS, then calls
+ *    `onVisualComplete` so the parent can transition to the success view.
+ *
+ * If `backendComplete` arrives before Phase 1 finishes, Phase 1 still runs to completion
+ * and Phase 2 starts immediately afterward.
+ */
+export function DeployProgressView({ duration, backendComplete, onVisualComplete }: DeployProgressViewProps) {
+    const [displayedStep, setDisplayedStep] = useState(0);
+    const [completing, setCompleting] = useState(false);
+    const onVisualCompleteRef = useRef(onVisualComplete);
+    useEffect(() => { onVisualCompleteRef.current = onVisualComplete; }, [onVisualComplete]);
 
+    const stepDuration = duration / TOTAL_STEPS;
+    const phase1Done = displayedStep >= TOTAL_STEPS;
+
+    // Phase 1: timer-driven progress 0 → 90%
     useEffect(() => {
-        const messageInterval = duration / LOADING_MESSAGES.length;
-        const interval = setInterval(() => {
-            setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-        }, messageInterval);
+        const initialTimeout = setTimeout(() => {
+            setDisplayedStep(1);
+        }, 50);
 
-        return () => clearInterval(interval);
-    }, [duration]);
+        const interval = setInterval(() => {
+            setDisplayedStep((prev) => {
+                const next = prev + 1;
+                if (next >= TOTAL_STEPS) {
+                    clearInterval(interval);
+                    return TOTAL_STEPS;
+                }
+                return next;
+            });
+        }, stepDuration);
+
+        return () => {
+            clearTimeout(initialTimeout);
+            clearInterval(interval);
+        };
+    }, [stepDuration]);
+
+    // Trigger Phase 2 once Phase 1 is done and the backend has confirmed success.
+    // If backendComplete arrives early, this fires the moment Phase 1 finishes.
+    useEffect(() => {
+        if (phase1Done && backendComplete && !completing) {
+            setCompleting(true);
+        }
+    }, [phase1Done, backendComplete, completing]);
+
+    // After the 250ms completion animation, notify the parent to show the success view.
+    useEffect(() => {
+        if (!completing) return;
+        const timeout = setTimeout(() => {
+            onVisualCompleteRef.current();
+        }, COMPLETION_DURATION_MS);
+        return () => clearTimeout(timeout);
+    }, [completing]);
+
+    // Derived display values
+    const rawPercent = completing ? 100 : Math.min((displayedStep / TOTAL_STEPS) * 100, 90);
+    const transitionDuration = completing ? COMPLETION_DURATION_MS : stepDuration;
+    const messageIndex = Math.min(Math.max(0, displayedStep - 1), TOTAL_STEPS - 1);
+    const currentMessage = UI_STEPS[messageIndex];
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 min-h-100">
@@ -50,7 +111,7 @@ export function DeployProgressView({ duration }: DeployProgressViewProps) {
                 aria-live="polite"
             >
                 <p className="text-neutral-400 transition-opacity duration-300">
-                    {LOADING_MESSAGES[messageIndex]}
+                    {currentMessage}
                 </p>
             </div>
 
@@ -61,25 +122,17 @@ export function DeployProgressView({ duration }: DeployProgressViewProps) {
                 aria-label="Deployment progress"
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={Math.round(((messageIndex + 1) / LOADING_MESSAGES.length) * 100)}
-                aria-valuetext={LOADING_MESSAGES[messageIndex]}
+                aria-valuenow={Math.round(rawPercent)}
+                aria-valuetext={currentMessage}
             >
                 <div
-                    className="h-full bg-linear-to-r from-blue-500 to-indigo-500 rounded-full absolute left-0 top-0 w-full animate-[linear-fill_var(--fill-duration)_linear_forwards]"
+                    className="h-full bg-linear-to-r from-blue-500 to-indigo-500 rounded-full absolute left-0 top-0 transition-all ease-linear"
                     style={{
-                        transform: 'translateX(-100%)',
-                        ['--fill-duration' as string]: `${duration}ms`
-                    } as React.CSSProperties}
+                        width: `${rawPercent}%`,
+                        transitionDuration: `${transitionDuration}ms`
+                    }}
                 />
             </div>
-
-            <style jsx>{`
-                @keyframes linear-fill {
-                    to {
-                        transform: translateX(0%);
-                    }
-                }
-            `}</style>
         </div>
     );
 }

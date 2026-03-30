@@ -1,64 +1,87 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import { Icon } from "@iconify/react";
 import { Input } from "@/components/ui/Input";
-import { CustomDropdown, DropdownOption } from "@/components/ui/CustomDropdown";
-import { Anthropic, OpenAI, Google } from "@lobehub/icons";
+import { CustomDropdown } from "@/components/ui/CustomDropdown";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 import type { OnboardingFormValues } from "@/components/onboarding/setup-wizard/schema";
-
-export const PROVIDER_OPTIONS: DropdownOption[] = [
-    {
-        id: "anthropic",
-        label: "Anthropic",
-        icon: <Anthropic size={20} className="w-5 h-5 text-[#D97757]" />,
-    },
-    {
-        id: "openai",
-        label: "OpenAI",
-        icon: <OpenAI size={20} className="w-5 h-5 text-[#10A37F]" />,
-    },
-    {
-        id: "google",
-        label: "Google",
-        icon: <Google size={20} className="w-5 h-5 text-[#4285F4]" />,
-    },
-];
-
-export const MODEL_OPTIONS: Record<string, DropdownOption[]> = {
-    anthropic: [
-        { id: "claude-3-5-sonnet", label: "Claude 3.5 Sonnet" },
-        { id: "claude-3-opus", label: "Claude 3 Opus" },
-        { id: "claude-3-haiku", label: "Claude 3 Haiku" },
-    ],
-    openai: [
-        { id: "gpt-4o", label: "GPT-4o" },
-        { id: "gpt-4-turbo", label: "GPT-4 Turbo" },
-    ],
-    google: [
-        { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
-        { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
-    ],
-};
+import { PROVIDER_OPTIONS, MODEL_OPTIONS } from "@/constants/ai-ui";
 
 export function AIBrainStep() {
-    const { control, setValue, watch } = useFormContext<OnboardingFormValues>();
+    const { control, setValue, watch, formState: { errors } } = useFormContext<OnboardingFormValues>();
     const [showApiKey, setShowApiKey] = useState(false);
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [authError, setAuthError] = useState<string | null>(null);
+    const connectingRef = useRef(false);
 
     const provider = watch("aiProvider");
+    const aiAuthType = watch("aiAuthType");
+    const isAiAuthenticated = watch("isAiAuthenticated");
 
     const handleProviderChange = (newProvider: string) => {
         setValue("aiProvider", newProvider, { shouldValidate: true });
-        // Reset model when provider changes since models are provider-specific
         setValue("aiModel", "", { shouldValidate: true });
+
+        // Reset auth state on provider switch
+        setValue("isAiAuthenticated", false, { shouldValidate: true });
+        setAuthError(null);
+
+        const selectedProvider = PROVIDER_OPTIONS.find(p => p.id === newProvider);
+        if (selectedProvider?.authType === "oauth") {
+            setValue("aiAuthType", "oauth", { shouldValidate: true });
+            setValue("aiApiKey", "", { shouldValidate: false });
+        } else {
+            setValue("aiAuthType", "apiKey", { shouldValidate: true });
+        }
     };
+
+    const handleConnectClick = () => {
+        if (!provider) return;
+        setIsConnecting(true);
+        setAuthError(null);
+        window.electron?.ipcRenderer.sendAuthOauthStart({ provider });
+    };
+
+    const handleCancelClick = () => {
+        setIsConnecting(false);
+        window.electron?.ipcRenderer.sendAuthOauthCancel();
+    };
+
+    // Mirror isConnecting into a ref so the IPC cleanup always reads a fresh value
+    useEffect(() => {
+        connectingRef.current = isConnecting;
+    }, [isConnecting]);
+
+    // Robust IPC Listener Management
+    useEffect(() => {
+        if (typeof window === 'undefined' || !window.electron?.ipcRenderer) return;
+
+        const cleanup = window.electron.ipcRenderer.onAuthOauthComplete((data: unknown) => {
+            const result = data as { success: boolean; error?: string };
+            setIsConnecting(false);
+            if (result.success) {
+                setValue("isAiAuthenticated", true, { shouldValidate: true });
+                setAuthError(null);
+            } else {
+                setValue("isAiAuthenticated", false, { shouldValidate: true });
+                setAuthError(result.error || "Authentication failed or was cancelled.");
+            }
+        });
+
+        return () => {
+            if (cleanup) cleanup();
+            // If the user leaves the step while connecting, tell the backend to cancel
+            if (connectingRef.current) {
+                window.electron?.ipcRenderer.sendAuthOauthCancel();
+            }
+        };
+    }, [provider, setValue]);
 
     return (
         <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
             <StepHeader
-                // icon="solar:cpu-linear"
                 icon="lucide:brain"
                 title="AI Brain Selection"
                 description="This selection defines the core intelligence of your SwiftClaw agent. You can change your provider and model later in the settings."
@@ -96,46 +119,121 @@ export function AIBrainStep() {
                     )}
                 </div>
 
-                {/* API Key Input */}
-                <div className="space-y-3">
-                    <label className="block text-sm font-medium text-neutral-300">
-                        API Key <span className="text-blue-500">*</span>
-                    </label>
-                    <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-neutral-500 group-focus-within:text-blue-400 transition-colors">
-                            <Icon icon="solar:key-linear" className="text-lg" />
+                {/* Authentication Handling */}
+                {aiAuthType === "apiKey" && (
+                    <div className="space-y-3">
+                        <label className="block text-sm font-medium text-neutral-300">
+                            API Key <span className="text-blue-500">*</span>
+                        </label>
+                        <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-neutral-500 group-focus-within:text-blue-400 transition-colors">
+                                <Icon icon="solar:key-linear" className="text-lg" />
+                            </div>
+                            <Controller
+                                name="aiApiKey"
+                                control={control}
+                                render={({ field }) => (
+                                    <Input
+                                        {...field}
+                                        value={field.value ?? ""}
+                                        type={showApiKey ? "text" : "password"}
+                                        autoComplete="off"
+                                        spellCheck={false}
+                                        placeholder="sk-ant-..."
+                                        variant="glass"
+                                        className="pl-11 pr-12 py-3 shadow-sm"
+                                    />
+                                )}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowApiKey(!showApiKey)}
+                                className="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer text-neutral-500 hover:text-neutral-300 transition-colors"
+                                aria-label={showApiKey ? "Hide API Key" : "Show API Key"}
+                            >
+                                <Icon icon={showApiKey ? "solar:eye-closed-linear" : "solar:eye-linear"} className="text-lg" />
+                            </button>
                         </div>
-                        <Controller
-                            name="aiApiKey"
-                            control={control}
-                            render={({ field }) => (
-                                <Input
-                                    {...field}
-                                    type={showApiKey ? "text" : "password"}
-                                    autoComplete="off"
-                                    spellCheck={false}
-                                    placeholder="sk-ant-..."
-                                    variant="glass"
-                                    className="pl-11 pr-12 py-3 shadow-sm"
-                                />
-                            )}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowApiKey(!showApiKey)}
-                            className="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer text-neutral-500 hover:text-neutral-300 transition-colors"
-                            aria-label={showApiKey ? "Hide API Key" : "Show API Key"}
-                        >
-                            <Icon icon={showApiKey ? "solar:eye-closed-linear" : "solar:eye-linear"} className="text-lg" />
-                        </button>
+                        {errors.aiApiKey && (
+                            <p className="text-xs text-red-400 mt-2 px-1 flex items-center gap-1.5">
+                                <Icon icon="solar:danger-circle-bold" className="text-sm" />
+                                {errors.aiApiKey.message as string}
+                            </p>
+                        )}
+                        <div className="flex items-start gap-2.5 mt-3 px-1">
+                            <Icon icon="solar:info-circle-linear" className="text-neutral-500 mt-0.5 shrink-0" />
+                            <p className="text-xs text-neutral-500 leading-relaxed">
+                                Your API key is stored locally in your keychain and is never transmitted to SwiftClaw servers.
+                            </p>
+                        </div>
                     </div>
-                    <div className="flex items-start gap-2.5 mt-3 px-1">
-                        <Icon icon="solar:info-circle-linear" className="text-neutral-500 mt-0.5 shrink-0" />
-                        <p className="text-xs text-neutral-500 leading-relaxed">
-                            Your API key is stored locally in your keychain and is never transmitted to SwiftClaw servers.
-                        </p>
+                )}
+
+                {aiAuthType === "oauth" && (
+                    <div className="space-y-3">
+                        <label className="block text-sm font-medium text-neutral-300">
+                            Browser Authentication <span className="text-blue-500">*</span>
+                        </label>
+
+                        {isAiAuthenticated ? (
+                            <div className="flex items-center gap-3 p-4 pr-5 rounded-xl border border-green-500/20 bg-green-500/10 text-green-400 w-fit">
+                                <Icon icon="solar:check-circle-bold" className="text-xl" />
+                                <span className="font-medium text-sm">Successfully Connected</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-4">
+                                <button
+                                    type="button"
+                                    onClick={handleConnectClick}
+                                    disabled={isConnecting}
+                                    className="inline-flex items-center justify-center cursor-pointer gap-2 px-8 py-2.5 rounded-full bg-blue-500 text-white hover:bg-blue-400 transition-all font-medium disabled:opacity-80 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(59,130,246,0.2)]"
+                                >
+                                    {isConnecting ? (
+                                        <>
+                                            <Icon icon="lucide:loader-2" className="text-xl animate-spin" />
+                                            <span>Waiting for browser login...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Icon icon="solar:link-bold" className="text-xl" />
+                                            <span>Connect via Browser</span>
+                                        </>
+                                    )}
+                                </button>
+
+                                {isConnecting && (
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelClick}
+                                        className="px-6 py-2.5 cursor-pointer rounded-full border border-white/10 text-neutral-400 hover:text-white hover:bg-white/5 transition-all text-sm font-medium"
+                                    >
+                                        Cancel
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {authError && (
+                            <p className="text-xs text-red-400 mt-2 px-1 flex items-center gap-1.5">
+                                <Icon icon="solar:danger-circle-bold" className="text-sm" />
+                                {authError}
+                            </p>
+                        )}
+                        {(errors.isAiAuthenticated && !authError) && (
+                            <p className="text-xs text-red-400 mt-2 px-1 flex items-center gap-1.5">
+                                <Icon icon="solar:danger-circle-bold" className="text-sm" />
+                                {errors.isAiAuthenticated.message as string}
+                            </p>
+                        )}
+
+                        <div className="flex items-start gap-2.5 mt-3 px-1">
+                            <Icon icon="solar:info-circle-linear" className="text-neutral-500 mt-0.5 shrink-0" />
+                            <p className="text-xs text-neutral-500 leading-relaxed">
+                                A browser window will open to authenticate your account. This is a one-time process.
+                            </p>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );
