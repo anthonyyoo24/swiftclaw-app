@@ -472,9 +472,24 @@ exit [lindex $result 3]
             fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
             console.log(`[OpenClawService] Set default model to: ${modelPrimary}`);
 
-            // Step 2: Channels (UI Step 2 -> roughly 2s)
-            this.emitProgress(event, 2, 'Executing channels add...');
-            await new Promise(r => setTimeout(r, 2000));
+            // Step 2: Channels
+            this.emitProgress(event, 2, 'Configuring channel...');
+            if (payload.selectedChannel === 'telegram') {
+                await this.runNpxCommand([
+                    'openclaw@latest', 'channels', 'add',
+                    '--channel', 'telegram',
+                    '--token', payload.channelToken,
+                ], this.buildCliEnv());
+            } else if (payload.selectedChannel === 'discord') {
+                await this.runNpxCommand([
+                    'openclaw@latest', 'channels', 'add',
+                    '--channel', 'discord',
+                    '--token', payload.channelToken,
+                ], this.buildCliEnv());
+            } else {
+                // WhatsApp: deferred to Phase 8 QR flow on the success screen
+                console.log('[OpenClawService] WhatsApp channel: deferred to success screen QR flow.');
+            }
 
             // Step 3: Workspaces (UI Step 3 -> roughly 2s)
             this.emitProgress(event, 3, 'Creating agent workspaces...');
