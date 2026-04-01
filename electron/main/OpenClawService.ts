@@ -1,4 +1,4 @@
-import { IpcMainEvent } from 'electron';
+import { IpcMainEvent, app } from 'electron';
 import { spawn, type ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
@@ -6,8 +6,42 @@ import os from 'os';
 
 
 import { DeploymentPayload } from '../../src/types/ai';
-import { OAUTH_PROVIDER_MAP } from '../../src/constants/ai-core';
+import { OAUTH_PROVIDER_MAP, SOUL_TEMPLATE_FILES } from '../../src/constants/ai-core';
 import { IPC_EVENTS } from '../../src/constants/ipc';
+
+
+
+// ── Template generators ───────────────────────────────────────────────────────
+
+function generateUserMd(payload: {
+    userName: string;
+    timezone: string;
+    usageType: string;
+    businessDescription?: string;
+    personalContext?: string;
+    goals: string;
+    workflows: string[];
+}): string {
+    const context = payload.usageType === 'business'
+        ? (payload.businessDescription ?? '')
+        : (payload.personalContext ?? '');
+    const workflowList = payload.workflows.map(w => `- ${w}`).join('\n');
+
+    return `# About ${payload.userName}
+
+**Timezone:** ${payload.timezone}
+**Usage:** ${payload.usageType}
+
+## Context
+${context}
+
+## Goals
+${payload.goals}
+
+## Workflows
+${workflowList}
+`;
+}
 
 
 /** Flags whose immediately following argument contains a secret value. */
@@ -32,6 +66,28 @@ export class OpenClawService {
         event.reply(IPC_EVENTS.DEPLOYMENT_PROGRESS, { step, label });
     }
 
+
+    /**
+     * Returns the path to the bundled resources/ directory.
+     * In production this is process.resourcesPath; in dev it is relative to __dirname.
+     */
+    private getResourcesPath(): string {
+        if (app.isPackaged) return process.resourcesPath;
+        return path.join(__dirname, '../../resources');
+    }
+
+    /**
+     * Reads the correct AGENTS.md template for the given agent from resources/agent-templates/,
+     * then appends a Selected Tools section if tools were provided.
+     */
+    private generateAgentsMd(agentId: string, tools: string[]): string {
+        const templateFile = agentId === 'sarah' ? 'sarah.md' : 'default.md';
+        const templatePath = path.join(this.getResourcesPath(), 'agent-templates', templateFile);
+        const base = fs.readFileSync(templatePath, 'utf-8');
+        if (tools.length === 0) return base;
+        const toolsList = tools.map(t => `- ${t}`).join('\n');
+        return `${base}\n## Selected Tools\n${toolsList}\n`;
+    }
 
     /**
      * Builds the environment for spawned CLI processes.
@@ -491,24 +547,54 @@ exit [lindex $result 3]
                 console.log('[OpenClawService] WhatsApp channel: deferred to success screen QR flow.');
             }
 
-            // Step 3: Workspaces (UI Step 3 -> roughly 2s)
+            // Step 3: Create agent workspaces
             this.emitProgress(event, 3, 'Creating agent workspaces...');
-            await new Promise(r => setTimeout(r, 2000));
+            for (const agentId of payload.agentTemplateIds) {
+                this.emitProgress(event, 3, `Creating ${agentId}'s workspace...`);
+                const workspacePath = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`);
+                await this.runNpxCommand([
+                    'openclaw@latest', 'agents', 'add', agentId,
+                    '--workspace', workspacePath,
+                    '--non-interactive',
+                ], this.buildCliEnv());
+            }
 
-            // Steps 4-7: UI Step 4 -> roughly 2s total
+            // Step 4: Write USER.md into each agent workspace
             this.emitProgress(event, 4, 'Writing USER.md...');
-            await new Promise(r => setTimeout(r, 500));
+            const userMdContent = generateUserMd(payload);
+            for (const agentId of payload.agentTemplateIds) {
+                const agentWorkspace = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`);
+                fs.writeFileSync(path.join(agentWorkspace, 'USER.md'), userMdContent, 'utf-8');
+            }
 
+            // Step 5: Write per-agent AGENTS.md
             this.emitProgress(event, 5, 'Writing AGENTS.md...');
-            await new Promise(r => setTimeout(r, 500));
+            for (const agentId of payload.agentTemplateIds) {
+                const agentWorkspace = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`);
+                fs.writeFileSync(
+                    path.join(agentWorkspace, 'AGENTS.md'),
+                    this.generateAgentsMd(agentId, payload.tools ?? []),
+                    'utf-8'
+                );
+            }
 
+            // Step 6: Copy SOUL.md templates and remove BOOTSTRAP.md
             this.emitProgress(event, 6, 'Copying SOUL.md templates...');
-            await new Promise(r => setTimeout(r, 500));
+            const resourcesPath = this.getResourcesPath();
+            for (const agentId of payload.agentTemplateIds) {
+                const templateFile = SOUL_TEMPLATE_FILES[agentId];
+                if (!templateFile) {
+                    throw new Error(`No SOUL.md template found for agent: ${agentId}`);
+                }
+                const src = path.join(resourcesPath, 'soul-templates', templateFile);
+                const dest = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`, 'SOUL.md');
+                fs.copyFileSync(src, dest);
 
-            this.emitProgress(event, 7, 'Creating symlinks...');
-            await new Promise(r => setTimeout(r, 500));
+                const bootstrapPath = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`, 'BOOTSTRAP.md');
+                if (fs.existsSync(bootstrapPath)) fs.unlinkSync(bootstrapPath);
+            }
 
-            // Step 8: Gateway Startup & Health Checks (UI Step 5 -> roughly 2s)
+            // Step 7: Gateway Startup & Health Checks (UI Step 5 -> roughly 2s)
             this.emitProgress(event, 8, 'Starting Gateway & Health Checks...');
             await new Promise(r => setTimeout(r, 2000));
 

@@ -9,6 +9,14 @@ export interface DeploymentPayload {
     selectedChannel: 'discord' | 'telegram' | 'whatsapp';
     channelToken: string;
     agentTemplateIds: string[];
+    userName: string;
+    timezone: string;
+    usageType: 'business' | 'personal';
+    businessDescription?: string;
+    personalContext?: string;
+    goals: string;
+    workflows: string[];
+    tools?: string[];
 }
 
 export interface OAuthProviderEntry {

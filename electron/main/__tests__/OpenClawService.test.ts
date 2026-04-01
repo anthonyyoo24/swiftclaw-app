@@ -11,6 +11,7 @@ vi.mock('child_process', () => ({
 // ── Mock electron (only used for types at runtime) ───────────────────────────
 vi.mock('electron', () => ({
     ipcMain: { on: vi.fn() },
+    app: { isPackaged: false },
 }));
 
 // ── Mock fs so we don't touch the real filesystem ───────────────────────────
@@ -18,12 +19,25 @@ vi.mock('fs', () => ({
     default: {
         existsSync: vi.fn(() => false),
         statSync: vi.fn(() => ({ mtimeMs: 0 })),
-        readFileSync: vi.fn(() => '{}'),
+        readFileSync: vi.fn((filePath: unknown) => {
+            if (typeof filePath === 'string' && filePath.endsWith('sarah.md')) {
+                return 'You are Sarah. Delegation coordinator.';
+            }
+            if (typeof filePath === 'string' && filePath.endsWith('default.md')) {
+                return 'You are an agent at the user\'s company.';
+            }
+            return '{}';
+        }),
         writeFileSync: vi.fn(),
+        mkdirSync: vi.fn(),
+        copyFileSync: vi.fn(),
+        symlinkSync: vi.fn(),
+        unlinkSync: vi.fn(),
     },
 }));
 
 import * as childProcess from 'child_process';
+import fs from 'fs';
 import { OpenClawService } from '../OpenClawService';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -62,6 +76,13 @@ const BASE_PAYLOAD: DeploymentPayload = {
     selectedChannel: 'telegram',
     channelToken: 'tg-token-xyz',
     agentTemplateIds: ['maya'],
+    userName: 'Test User',
+    timezone: 'America/New_York',
+    usageType: 'business',
+    businessDescription: 'A test business',
+    goals: 'Build amazing software',
+    workflows: ['write-code', 'review-prs'],
+    tools: ['github', 'slack'],
 };
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -89,8 +110,8 @@ describe('OpenClawService.deploy()', () => {
         await vi.runAllTimersAsync();
         await deployPromise;
 
-        // Two spawn calls: onboard (call[0]) + channels add (call[1])
-        expect(spawnMock).toHaveBeenCalledTimes(2);
+        // Three spawn calls: onboard (call[0]) + channels add (call[1]) + agents add maya (call[2])
+        expect(spawnMock).toHaveBeenCalledTimes(3);
         const [cmd, args] = spawnMock.mock.calls[0];
 
         expect(cmd).toMatch(/^npx/);
@@ -262,14 +283,15 @@ describe('Phase 3 – channel configuration', () => {
     it('calls channels add for telegram with the correct flags', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
-            .mockReturnValueOnce(makeFakeProcess(0)); // channels add
+            .mockReturnValueOnce(makeFakeProcess(0)) // channels add
+            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'telegram', channelToken: 'tg-secret' });
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(2);
+        expect(spawnMock).toHaveBeenCalledTimes(3);
         const [, args] = spawnMock.mock.calls[1];
         expect(args).toContain('channels');
         expect(args).toContain('add');
@@ -282,14 +304,15 @@ describe('Phase 3 – channel configuration', () => {
     it('calls channels add for discord with the correct flags', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
-            .mockReturnValueOnce(makeFakeProcess(0)); // channels add
+            .mockReturnValueOnce(makeFakeProcess(0)) // channels add
+            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'discord', channelToken: 'dc-secret' });
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(2);
+        expect(spawnMock).toHaveBeenCalledTimes(3);
         const [, args] = spawnMock.mock.calls[1];
         expect(args).toContain('--channel');
         expect(args).toContain('discord');
@@ -299,22 +322,27 @@ describe('Phase 3 – channel configuration', () => {
     });
 
     it('does NOT call channels add for whatsapp', async () => {
-        spawnMock.mockReturnValueOnce(makeFakeProcess(0)); // onboard only
+        spawnMock
+            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya (no channels add)
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'whatsapp', channelToken: '' });
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(1);
-        const [, args] = spawnMock.mock.calls[0];
-        expect(args).not.toContain('channels');
+        expect(spawnMock).toHaveBeenCalledTimes(2);
+        // Verify neither spawn call used the 'channels' subcommand
+        for (const [, callArgs] of spawnMock.mock.calls) {
+            expect(callArgs).not.toContain('channels');
+        }
     });
 
     it('emits deployment:progress step 2 before step 3', async () => {
         spawnMock
-            .mockReturnValueOnce(makeFakeProcess(0))
-            .mockReturnValueOnce(makeFakeProcess(0));
+            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // channels add
+            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'telegram' });
@@ -342,5 +370,228 @@ describe('Phase 3 – channel configuration', () => {
         const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
         expect(replies.find(([ch]) => ch === 'deployment:error')).toBeDefined();
         expect(replies.find(([ch]) => ch === 'deployment:success')).toBeUndefined();
+    });
+});
+
+// ── Phase 4–6: Agent workspace initialization ─────────────────────────────────
+
+describe('Phase 4–6 — agent workspace initialization', () => {
+    let spawnMock: MockInstance;
+    let service: OpenClawService;
+    // Convenience: cast the mocked fs default export
+    const fsMock = () => fs as unknown as Record<string, MockInstance>;
+
+    const TWO_AGENT_PAYLOAD: DeploymentPayload = {
+        ...BASE_PAYLOAD,
+        agentTemplateIds: ['maya', 'jack'],
+    };
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        spawnMock = vi.mocked(childProcess.spawn);
+        spawnMock.mockReset();
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        service = new OpenClawService();
+        // Clear fs call history before each test
+        for (const method of ['writeFileSync', 'mkdirSync', 'copyFileSync', 'symlinkSync', 'unlinkSync']) {
+            fsMock()[method].mockClear();
+        }
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('calls openclaw agents add for each agentTemplateId with --workspace and --non-interactive', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, TWO_AGENT_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const agentsCalls = spawnMock.mock.calls.filter(([, args]) =>
+            args.includes('agents') && args.includes('add')
+        );
+        expect(agentsCalls).toHaveLength(2);
+
+        const [, mayaArgs] = agentsCalls[0];
+        expect(mayaArgs).toContain('maya');
+        expect(mayaArgs).toContain('--workspace');
+        expect(mayaArgs).toContain('--non-interactive');
+        expect((mayaArgs as string[]).join('/')).toContain('workspace-maya');
+
+        const [, jackArgs] = agentsCalls[1];
+        expect(jackArgs).toContain('jack');
+        expect((jackArgs as string[]).join('/')).toContain('workspace-jack');
+    });
+
+    it('total spawn count = 2 (onboard + channels add) + N agents', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, TWO_AGENT_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        // onboard(1) + channels add telegram(1) + agents add maya + jack(2) = 4
+        expect(spawnMock).toHaveBeenCalledTimes(4);
+    });
+
+    it('writes USER.md directly into each agent workspace (no shared dir)', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        expect(fsMock().mkdirSync).not.toHaveBeenCalledWith(
+            expect.stringContaining('shared'),
+            expect.anything()
+        );
+
+        const userMdCall = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+            .find(([filePath]) => filePath.includes('workspace-maya') && filePath.endsWith('USER.md'));
+        expect(userMdCall).toBeDefined();
+    });
+
+    it('writes USER.md to each workspace with correct userName, timezone, goals, and bulleted workflows', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const userMdCall = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+            .find(([filePath]) => filePath.includes('workspace-maya') && filePath.endsWith('USER.md'));
+
+        expect(userMdCall).toBeDefined();
+        const content = userMdCall![1];
+        expect(content).toContain(BASE_PAYLOAD.userName);
+        expect(content).toContain(BASE_PAYLOAD.timezone);
+        expect(content).toContain(BASE_PAYLOAD.goals);
+        expect(content).toContain('- write-code');
+        expect(content).toContain('- review-prs');
+    });
+
+    it('writes a unique AGENTS.md into each agent workspace', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, TWO_AGENT_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const agentsMdCalls = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+            .filter(([filePath]) => filePath.endsWith('AGENTS.md'));
+
+        expect(agentsMdCalls).toHaveLength(2);
+        expect(agentsMdCalls[0][0]).toContain('workspace-maya');
+        expect(agentsMdCalls[1][0]).toContain('workspace-jack');
+    });
+
+    it('sarah gets coordinator AGENTS.md template; other agents get the generic template', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, { ...BASE_PAYLOAD, agentTemplateIds: ['sarah', 'maya'] });
+        await vi.runAllTimersAsync();
+        await p;
+
+        const agentsMdCalls = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+            .filter(([filePath]) => filePath.endsWith('AGENTS.md'));
+
+        const sarahContent = agentsMdCalls.find(([p]) => p.includes('workspace-sarah'))?.[1];
+        const mayaContent  = agentsMdCalls.find(([p]) => p.includes('workspace-maya'))?.[1];
+
+        expect(sarahContent).toContain('You are Sarah');
+        expect(mayaContent).not.toContain('You are Sarah');
+        expect(mayaContent).toContain('You are an agent');
+    });
+
+    it('appends Selected Tools section when tools provided; omits it when empty', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, { ...BASE_PAYLOAD, tools: ['github', 'slack'] });
+        await vi.runAllTimersAsync();
+        await p;
+
+        const withToolsCalls = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+            .filter(([fp]) => fp.endsWith('AGENTS.md'));
+        expect(withToolsCalls[0][1]).toContain('## Selected Tools');
+        expect(withToolsCalls[0][1]).toContain('- github');
+
+        fsMock().writeFileSync.mockClear();
+
+        const event2 = makeMockEvent();
+        const p2 = service.deploy(event2, { ...BASE_PAYLOAD, tools: [] });
+        await vi.runAllTimersAsync();
+        await p2;
+
+        const withoutToolsCalls = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+            .filter(([fp]) => fp.endsWith('AGENTS.md'));
+        expect(withoutToolsCalls[0][1]).not.toContain('## Selected Tools');
+    });
+
+    it('copies the correct SOUL.md template to each agent workspace', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, TWO_AGENT_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const copyCalls = fsMock().copyFileSync.mock.calls as [string, string][];
+        expect(copyCalls).toHaveLength(2);
+
+        const [mayaSrc, mayaDest] = copyCalls[0];
+        expect(mayaSrc).toContain('maya_support.md');
+        expect(mayaDest).toContain('workspace-maya');
+        expect(mayaDest).toContain('SOUL.md');
+
+        const [jackSrc, jackDest] = copyCalls[1];
+        expect(jackSrc).toContain('jack_sales.md');
+        expect(jackDest).toContain('workspace-jack');
+    });
+
+    it('writes a real USER.md into each agent workspace with identical content (no symlinks)', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, TWO_AGENT_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        expect(fsMock().symlinkSync).not.toHaveBeenCalled();
+
+        const userMdCalls = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+            .filter(([filePath]) => filePath.endsWith('USER.md'));
+        expect(userMdCalls).toHaveLength(2);
+
+        expect(userMdCalls[0][0]).toContain('workspace-maya');
+        expect(userMdCalls[1][0]).toContain('workspace-jack');
+        expect(userMdCalls[0][1]).toBe(userMdCalls[1][1]);
+    });
+
+    it('removes BOOTSTRAP.md from each agent workspace after seeding', async () => {
+        fsMock().existsSync.mockImplementation((p: string) =>
+            (p as string).endsWith('BOOTSTRAP.md')
+        );
+        const event = makeMockEvent();
+        const p = service.deploy(event, TWO_AGENT_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const unlinkCalls = (fsMock().unlinkSync.mock.calls as [string][])
+            .filter(([p]) => (p as string).endsWith('BOOTSTRAP.md'));
+        expect(unlinkCalls).toHaveLength(2);
+        expect(unlinkCalls[0][0]).toContain('workspace-maya');
+        expect(unlinkCalls[1][0]).toContain('workspace-jack');
+    });
+
+    it('emits deployment:error and stops if agents add exits non-zero', async () => {
+        spawnMock
+            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // channels add
+            .mockReturnValueOnce(makeFakeProcess(1)); // agents add maya fails
+        const event = makeMockEvent();
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
+        expect(replies.find(([ch]) => ch === 'deployment:error')).toBeDefined();
+        expect(replies.find(([ch]) => ch === 'deployment:success')).toBeUndefined();
+        // USER.md should NOT have been written — failed before step 4
+        expect(fsMock().writeFileSync).not.toHaveBeenCalledWith(
+            expect.stringContaining('shared'),
+            expect.anything(),
+            expect.anything()
+        );
     });
 });

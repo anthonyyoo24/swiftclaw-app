@@ -26,6 +26,9 @@
       "dist/main/**/*",
       "dist/preload/**/*",
       "out/**/*"
+    ],
+    "extraResources": [
+      { "from": "resources/", "to": "." }
     ]
   },
   "dependencies": {
