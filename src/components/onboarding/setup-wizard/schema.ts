@@ -17,7 +17,7 @@ export type AgentTemplateId = (typeof AGENT_TEMPLATES)[number];
 export const USAGE_TYPES = ["business", "personal"] as const;
 export type UsageType = (typeof USAGE_TYPES)[number];
 
-export const SUPPORTED_CHANNEL_IDS = ["telegram", "discord", "whatsapp"] as const;
+export const SUPPORTED_CHANNEL_IDS = ["telegram", "discord"] as const;
 export type SupportedChannelId = (typeof SUPPORTED_CHANNEL_IDS)[number];
 
 export type StepId =

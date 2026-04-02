@@ -110,8 +110,8 @@ describe('OpenClawService.deploy()', () => {
         await vi.runAllTimersAsync();
         await deployPromise;
 
-        // Three spawn calls: onboard (call[0]) + channels add (call[1]) + agents add maya (call[2])
-        expect(spawnMock).toHaveBeenCalledTimes(3);
+        // Five spawn calls: onboard + channels add + agents add maya + gateway restart + status --deep
+        expect(spawnMock).toHaveBeenCalledTimes(5);
         const [cmd, args] = spawnMock.mock.calls[0];
 
         expect(cmd).toMatch(/^npx/);
@@ -123,6 +123,7 @@ describe('OpenClawService.deploy()', () => {
         expect(args).toContain('openai-api-key');
         expect(args).toContain('--openai-api-key');
         expect(args).toContain(BASE_PAYLOAD.aiApiKey);
+        expect(args).toContain('--install-daemon');
     });
 
     it('emits deployment:progress at step 1 before calling spawn', async () => {
@@ -284,14 +285,16 @@ describe('Phase 3 – channel configuration', () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
+            .mockReturnValueOnce(makeFakeProcess(0)); // status --deep
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'telegram', channelToken: 'tg-secret' });
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(3);
+        expect(spawnMock).toHaveBeenCalledTimes(5);
         const [, args] = spawnMock.mock.calls[1];
         expect(args).toContain('channels');
         expect(args).toContain('add');
@@ -305,14 +308,16 @@ describe('Phase 3 – channel configuration', () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
+            .mockReturnValueOnce(makeFakeProcess(0)); // status --deep
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'discord', channelToken: 'dc-secret' });
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(3);
+        expect(spawnMock).toHaveBeenCalledTimes(5);
         const [, args] = spawnMock.mock.calls[1];
         expect(args).toContain('--channel');
         expect(args).toContain('discord');
@@ -321,28 +326,29 @@ describe('Phase 3 – channel configuration', () => {
         expect(args).not.toContain('"dc-secret"');
     });
 
-    it('does NOT call channels add for whatsapp', async () => {
-        spawnMock
-            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
-            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya (no channels add)
+    it('emits deployment:error for an unsupported channel and does not reach gateway steps', async () => {
+        spawnMock.mockReturnValueOnce(makeFakeProcess(0)); // onboard only
         const event = makeMockEvent();
 
-        const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'whatsapp', channelToken: '' });
+        // Cast needed because TypeScript now rejects 'whatsapp' at the type level
+        const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'whatsapp' as never, channelToken: '' });
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(2);
-        // Verify neither spawn call used the 'channels' subcommand
-        for (const [, callArgs] of spawnMock.mock.calls) {
-            expect(callArgs).not.toContain('channels');
-        }
+        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
+        expect(replies.find(([ch]) => ch === 'deployment:error')).toBeDefined();
+        expect(replies.find(([ch]) => ch === 'deployment:success')).toBeUndefined();
+        // Only onboard ran — channels add and gateway steps were never reached
+        expect(spawnMock).toHaveBeenCalledTimes(1);
     });
 
     it('emits deployment:progress step 2 before step 3', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
+            .mockReturnValueOnce(makeFakeProcess(0)); // status --deep
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'telegram' });
@@ -370,6 +376,131 @@ describe('Phase 3 – channel configuration', () => {
         const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
         expect(replies.find(([ch]) => ch === 'deployment:error')).toBeDefined();
         expect(replies.find(([ch]) => ch === 'deployment:success')).toBeUndefined();
+    });
+});
+
+// ── Phase 7: Gateway startup & health check ───────────────────────────────────
+
+describe('Phase 7 — gateway startup and health check', () => {
+    let spawnMock: MockInstance;
+    let service: OpenClawService;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        spawnMock = vi.mocked(childProcess.spawn);
+        spawnMock.mockReset();
+        service = new OpenClawService();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('calls gateway restart after all workspace steps complete', async () => {
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const gatewayCalls = spawnMock.mock.calls.filter(([, args]) =>
+            (args as string[]).includes('gateway') && (args as string[]).includes('restart')
+        );
+        expect(gatewayCalls).toHaveLength(1);
+        expect(gatewayCalls[0][1]).toContain('openclaw@latest');
+    });
+
+    it('falls back to gateway start if gateway restart exits non-zero', async () => {
+        spawnMock
+            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // channels add
+            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(1)) // gateway restart fails
+            .mockReturnValueOnce(makeFakeProcess(0)) // gateway start succeeds
+            .mockReturnValueOnce(makeFakeProcess(0)); // status --deep
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const startCall = spawnMock.mock.calls.find(([, args]) =>
+            (args as string[]).includes('gateway') && (args as string[]).includes('start')
+        );
+        expect(startCall).toBeDefined();
+
+        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
+        expect(replies.find(([ch]) => ch === 'deployment:success')).toBeDefined();
+    });
+
+    it('calls status --deep --json after gateway restart', async () => {
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const statusCall = spawnMock.mock.calls.find(([, args]) =>
+            (args as string[]).includes('status') &&
+            (args as string[]).includes('--deep') &&
+            (args as string[]).includes('--json')
+        );
+        expect(statusCall).toBeDefined();
+        expect(statusCall![1]).toContain('openclaw@latest');
+    });
+
+    it('emits deployment:error if both gateway restart and gateway start fail', async () => {
+        spawnMock
+            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // channels add
+            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(1)) // gateway restart fails
+            .mockReturnValueOnce(makeFakeProcess(1)); // gateway start also fails
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
+        expect(replies.find(([ch]) => ch === 'deployment:error')).toBeDefined();
+        expect(replies.find(([ch]) => ch === 'deployment:success')).toBeUndefined();
+    });
+
+    it('emits deployment:error if status --deep exits non-zero', async () => {
+        spawnMock
+            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // channels add
+            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
+            .mockReturnValueOnce(makeFakeProcess(1)); // status --deep fails
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
+        expect(replies.find(([ch]) => ch === 'deployment:error')).toBeDefined();
+        expect(replies.find(([ch]) => ch === 'deployment:success')).toBeUndefined();
+    });
+
+    it('emits step 8 before step 9', async () => {
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
+        const step8 = replies.find(([ch, data]) => ch === 'deployment:progress' && data.step === 8);
+        const step9 = replies.find(([ch, data]) => ch === 'deployment:progress' && data.step === 9);
+        expect(step8).toBeDefined();
+        expect(step9).toBeDefined();
+        expect(replies.indexOf(step9!)).toBeGreaterThan(replies.indexOf(step8!));
     });
 });
 
@@ -424,14 +555,14 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         expect((jackArgs as string[]).join('/')).toContain('workspace-jack');
     });
 
-    it('total spawn count = 2 (onboard + channels add) + N agents', async () => {
+    it('total spawn count = 2 (onboard + channels add) + N agents + 2 (gateway restart + status deep)', async () => {
         const event = makeMockEvent();
         const p = service.deploy(event, TWO_AGENT_PAYLOAD);
         await vi.runAllTimersAsync();
         await p;
 
-        // onboard(1) + channels add telegram(1) + agents add maya + jack(2) = 4
-        expect(spawnMock).toHaveBeenCalledTimes(4);
+        // onboard(1) + channels add(1) + agents add maya+jack(2) + gateway restart(1) + status --deep(1) = 6
+        expect(spawnMock).toHaveBeenCalledTimes(6);
     });
 
     it('writes USER.md directly into each agent workspace (no shared dir)', async () => {

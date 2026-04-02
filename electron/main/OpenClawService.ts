@@ -432,6 +432,23 @@ exit [lindex $result 3]
         });
     }
 
+    /**
+     * Tries `gateway restart` first (for existing daemon installations).
+     * Falls back to `gateway start` for fresh installs where the gateway has never run.
+     * Throws if both commands fail.
+     */
+    private async ensureGatewayRunning(): Promise<void> {
+        const env = this.buildCliEnv();
+        try {
+            await this.runNpxCommand(['openclaw@latest', 'gateway', 'restart'], env);
+            console.log('[OpenClawService] Gateway restarted successfully.');
+        } catch (restartErr) {
+            console.warn('[OpenClawService] gateway restart failed, attempting gateway start:', restartErr);
+            await this.runNpxCommand(['openclaw@latest', 'gateway', 'start'], env);
+            console.log('[OpenClawService] Gateway started successfully.');
+        }
+    }
+
     async deploy(event: IpcMainEvent, payload: DeploymentPayload) {
         if (this.cliProcess) {
             console.warn('[OpenClawService] Operation already in progress, ignoring.');
@@ -455,11 +472,10 @@ exit [lindex $result 3]
                 const entry = OAUTH_PROVIDER_MAP[payload.aiProvider];
                 const authChoice = entry?.provider || payload.aiProvider;
 
-                //'--skip-health is temporary
                 onboardArgs = [
                     ...baseArgs,
                     '--auth-choice', authChoice,
-                    '--skip-channels', '--skip-skills', '--skip-health'
+                    '--install-daemon', '--skip-channels', '--skip-skills', '--skip-health'
                 ];
             } else {
                 // API Key Flow
@@ -481,13 +497,12 @@ exit [lindex $result 3]
                     apiKeyFlag = '--openai-api-key';
                 }
 
-                //'--skip-health is temporary
                 onboardArgs = [
                     ...baseArgs,
                     '--auth-choice', authChoice,
                     apiKeyFlag, apiKey,
                     '--secret-input-mode', 'plaintext',
-                    '--skip-channels', '--skip-skills', '--skip-health'
+                    '--install-daemon', '--skip-channels', '--skip-skills', '--skip-health'
                 ];
             }
 
@@ -530,21 +545,14 @@ exit [lindex $result 3]
 
             // Step 2: Channels
             this.emitProgress(event, 2, 'Configuring channel...');
-            if (payload.selectedChannel === 'telegram') {
+            if (payload.selectedChannel === 'telegram' || payload.selectedChannel === 'discord') {
                 await this.runNpxCommand([
                     'openclaw@latest', 'channels', 'add',
-                    '--channel', 'telegram',
-                    '--token', payload.channelToken,
-                ], this.buildCliEnv());
-            } else if (payload.selectedChannel === 'discord') {
-                await this.runNpxCommand([
-                    'openclaw@latest', 'channels', 'add',
-                    '--channel', 'discord',
+                    '--channel', payload.selectedChannel,
                     '--token', payload.channelToken,
                 ], this.buildCliEnv());
             } else {
-                // WhatsApp: deferred to Phase 8 QR flow on the success screen
-                console.log('[OpenClawService] WhatsApp channel: deferred to success screen QR flow.');
+                throw new Error(`Unsupported channel: ${payload.selectedChannel}`);
             }
 
             // Step 3: Create agent workspaces
@@ -594,9 +602,16 @@ exit [lindex $result 3]
                 if (fs.existsSync(bootstrapPath)) fs.unlinkSync(bootstrapPath);
             }
 
-            // Step 7: Gateway Startup & Health Checks (UI Step 5 -> roughly 2s)
-            this.emitProgress(event, 8, 'Starting Gateway & Health Checks...');
-            await new Promise(r => setTimeout(r, 2000));
+            // Step 8: Gateway startup — restart if already running, fall back to start for fresh installs
+            this.emitProgress(event, 8, 'Starting OpenClaw gateway...');
+            await this.ensureGatewayRunning();
+
+            // Step 9: Deep health check — probes channel connectivity
+            this.emitProgress(event, 9, 'Running health checks...');
+            await this.runNpxCommand(
+                ['openclaw@latest', 'status', '--deep', '--json', '--timeout', '10000'],
+                this.buildCliEnv()
+            );
 
             event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });
 
