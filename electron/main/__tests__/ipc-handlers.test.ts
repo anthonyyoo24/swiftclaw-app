@@ -109,4 +109,18 @@ describe('setupIpcHandlers', () => {
 
         consoleSpy.mockRestore();
     });
+
+    it('logs empty string (not undefined) for missing aiApiKey and channelToken', async () => {
+        mockDeploy.mockResolvedValue(undefined);
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const event = makeMockEvent();
+
+        await ipcHandlers['deployment:start'](event, { ...VALID_PAYLOAD, aiApiKey: '', channelToken: '' });
+
+        const logged = consoleSpy.mock.calls.flat().map(String).join(' ');
+        // Empty string fields should appear as '' in the serialized log, not as 'undefined'
+        expect(logged).not.toContain('undefined');
+
+        consoleSpy.mockRestore();
+    });
 });

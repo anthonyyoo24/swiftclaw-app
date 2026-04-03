@@ -110,8 +110,8 @@ describe('OpenClawService.deploy()', () => {
         await vi.runAllTimersAsync();
         await deployPromise;
 
-        // Five spawn calls: onboard + channels add + agents add maya + gateway restart + status --deep
-        expect(spawnMock).toHaveBeenCalledTimes(5);
+        // Seven spawn calls: onboard + plugins disable + grammy install + channels add + agents add maya + gateway restart + status --deep
+        expect(spawnMock).toHaveBeenCalledTimes(7);
         const [cmd, args] = spawnMock.mock.calls[0];
 
         expect(cmd).toMatch(/^npx/);
@@ -284,6 +284,8 @@ describe('Phase 3 – channel configuration', () => {
     it('calls channels add for telegram with the correct flags', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
+            .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
             .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
             .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
@@ -294,8 +296,8 @@ describe('Phase 3 – channel configuration', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(5);
-        const [, args] = spawnMock.mock.calls[1];
+        expect(spawnMock).toHaveBeenCalledTimes(7);
+        const [, args] = spawnMock.mock.calls[3];
         expect(args).toContain('channels');
         expect(args).toContain('add');
         expect(args).toContain('--channel');
@@ -307,6 +309,8 @@ describe('Phase 3 – channel configuration', () => {
     it('calls channels add for discord with the correct flags', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
+            .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
             .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
             .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
@@ -317,8 +321,8 @@ describe('Phase 3 – channel configuration', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(5);
-        const [, args] = spawnMock.mock.calls[1];
+        expect(spawnMock).toHaveBeenCalledTimes(7);
+        const [, args] = spawnMock.mock.calls[3];
         expect(args).toContain('--channel');
         expect(args).toContain('discord');
         expect(args).toContain('--token');
@@ -327,7 +331,10 @@ describe('Phase 3 – channel configuration', () => {
     });
 
     it('emits deployment:error for an unsupported channel and does not reach gateway steps', async () => {
-        spawnMock.mockReturnValueOnce(makeFakeProcess(0)); // onboard only
+        spawnMock
+            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
+            .mockReturnValueOnce(makeFakeProcess(0)); // grammy install
         const event = makeMockEvent();
 
         // Cast needed because TypeScript now rejects 'whatsapp' at the type level
@@ -338,13 +345,15 @@ describe('Phase 3 – channel configuration', () => {
         const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
         expect(replies.find(([ch]) => ch === 'deployment:error')).toBeDefined();
         expect(replies.find(([ch]) => ch === 'deployment:success')).toBeUndefined();
-        // Only onboard ran — channels add and gateway steps were never reached
-        expect(spawnMock).toHaveBeenCalledTimes(1);
+        // Step 1.5 ran (onboard + plugins disable + grammy install); channels add was never reached
+        expect(spawnMock).toHaveBeenCalledTimes(3);
     });
 
     it('emits deployment:progress step 2 before step 3', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
+            .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
             .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
             .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
@@ -365,7 +374,9 @@ describe('Phase 3 – channel configuration', () => {
 
     it('emits deployment:error and stops if channels add exits non-zero', async () => {
         spawnMock
-            .mockReturnValueOnce(makeFakeProcess(0)) // onboard succeeds
+            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
+            .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(1)); // channels add fails
         const event = makeMockEvent();
 
@@ -414,6 +425,8 @@ describe('Phase 7 — gateway startup and health check', () => {
     it('falls back to gateway start if gateway restart exits non-zero', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
+            .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
             .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
             .mockReturnValueOnce(makeFakeProcess(1)) // gateway restart fails
@@ -454,6 +467,8 @@ describe('Phase 7 — gateway startup and health check', () => {
     it('emits deployment:error if both gateway restart and gateway start fail', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
+            .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
             .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
             .mockReturnValueOnce(makeFakeProcess(1)) // gateway restart fails
@@ -472,6 +487,8 @@ describe('Phase 7 — gateway startup and health check', () => {
     it('emits deployment:error if status --deep exits non-zero', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
+            .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
             .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
             .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
@@ -561,8 +578,8 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        // onboard(1) + channels add(1) + agents add maya+jack(2) + gateway restart(1) + status --deep(1) = 6
-        expect(spawnMock).toHaveBeenCalledTimes(6);
+        // onboard(1) + plugins disable(1) + grammy install(1) + channels add(1) + agents add maya+jack(2) + gateway restart(1) + status --deep(1) = 8
+        expect(spawnMock).toHaveBeenCalledTimes(8);
     });
 
     it('writes USER.md directly into each agent workspace (no shared dir)', async () => {
@@ -708,6 +725,8 @@ describe('Phase 4–6 — agent workspace initialization', () => {
     it('emits deployment:error and stops if agents add exits non-zero', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
+            .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
             .mockReturnValueOnce(makeFakeProcess(1)); // agents add maya fails
         const event = makeMockEvent();
@@ -724,5 +743,168 @@ describe('Phase 4–6 — agent workspace initialization', () => {
             expect.anything(),
             expect.anything()
         );
+    });
+});
+
+// ── Step 1.5: Plugin dependency repair ───────────────────────────────────────
+
+describe('Step 1.5 — plugin dependency repair', () => {
+    let spawnMock: MockInstance;
+    let service: OpenClawService;
+    const fsMock = () => fs as unknown as Record<string, MockInstance>;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        spawnMock = vi.mocked(childProcess.spawn);
+        spawnMock.mockReset();
+        service = new OpenClawService();
+        fsMock().existsSync.mockReturnValue(false);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        fsMock().existsSync.mockReturnValue(false);
+    });
+
+    it('continues deploy even if plugins disable amazon-bedrock exits non-zero', async () => {
+        spawnMock
+            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(1)) // plugins disable fails (non-fatal)
+            .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
+            .mockReturnValueOnce(makeFakeProcess(0)) // channels add
+            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
+            .mockReturnValueOnce(makeFakeProcess(0)); // status --deep
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
+        expect(replies.find(([ch]) => ch === 'deployment:success')).toBeDefined();
+        expect(replies.find(([ch]) => ch === 'deployment:error')).toBeUndefined();
+    });
+
+    it('emits deployment:error and stops if grammy install exits non-zero', async () => {
+        spawnMock
+            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
+            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable
+            .mockReturnValueOnce(makeFakeProcess(1)); // grammy install fails
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
+        expect(replies.find(([ch]) => ch === 'deployment:error')).toBeDefined();
+        expect(replies.find(([ch]) => ch === 'deployment:success')).toBeUndefined();
+        // channels add and later steps should never be reached
+        expect(spawnMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('skips grammy install spawn when grammy directory already exists', async () => {
+        // Return true only for the grammy subdirectory to simulate it being installed
+        fsMock().existsSync.mockImplementation((p: unknown) =>
+            typeof p === 'string' && p.endsWith('grammy')
+        );
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        // onboard + plugins disable + channels add + agents add + gateway restart + status --deep = 6
+        // (no grammy install spawn)
+        expect(spawnMock).toHaveBeenCalledTimes(6);
+        const cmdArgs = spawnMock.mock.calls.map(([, args]) => (args as string[]).join(' '));
+        expect(cmdArgs.some(a => a.includes('grammy'))).toBe(false);
+    });
+
+    it('calls npm install with grammy and the correct flags', async () => {
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        // grammy install is the 3rd spawn call (index 2): onboard[0], plugins disable[1], grammy[2]
+        const [cmd, args] = spawnMock.mock.calls[2];
+        expect(cmd).toMatch(/^npm/);
+        expect(args).toContain('install');
+        expect(args).toContain('grammy');
+        expect(args).toContain('--no-save');
+        expect(args).toContain('--prefix');
+    });
+
+    it('calls plugins disable with openclaw@latest and amazon-bedrock', async () => {
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        // plugins disable is the 2nd spawn call (index 1)
+        const [, args] = spawnMock.mock.calls[1];
+        expect(args).toContain('openclaw@latest');
+        expect(args).toContain('plugins');
+        expect(args).toContain('disable');
+        expect(args).toContain('amazon-bedrock');
+    });
+});
+
+// ── buildCliEnv — NODE_PATH injection ────────────────────────────────────────
+
+describe('buildCliEnv — NODE_PATH injection', () => {
+    let spawnMock: MockInstance;
+    let service: OpenClawService;
+    const fsMock = () => fs as unknown as Record<string, MockInstance>;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        spawnMock = vi.mocked(childProcess.spawn);
+        spawnMock.mockReset();
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        service = new OpenClawService();
+        fsMock().existsSync.mockReturnValue(false);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        fsMock().existsSync.mockReturnValue(false);
+    });
+
+    it('prepends plugin-deps/node_modules to NODE_PATH when the directory exists', async () => {
+        // Return true only for the plugin-deps/node_modules path (not the grammy subdir)
+        fsMock().existsSync.mockImplementation((p: unknown) => {
+            const s = String(p);
+            return s.includes('plugin-deps') && s.endsWith('node_modules');
+        });
+        const event = makeMockEvent();
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        // onboard is calls[0] — inspect its env
+        const [, , opts] = spawnMock.mock.calls[0];
+        const env = (opts as { env: NodeJS.ProcessEnv }).env;
+        expect(env).toHaveProperty('NODE_PATH');
+        expect(env.NODE_PATH).toContain('plugin-deps');
+    });
+
+    it('does not add plugin-deps to NODE_PATH when directory does not exist', async () => {
+        // Default: existsSync returns false for everything
+        const event = makeMockEvent();
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const [, , opts] = spawnMock.mock.calls[0];
+        const env = (opts as { env: NodeJS.ProcessEnv }).env;
+        expect(String(env.NODE_PATH ?? '')).not.toContain('plugin-deps');
     });
 });

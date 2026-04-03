@@ -91,10 +91,18 @@ export class OpenClawService {
 
     /**
      * Builds the environment for spawned CLI processes.
+     * Includes NODE_PATH pointing at ~/.openclaw/plugin-deps/node_modules so
+     * that openclaw child processes can resolve grammy (and any other peer deps
+     * we install there) without us touching the npx-managed cache directory.
      */
     private buildCliEnv(): NodeJS.ProcessEnv {
         const env: NodeJS.ProcessEnv = { ...process.env };
-
+        const pluginDepsModules = path.join(this.getPluginDepsDir(), 'node_modules');
+        if (fs.existsSync(pluginDepsModules)) {
+            env.NODE_PATH = env.NODE_PATH
+                ? `${pluginDepsModules}${path.delimiter}${env.NODE_PATH}`
+                : pluginDepsModules;
+        }
         return env;
     }
 
@@ -289,18 +297,20 @@ expect eof
             }
 
             // ── Stage 2: Pipe the token into OpenClaw paste-token ──
+            // Wait briefly so npm's cache cleanup from Stage 1's npx process
+            // finishes. Without this, Stage 2's npx may hit ENOTEMPTY when
+            // atomically renaming the openclaw package in the shared cache.
+            console.log('[OAuth/Anthropic] Stage 2: Waiting for npm cache cleanup...');
+            await new Promise(r => setTimeout(r, 1500));
+
             console.log('[OAuth/Anthropic] Stage 2: Registering token with OpenClaw...');
 
             const stage2Script = `
 spawn -noecho bash -c "npx -y openclaw@latest models auth paste-token --provider anthropic"
-set timeout 60
-expect {
-    -re "Paste token" {
-        send "${capturedToken}\\r"
-        exp_continue
-    }
-    eof
-}
+set timeout 300
+expect -re "Paste token"
+send "${capturedToken}\\r"
+expect eof
 catch wait result
 exit [lindex $result 3]
 `;
@@ -312,19 +322,28 @@ exit [lindex $result 3]
 
             this.cliProcess.stdout?.on('data', (data: Buffer) => {
                 const line = data.toString().trim();
-                if (line) console.log(`[OAuth/Anthropic Stage2]: ${line}`);
+                // Avoid logging the raw token back if it echoes
+                if (line && !line.includes(capturedToken)) {
+                    console.log(`[OAuth/Anthropic Stage2]: ${line}`);
+                }
             });
             this.cliProcess.stderr?.on('data', (data: Buffer) => {
                 const line = data.toString().trim();
-                if (line) console.error(`[OAuth/Anthropic Stage2 stderr]: ${line}`);
+                if (line && !line.includes(capturedToken)) {
+                    console.error(`[OAuth/Anthropic Stage2 stderr]: ${line}`);
+                }
             });
 
-            await new Promise<void>((resolve, reject) => {
+            const exitCode = await new Promise<number>((resolve, reject) => {
                 this.cliProcess!.on('close', (code) => {
                     if (this.wasCancelled) { reject(new Error('Cancelled')); return; }
-                    if (code === 0) { resolve(); } else { reject(new Error(`paste-token exited with code ${code}`)); }
+                    resolve(code ?? 1);
                 });
             });
+
+            if (exitCode !== 0) {
+                console.warn(`[OAuth/Anthropic] Stage 2 exited with code ${exitCode}`);
+            }
 
             // ── Verify config was updated ──
             let afterMtime = 0;
@@ -429,6 +448,55 @@ exit [lindex $result 3]
                     resolve({ stdout, stderr });
                 }
             });
+        });
+    }
+
+    /**
+     * Returns the directory used to install plugin peer deps that are missing
+     * from the OpenClaw npx cache. Kept separate from the cache so we never
+     * touch the npx-managed node_modules (which causes ENOTEMPTY when npm tries
+     * to atomically rename the openclaw package during a subsequent install).
+     */
+    private getPluginDepsDir(): string {
+        return path.join(os.homedir(), '.openclaw', 'plugin-deps');
+    }
+
+    /**
+     * Installs grammy into ~/.openclaw/plugin-deps/ if not already present.
+     * The directory is added to NODE_PATH in buildCliEnv() so every openclaw
+     * child process can resolve require('grammy') via the standard module
+     * resolution path.
+     */
+    private async ensureGrammyInstalled(env: NodeJS.ProcessEnv): Promise<void> {
+        const depsDir = this.getPluginDepsDir();
+        const grammyDir = path.join(depsDir, 'node_modules', 'grammy');
+        if (fs.existsSync(grammyDir)) {
+            console.log('[OpenClawService] grammy already present; skipping install.');
+            return;
+        }
+
+        fs.mkdirSync(depsDir, { recursive: true });
+        console.log(`[OpenClawService] Installing grammy into ${depsDir}...`);
+
+        await new Promise<void>((resolve, reject) => {
+            const command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+            const proc = spawn(command, [
+                'install', '--no-save', '--no-audit', '--no-fund',
+                '--legacy-peer-deps', '--ignore-scripts',
+                '--prefix', depsDir,
+                'grammy',
+            ], { env, shell: false, stdio: ['ignore', 'pipe', 'pipe'] });
+            let stderr = '';
+            proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
+            proc.on('close', (code) => {
+                if (code === 0) {
+                    console.log('[OpenClawService] grammy installed successfully.');
+                    resolve();
+                } else {
+                    reject(new Error(`grammy install failed (code ${code}): ${stderr.trim()}`));
+                }
+            });
+            proc.on('error', reject);
         });
     }
 
@@ -542,6 +610,19 @@ exit [lindex $result 3]
 
             fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
             console.log(`[OpenClawService] Set default model to: ${modelPrimary}`);
+
+            // Step 1.5: Fix bundled plugin peer-dep failures before any command
+            // that triggers a full plugin registry load (scope="all").
+            this.emitProgress(event, 1, 'Repairing plugin dependencies...');
+            // Disable amazon-bedrock — its peer dep (@aws-sdk/client-bedrock) is
+            // absent from the npx cache and is not needed; skip the install.
+            try {
+                await this.runNpxCommand(['openclaw@latest', 'plugins', 'disable', 'amazon-bedrock'], this.buildCliEnv());
+            } catch { /* may already be disabled; non-fatal */ }
+            // Install grammy for the telegram plugin into an isolated directory.
+            // buildCliEnv() adds that directory to NODE_PATH so all subsequent
+            // openclaw child processes resolve require('grammy') from there.
+            await this.ensureGrammyInstalled(this.buildCliEnv());
 
             // Step 2: Channels
             this.emitProgress(event, 2, 'Configuring channel...');
