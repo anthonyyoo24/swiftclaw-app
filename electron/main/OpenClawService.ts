@@ -25,7 +25,10 @@ function generateUserMd(payload: {
     const context = payload.usageType === 'business'
         ? (payload.businessDescription ?? '')
         : (payload.personalContext ?? '');
-    const workflowList = payload.workflows.map(w => `- ${w}`).join('\n');
+    const workflowList = payload.workflows
+        .map(w => w.startsWith('__CUSTOM__:') ? w.slice('__CUSTOM__:'.length) : w)
+        .map(w => `- ${w}`)
+        .join('\n');
 
     return `# About ${payload.userName}
 

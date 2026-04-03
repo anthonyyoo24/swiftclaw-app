@@ -616,6 +616,21 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         expect(content).toContain('- review-prs');
     });
 
+    it('strips __CUSTOM__: prefix from custom workflows when writing USER.md', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, { ...BASE_PAYLOAD, workflows: ['write-code', '__CUSTOM__:automate deployments'] });
+        await vi.runAllTimersAsync();
+        await p;
+
+        const userMdCall = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+            .find(([filePath]) => filePath.includes('workspace-maya') && filePath.endsWith('USER.md'));
+
+        expect(userMdCall).toBeDefined();
+        const content = userMdCall![1];
+        expect(content).toContain('- automate deployments');
+        expect(content).not.toContain('__CUSTOM__:');
+    });
+
     it('writes a unique AGENTS.md into each agent workspace', async () => {
         const event = makeMockEvent();
         const p = service.deploy(event, TWO_AGENT_PAYLOAD);
