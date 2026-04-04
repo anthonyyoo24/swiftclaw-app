@@ -101,11 +101,9 @@ export class OpenClawService {
     private buildCliEnv(): NodeJS.ProcessEnv {
         const env: NodeJS.ProcessEnv = { ...process.env };
         const pluginDepsModules = path.join(this.getPluginDepsDir(), 'node_modules');
-        if (fs.existsSync(pluginDepsModules)) {
-            env.NODE_PATH = env.NODE_PATH
-                ? `${pluginDepsModules}${path.delimiter}${env.NODE_PATH}`
-                : pluginDepsModules;
-        }
+        env.NODE_PATH = env.NODE_PATH
+            ? `${pluginDepsModules}${path.delimiter}${env.NODE_PATH}`
+            : pluginDepsModules;
         return env;
     }
 
@@ -156,7 +154,8 @@ export class OpenClawService {
                 throw new Error(`[OAuth] Unsafe method value rejected: ${entry.method}`);
             }
 
-            let cliCommand = `npx -y openclaw@latest models auth login --provider ${entry.provider}`;
+            const openClawBin = this.resolveOpenClawBinary();
+            let cliCommand = `"${openClawBin}" models auth login --provider ${entry.provider}`;
             if (entry.method) {
                 cliCommand += ` --method ${entry.method}`;
             }
@@ -300,16 +299,10 @@ expect eof
             }
 
             // ── Stage 2: Pipe the token into OpenClaw paste-token ──
-            // Wait briefly so npm's cache cleanup from Stage 1's npx process
-            // finishes. Without this, Stage 2's npx may hit ENOTEMPTY when
-            // atomically renaming the openclaw package in the shared cache.
-            console.log('[OAuth/Anthropic] Stage 2: Waiting for npm cache cleanup...');
-            await new Promise(r => setTimeout(r, 1500));
-
             console.log('[OAuth/Anthropic] Stage 2: Registering token with OpenClaw...');
 
             const stage2Script = `
-spawn -noecho bash -c "npx -y openclaw@latest models auth paste-token --provider anthropic"
+spawn -noecho bash -c "${this.resolveOpenClawBinary()} models auth paste-token --provider anthropic"
 set timeout 300
 expect -re "Paste token"
 send "${capturedToken}\\r"
@@ -413,15 +406,32 @@ exit [lindex $result 3]
     }
 
     /**
-     * Safely executes an npx command using an argument array to prevent shell injection.
+     * Resolves the path to the locally installed openclaw binary.
+     * In production, electron-vite's externalizeDepsPlugin keeps node_modules intact
+     * alongside the compiled main process, so the binary lives next to app.getAppPath().
+     * In development, it lives in the project's node_modules/.bin/.
      */
-    private async runNpxCommand(args: string[], env: NodeJS.ProcessEnv): Promise<{ stdout: string; stderr: string }> {
-        return new Promise((resolve, reject) => {
-            const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-            const sanitizedArgs = this.sanitizeArgs(args);
-            console.log(`[OpenClawService] Executing: ${command} ${sanitizedArgs.map(a => a.includes(' ') ? `"${a}"` : a).join(' ')}`);
+    private resolveOpenClawBinary(): string {
+        const binName = process.platform === 'win32' ? 'openclaw.cmd' : 'openclaw';
+        if (app.isPackaged) {
+            return path.join(app.getAppPath(), 'node_modules', '.bin', binName);
+        }
+        // __dirname is dist/main/ after electron-vite compilation; walk up to the package root
+        return path.join(__dirname, '..', '..', 'node_modules', '.bin', binName);
+    }
 
-            this.cliProcess = spawn(command, args, {
+    /**
+     * Safely executes a local openclaw binary command using an argument array.
+     * Replaces runNpxCommand for all openclaw subcommands — no npx overhead,
+     * no remote package resolution, uses the pinned version from package.json.
+     */
+    private async runLocalOpenClawCommand(args: string[], env: NodeJS.ProcessEnv): Promise<{ stdout: string; stderr: string }> {
+        return new Promise((resolve, reject) => {
+            const binary = this.resolveOpenClawBinary();
+            const sanitizedArgs = this.sanitizeArgs(args);
+            console.log(`[OpenClawService] Executing: ${binary} ${sanitizedArgs.map(a => a.includes(' ') ? `"${a}"` : a).join(' ')}`);
+
+            this.cliProcess = spawn(binary, args, {
                 env,
                 shell: false,
                 stdio: ['ignore', 'pipe', 'pipe']
@@ -511,11 +521,11 @@ exit [lindex $result 3]
     private async ensureGatewayRunning(): Promise<void> {
         const env = this.buildCliEnv();
         try {
-            await this.runNpxCommand(['openclaw@latest', 'gateway', 'restart'], env);
+            await this.runLocalOpenClawCommand(['gateway', 'restart'], env);
             console.log('[OpenClawService] Gateway restarted successfully.');
         } catch (restartErr) {
             console.warn('[OpenClawService] gateway restart failed, attempting gateway start:', restartErr);
-            await this.runNpxCommand(['openclaw@latest', 'gateway', 'start'], env);
+            await this.runLocalOpenClawCommand(['gateway', 'start'], env);
             console.log('[OpenClawService] Gateway started successfully.');
         }
     }
@@ -529,11 +539,12 @@ exit [lindex $result 3]
         this.resetState();
         try {
             console.log('Orchestrating deployment for:', payload.agentTemplateIds);
+            const cliEnv = this.buildCliEnv();
 
             // Step 1: Auth (UI Step 1 -> Phase 2 OpenClaw Bootstrapping)
             this.emitProgress(event, 1, 'Bootstrapping core OpenClaw configuration...');
 
-            const baseArgs = ['openclaw@latest', 'onboard', '--non-interactive', '--accept-risk'];
+            const baseArgs = ['onboard', '--non-interactive', '--accept-risk'];
             let onboardArgs: string[] = [];
 
             if (payload.aiAuthType === 'oauth') {
@@ -577,7 +588,7 @@ exit [lindex $result 3]
                 ];
             }
 
-            const { stdout, stderr } = await this.runNpxCommand(onboardArgs, this.buildCliEnv());
+            const { stdout, stderr } = await this.runLocalOpenClawCommand(onboardArgs, cliEnv);
             if (stderr && stderr.trim()) {
                 console.warn(`Command stderr: ${stderr}`);
             }
@@ -620,21 +631,21 @@ exit [lindex $result 3]
             // Disable amazon-bedrock — its peer dep (@aws-sdk/client-bedrock) is
             // absent from the npx cache and is not needed; skip the install.
             try {
-                await this.runNpxCommand(['openclaw@latest', 'plugins', 'disable', 'amazon-bedrock'], this.buildCliEnv());
+                await this.runLocalOpenClawCommand(['plugins', 'disable', 'amazon-bedrock'], cliEnv);
             } catch { /* may already be disabled; non-fatal */ }
             // Install grammy for the telegram plugin into an isolated directory.
             // buildCliEnv() adds that directory to NODE_PATH so all subsequent
             // openclaw child processes resolve require('grammy') from there.
-            await this.ensureGrammyInstalled(this.buildCliEnv());
+            await this.ensureGrammyInstalled(cliEnv);
 
             // Step 2: Channels
             this.emitProgress(event, 2, 'Configuring channel...');
             if (payload.selectedChannel === 'telegram' || payload.selectedChannel === 'discord') {
-                await this.runNpxCommand([
-                    'openclaw@latest', 'channels', 'add',
+                await this.runLocalOpenClawCommand([
+                    'channels', 'add',
                     '--channel', payload.selectedChannel,
                     '--token', payload.channelToken,
-                ], this.buildCliEnv());
+                ], cliEnv);
             } else {
                 throw new Error(`Unsupported channel: ${payload.selectedChannel}`);
             }
@@ -644,47 +655,46 @@ exit [lindex $result 3]
             for (const agentId of payload.agentTemplateIds) {
                 this.emitProgress(event, 3, `Creating ${agentId}'s workspace...`);
                 const workspacePath = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`);
-                await this.runNpxCommand([
-                    'openclaw@latest', 'agents', 'add', agentId,
+                await this.runLocalOpenClawCommand([
+                    'agents', 'add', agentId,
                     '--workspace', workspacePath,
                     '--non-interactive',
-                ], this.buildCliEnv());
+                ], cliEnv);
             }
 
             // Step 4: Write USER.md into each agent workspace
             this.emitProgress(event, 4, 'Writing USER.md...');
             const userMdContent = generateUserMd(payload);
-            for (const agentId of payload.agentTemplateIds) {
+            await Promise.all(payload.agentTemplateIds.map(agentId => {
                 const agentWorkspace = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`);
-                fs.writeFileSync(path.join(agentWorkspace, 'USER.md'), userMdContent, 'utf-8');
-            }
+                return fs.promises.writeFile(path.join(agentWorkspace, 'USER.md'), userMdContent, 'utf-8');
+            }));
 
             // Step 5: Write per-agent AGENTS.md
             this.emitProgress(event, 5, 'Writing AGENTS.md...');
-            for (const agentId of payload.agentTemplateIds) {
+            await Promise.all(payload.agentTemplateIds.map(agentId => {
                 const agentWorkspace = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`);
-                fs.writeFileSync(
+                return fs.promises.writeFile(
                     path.join(agentWorkspace, 'AGENTS.md'),
                     this.generateAgentsMd(agentId, payload.tools ?? []),
                     'utf-8'
                 );
-            }
+            }));
 
             // Step 6: Copy SOUL.md templates and remove BOOTSTRAP.md
             this.emitProgress(event, 6, 'Copying SOUL.md templates...');
             const resourcesPath = this.getResourcesPath();
-            for (const agentId of payload.agentTemplateIds) {
+            await Promise.all(payload.agentTemplateIds.map(async agentId => {
                 const templateFile = SOUL_TEMPLATE_FILES[agentId];
                 if (!templateFile) {
                     throw new Error(`No SOUL.md template found for agent: ${agentId}`);
                 }
                 const src = path.join(resourcesPath, 'soul-templates', templateFile);
                 const dest = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`, 'SOUL.md');
-                fs.copyFileSync(src, dest);
-
+                await fs.promises.copyFile(src, dest);
                 const bootstrapPath = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`, 'BOOTSTRAP.md');
-                if (fs.existsSync(bootstrapPath)) fs.unlinkSync(bootstrapPath);
-            }
+                await fs.promises.unlink(bootstrapPath).catch(() => { /* may not exist */ });
+            }));
 
             // Step 8: Gateway startup — restart if already running, fall back to start for fresh installs
             this.emitProgress(event, 8, 'Starting OpenClaw gateway...');
@@ -692,9 +702,9 @@ exit [lindex $result 3]
 
             // Step 9: Deep health check — probes channel connectivity
             this.emitProgress(event, 9, 'Running health checks...');
-            await this.runNpxCommand(
-                ['openclaw@latest', 'status', '--deep', '--json', '--timeout', '10000'],
-                this.buildCliEnv()
+            await this.runLocalOpenClawCommand(
+                ['status', '--deep', '--json', '--timeout', '10000'],
+                cliEnv
             );
 
             event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });
