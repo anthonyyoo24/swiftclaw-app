@@ -513,23 +513,6 @@ exit [lindex $result 3]
         });
     }
 
-    /**
-     * Tries `gateway restart` first (for existing daemon installations).
-     * Falls back to `gateway start` for fresh installs where the gateway has never run.
-     * Throws if both commands fail.
-     */
-    private async ensureGatewayRunning(): Promise<void> {
-        const env = this.buildCliEnv();
-        try {
-            await this.runLocalOpenClawCommand(['gateway', 'restart'], env);
-            console.log('[OpenClawService] Gateway restarted successfully.');
-        } catch (restartErr) {
-            console.warn('[OpenClawService] gateway restart failed, attempting gateway start:', restartErr);
-            await this.runLocalOpenClawCommand(['gateway', 'start'], env);
-            console.log('[OpenClawService] Gateway started successfully.');
-        }
-    }
-
     async deploy(event: IpcMainEvent, payload: DeploymentPayload) {
         if (this.cliProcess) {
             console.warn('[OpenClawService] Operation already in progress, ignoring.');
@@ -695,17 +678,6 @@ exit [lindex $result 3]
                 const bootstrapPath = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`, 'BOOTSTRAP.md');
                 await fs.promises.unlink(bootstrapPath).catch(() => { /* may not exist */ });
             }));
-
-            // Step 8: Gateway startup — restart if already running, fall back to start for fresh installs
-            this.emitProgress(event, 8, 'Starting OpenClaw gateway...');
-            await this.ensureGatewayRunning();
-
-            // Step 9: Deep health check — probes channel connectivity
-            this.emitProgress(event, 9, 'Running health checks...');
-            await this.runLocalOpenClawCommand(
-                ['status', '--deep', '--json', '--timeout', '10000'],
-                cliEnv
-            );
 
             event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });
 
