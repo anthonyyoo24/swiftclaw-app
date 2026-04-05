@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Pencil, Plus, X } from "lucide-react";
 import { Textarea } from "@/components/ui/Textarea";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
 import { useWizardField } from "../hooks/useWizardField";
@@ -25,7 +27,6 @@ const BUSINESS_WORKFLOW_OPTIONS: WorkflowOption[] = [
     { id: "track-tasks", label: "Track tasks & project status", emoji: "✅" },
     { id: "triage-tickets", label: "Triage & route support tickets", emoji: "🎟️" },
     { id: "social-media", label: "Schedule & manage social posts", emoji: "📲" },
-    { id: "other", label: "Something else", emoji: "⚡" },
 ];
 
 const PERSONAL_WORKFLOW_OPTIONS: WorkflowOption[] = [
@@ -40,7 +41,6 @@ const PERSONAL_WORKFLOW_OPTIONS: WorkflowOption[] = [
     { id: "write-journal", label: "Write journal entries", emoji: "📓" },
     { id: "find-news", label: "Find & summarize news", emoji: "🗞️" },
     { id: "brainstorm", label: "Brainstorm ideas", emoji: "💡" },
-    { id: "other", label: "Something else", emoji: "⚡" },
 ];
 
 const CUSTOM_PREFIX = "__CUSTOM__:";
@@ -51,10 +51,13 @@ export function WorkflowsStep() {
     const WORKFLOW_OPTIONS = usageType === "personal" ? PERSONAL_WORKFLOW_OPTIONS : BUSINESS_WORKFLOW_OPTIONS;
 
     const { value: rawValue, onChange } = useWizardField("workflows");
-    const value = rawValue || [];
-    const customEntryIndex = value.findIndex((v: string) => v.startsWith(CUSTOM_PREFIX));
-    const isCustomActive = customEntryIndex !== -1;
-    const customText = isCustomActive ? value[customEntryIndex].slice(CUSTOM_PREFIX.length) : "";
+    const value: string[] = rawValue || [];
+
+    const [isAddingCustom, setIsAddingCustom] = useState(false);
+    const [tempWorkflowValue, setTempWorkflowValue] = useState("");
+    const [editingEntry, setEditingEntry] = useState<string | null>(null);
+
+    const customWorkflows = value.filter((v: string) => v.startsWith(CUSTOM_PREFIX));
 
     const togglePreset = (id: string) => {
         if (value.includes(id)) {
@@ -64,20 +67,33 @@ export function WorkflowsStep() {
         }
     };
 
-    const toggleOther = () => {
-        if (isCustomActive) {
-            onChange(value.filter((_: string, i: number) => i !== customEntryIndex));
+    const addCustomWorkflow = () => {
+        const text = tempWorkflowValue.trim();
+        if (!text) return;
+        if (editingEntry !== null) {
+            onChange(value.map((v: string) => v === editingEntry ? CUSTOM_PREFIX + text : v));
+            setEditingEntry(null);
         } else {
-            onChange([...value, CUSTOM_PREFIX]);
+            onChange([...value, CUSTOM_PREFIX + text]);
         }
+        setTempWorkflowValue("");
+        setIsAddingCustom(false);
     };
 
-    const handleCustomChange = (text: string) => {
-        if (isCustomActive) {
-            const next = [...value];
-            next[customEntryIndex] = CUSTOM_PREFIX + text;
-            onChange(next);
-        }
+    const startEditingWorkflow = (entry: string) => {
+        setEditingEntry(entry);
+        setTempWorkflowValue(entry.slice(CUSTOM_PREFIX.length));
+        setIsAddingCustom(true);
+    };
+
+    const cancelCustomWorkflow = () => {
+        setTempWorkflowValue("");
+        setIsAddingCustom(false);
+        setEditingEntry(null);
+    };
+
+    const removeCustomWorkflow = (entry: string) => {
+        onChange(value.filter((v: string) => v !== entry));
     };
 
     return (
@@ -90,13 +106,12 @@ export function WorkflowsStep() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {WORKFLOW_OPTIONS.map((wf) => {
-                    const isOther = wf.id === "other";
-                    const isSelected = isOther ? isCustomActive : value.includes(wf.id);
+                    const isSelected = value.includes(wf.id);
                     return (
                         <button
                             key={wf.id}
                             type="button"
-                            onClick={() => isOther ? toggleOther() : togglePreset(wf.id)}
+                            onClick={() => togglePreset(wf.id)}
                             aria-pressed={isSelected}
                             className={cn(
                                 "group flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left cursor-pointer",
@@ -111,20 +126,95 @@ export function WorkflowsStep() {
                         </button>
                     );
                 })}
+
+                {customWorkflows.map((entry) => {
+                    const raw = entry.slice(CUSTOM_PREFIX.length);
+                    const displayLabel = raw.length > 40 ? raw.slice(0, 40) + "…" : raw;
+                    const isBeingEdited = editingEntry === entry;
+                    return (
+                        <div
+                            key={entry}
+                            className={cn(
+                                "relative group flex items-center gap-3 px-4 py-3.5 rounded-xl border shadow-md",
+                                isBeingEdited
+                                    ? "bg-white/5 border-white/30 text-neutral-400"
+                                    : "bg-white/10 border-white text-white"
+                            )}
+                        >
+                            <span className="text-xl shrink-0">⚡</span>
+                            <span className="text-sm font-medium leading-tight flex-1 min-w-0 truncate">{displayLabel}</span>
+                            <button
+                                type="button"
+                                onClick={() => startEditingWorkflow(entry)}
+                                className="absolute -bottom-1.5 -right-1.5 p-1 rounded-full bg-neutral-800 border border-neutral-700 text-neutral-400 opacity-0 group-hover:opacity-100 hover:text-blue-400 hover:border-blue-500/30 transition-all z-10 cursor-pointer"
+                                title="Edit workflow"
+                            >
+                                <Pencil className="w-3 h-3 translate-x-px" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => removeCustomWorkflow(entry)}
+                                className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-neutral-800 border border-neutral-700 text-neutral-400 opacity-0 group-hover:opacity-100 hover:text-red-400 hover:border-red-500/30 transition-all z-10 cursor-pointer"
+                                title="Remove workflow"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    );
+                })}
+
+                {!isAddingCustom && (
+                    <button
+                        type="button"
+                        onClick={() => setIsAddingCustom(true)}
+                        className={cn(
+                            "group flex items-center justify-center gap-2 px-4 py-3.5 min-h-16 rounded-xl border border-dashed cursor-pointer",
+                            "transition-all duration-150 hover:-translate-y-0.5",
+                            "bg-white/5 border-white/20 text-neutral-400 hover:border-white/40 hover:text-neutral-200 hover:bg-white/10"
+                        )}
+                    >
+                        <Plus className="w-4 h-4 shrink-0 translate-y-0.5px" />
+                        <span className="text-sm font-medium leading-none">Add Custom</span>
+                    </button>
+                )}
             </div>
 
-            {isCustomActive && (
+            {isAddingCustom && (
                 <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <Textarea
-                        aria-label="Custom workflow description"
-                        value={customText}
-                        onChange={(e) => handleCustomChange(e.target.value)}
-                        placeholder="Describe the workflow you want to automate..."
-                        variant="glass"
-                        className="min-h-20 no-drag select-text relative z-50 resize-none"
-                        rows={6}
-                        autoFocus
-                    />
+                    <div className="relative">
+                        <Textarea
+                            aria-label="Custom workflow description"
+                            value={tempWorkflowValue}
+                            onChange={(e) => setTempWorkflowValue(e.target.value)}
+                            placeholder="Describe the workflow you want to automate..."
+                            variant="glass"
+                            className="min-h-20 no-drag select-text relative z-50 resize-none pb-10"
+                            rows={4}
+                            autoFocus
+                        />
+                        <div className="absolute bottom-3 right-3 flex gap-2 z-50">
+                            <button
+                                type="button"
+                                onClick={cancelCustomWorkflow}
+                                className="px-3 py-1.5 text-xs font-medium rounded-lg text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={addCustomWorkflow}
+                                disabled={!tempWorkflowValue.trim() || (editingEntry !== null && tempWorkflowValue.trim() === editingEntry.slice(CUSTOM_PREFIX.length))}
+                                className={cn(
+                                    "px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
+                                    (tempWorkflowValue.trim() && (editingEntry === null || tempWorkflowValue.trim() !== editingEntry.slice(CUSTOM_PREFIX.length)))
+                                        ? "bg-white text-black hover:bg-white/90 cursor-pointer"
+                                        : "bg-white/10 text-neutral-500 cursor-not-allowed"
+                                )}
+                            >
+                                {editingEntry !== null ? "Save Changes" : "Add Workflow"}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
