@@ -33,7 +33,6 @@ function generateUserMd(payload: {
     return `# About ${payload.userName}
 
 **Timezone:** ${payload.timezone}
-**Usage:** ${payload.usageType}
 
 ## Context
 ${context}
