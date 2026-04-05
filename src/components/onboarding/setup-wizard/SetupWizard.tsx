@@ -97,14 +97,13 @@ function getOtherTemplates(): AgentTemplateId[] {
     return ["lily", "max", "sarah", "emma", "chris", "kevin", "zoe"];
 }
 
-const DEPLOY_DURATION_MS = 10000;
-
 export function SetupWizard() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [visitedIds, setVisitedIds] = useState<Set<StepId>>(new Set(["welcome"]));
     const [deployState, setDeployState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [deployError, setDeployError] = useState<string>("");
     const [backendDone, setBackendDone] = useState(false);
+    const [deployProgress, setDeployProgress] = useState<{ step: number; label: string }>({ step: 0, label: "Getting things ready..." });
 
     const methods = useForm<OnboardingFormValues>({
         mode: "onChange",
@@ -148,6 +147,10 @@ export function SetupWizard() {
                 setDeployState('error');
             });
 
+            const progressCleanup = window.electron.ipcRenderer.onDeploymentProgress((data) => {
+                setDeployProgress(data);
+            });
+
             // Start the deployment logic
             const currentValues = methods.getValues();
             const result = onboardingSchema.safeParse(currentValues);
@@ -157,6 +160,7 @@ export function SetupWizard() {
                 // Retained as a diagnostic safety net for future refactors.
                 console.error("[UNREACHABLE] Schema parse failed inside deploy effect.", result.error);
                 if (errorCleanup) errorCleanup();
+                if (progressCleanup) progressCleanup();
                 setTimeout(() => setDeployState('error'), 0);
                 return;
             }
@@ -168,6 +172,7 @@ export function SetupWizard() {
             cleanupIpc = () => {
                 if (originalCleanup) originalCleanup();
                 if (errorCleanup) errorCleanup();
+                if (progressCleanup) progressCleanup();
             };
         } else if (process.env.NODE_ENV === 'development') {
             // Dev-only: simulate backend success when running outside Electron
@@ -332,7 +337,9 @@ export function SetupWizard() {
             case "deploy":
                 if (deployState === 'loading') return (
                     <DeployProgressView
-                        duration={DEPLOY_DURATION_MS}
+                        currentStep={deployProgress.step}
+                        totalSteps={(formValues.agentTemplateIds?.length ?? 1) + 3}
+                        progressLabel={deployProgress.label}
                         backendComplete={backendDone}
                         onVisualComplete={() => setDeployState('success')}
                     />

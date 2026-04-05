@@ -524,8 +524,8 @@ exit [lindex $result 3]
             console.log('Orchestrating deployment for:', payload.agentTemplateIds);
             const cliEnv = this.buildCliEnv();
 
-            // Step 1: Auth (UI Step 1 -> Phase 2 OpenClaw Bootstrapping)
-            this.emitProgress(event, 1, 'Bootstrapping core OpenClaw configuration...');
+            // Step 1: Auth + bootstrapping
+            this.emitProgress(event, 1, 'Getting things ready...');
 
             const baseArgs = ['onboard', '--non-interactive', '--accept-risk'];
             let onboardArgs: string[] = [];
@@ -610,7 +610,7 @@ exit [lindex $result 3]
 
             // Step 1.5: Fix bundled plugin peer-dep failures before any command
             // that triggers a full plugin registry load (scope="all").
-            this.emitProgress(event, 1, 'Repairing plugin dependencies...');
+            this.emitProgress(event, 1, 'Getting things ready...');
             // Disable amazon-bedrock — its peer dep (@aws-sdk/client-bedrock) is
             // absent from the npx cache and is not needed; skip the install.
             try {
@@ -622,7 +622,8 @@ exit [lindex $result 3]
             await this.ensureGrammyInstalled(cliEnv);
 
             // Step 2: Channels
-            this.emitProgress(event, 2, 'Configuring channel...');
+            const channelLabel = payload.selectedChannel === 'discord' ? 'Discord' : 'Telegram';
+            this.emitProgress(event, 2, `Connecting your ${channelLabel}...`);
             if (payload.selectedChannel === 'telegram' || payload.selectedChannel === 'discord') {
                 await this.runLocalOpenClawCommand([
                     'channels', 'add',
@@ -633,28 +634,28 @@ exit [lindex $result 3]
                 throw new Error(`Unsupported channel: ${payload.selectedChannel}`);
             }
 
-            // Step 3: Create agent workspaces
-            this.emitProgress(event, 3, 'Creating agent workspaces...');
+            // Steps 3–N: Create agent workspaces (one step per agent)
+            let stepCounter = 3;
             for (const agentId of payload.agentTemplateIds) {
-                this.emitProgress(event, 3, `Creating ${agentId}'s workspace...`);
+                const displayName = agentId.charAt(0).toUpperCase() + agentId.slice(1);
+                this.emitProgress(event, stepCounter, `Bringing ${displayName} online...`);
                 const workspacePath = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`);
                 await this.runLocalOpenClawCommand([
                     'agents', 'add', agentId,
                     '--workspace', workspacePath,
                     '--non-interactive',
                 ], cliEnv);
+                stepCounter++;
             }
 
-            // Step 4: Write USER.md into each agent workspace
-            this.emitProgress(event, 4, 'Writing USER.md...');
+            // Final step: Write USER.md, AGENTS.md, copy SOUL.md (combined)
+            this.emitProgress(event, stepCounter, 'Finalizing agent configuration...');
             const userMdContent = generateUserMd(payload);
             await Promise.all(payload.agentTemplateIds.map(agentId => {
                 const agentWorkspace = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`);
                 return fs.promises.writeFile(path.join(agentWorkspace, 'USER.md'), userMdContent, 'utf-8');
             }));
 
-            // Step 5: Write per-agent AGENTS.md
-            this.emitProgress(event, 5, 'Writing AGENTS.md...');
             await Promise.all(payload.agentTemplateIds.map(agentId => {
                 const agentWorkspace = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`);
                 return fs.promises.writeFile(
@@ -664,8 +665,6 @@ exit [lindex $result 3]
                 );
             }));
 
-            // Step 6: Copy SOUL.md templates and remove BOOTSTRAP.md
-            this.emitProgress(event, 6, 'Copying SOUL.md templates...');
             const resourcesPath = this.getResourcesPath();
             await Promise.all(payload.agentTemplateIds.map(async agentId => {
                 const templateFile = SOUL_TEMPLATE_FILES[agentId];

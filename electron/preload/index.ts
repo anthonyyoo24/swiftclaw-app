@@ -24,6 +24,11 @@ try {
                 const subscription = (_event: IpcRendererEvent, data: unknown) => callback(data);
                 ipcRenderer.on('deployment:error', subscription);
                 return () => ipcRenderer.removeListener('deployment:error', subscription);
+            },
+            onDeploymentProgress: (callback: (data: { step: number; label: string }) => void) => {
+                const subscription = (_event: IpcRendererEvent, data: { step: number; label: string }) => callback(data);
+                ipcRenderer.on('deployment:progress', subscription);
+                return () => ipcRenderer.removeListener('deployment:progress', subscription);
             }
         }
     })

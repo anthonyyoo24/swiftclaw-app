@@ -8,6 +8,7 @@ export interface ElectronAPI {
         sendDeploymentStart: (payload: DeploymentPayload) => void;
         onDeploymentSuccess: (callback: () => void) => () => void;
         onDeploymentError: (callback: (data: { message?: string }) => void) => () => void;
+        onDeploymentProgress: (callback: (data: { step: number; label: string }) => void) => () => void;
     };
 }
 
