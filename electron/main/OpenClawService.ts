@@ -52,6 +52,14 @@ const SECRET_FLAGS = /^--(?:[\w-]*api[_-]?key|secret|token|password|auth[_-]?tok
 /** Fallback: redact any standalone value that looks like a long random credential (≥20 alphanum chars). */
 const SECRET_VALUE_PATTERN = /^[A-Za-z0-9_\-]{20,}$/;
 
+/** Strip ANSI/OSC terminal escape sequences from a string. */
+function stripAnsi(str: string): string {
+    return str
+        .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '')          // CSI sequences (colors, cursor movement, erase)
+        .replace(/\x1B\][^\x07\x1B]*(?:\x07|\x1B\\)/g, '') // OSC sequences (window title, progress)
+        .replace(/\x1B[@-_]/g, '');                         // two-byte escape sequences
+}
+
 export class OpenClawService {
     private cliProcess: ChildProcess | null = null;
     private wasCancelled = false;
@@ -154,7 +162,10 @@ export class OpenClawService {
             }
 
             const openClawBin = this.resolveOpenClawBinary();
-            let cliCommand = `"${openClawBin}" models auth login --provider ${entry.provider}`;
+            // No inner quotes — the outer bash -c "..." in the Expect script provides the quoting.
+            // Adding quotes here would produce `bash -c ""/path/to/bin" ..."` which Tcl
+            // misparses as an empty string followed by extra characters.
+            let cliCommand = `${openClawBin} models auth login --provider ${entry.provider}`;
             if (entry.method) {
                 cliCommand += ` --method ${entry.method}`;
             }
@@ -182,13 +193,13 @@ exit [lindex $result 3]
             });
 
             this.cliProcess.stdout?.on('data', (data) => {
-                const line = data.toString().trim();
+                const line = stripAnsi(data.toString()).trim();
                 if (line && !line.includes('Complete sign-in in browser')) {
                     console.log(`[OAuth CLI]: ${line}`);
                 }
             });
             this.cliProcess.stderr?.on('data', (data) => {
-                const line = data.toString().trim();
+                const line = stripAnsi(data.toString()).trim();
                 if (line && !line.includes('Complete sign-in in browser')) {
                     console.error(`[OAuth CLI stderr]: ${line}`);
                 }
@@ -259,12 +270,13 @@ expect eof
 
                 this.cliProcess.stdout?.on('data', (data: Buffer) => {
                     const text = data.toString();
-                    console.log(`[OAuth/Anthropic Stage1]: ${text.trim()}`);
+                    const line = stripAnsi(text).trim();
+                    if (line) console.log(`[OAuth/Anthropic Stage1]: ${line}`);
                     stdoutBuffer += text;
                 });
 
                 this.cliProcess.stderr?.on('data', (data: Buffer) => {
-                    const line = data.toString().trim();
+                    const line = stripAnsi(data.toString()).trim();
                     if (line) console.error(`[OAuth/Anthropic Stage1 stderr]: ${line}`);
                 });
 
