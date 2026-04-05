@@ -44,6 +44,12 @@ const VALID_PAYLOAD: DeploymentPayload = {
     selectedChannel: 'telegram',
     channelToken: 'tg-token-xyz',
     agentTemplateIds: ['maya'],
+    userName: 'Test User',
+    timezone: 'America/New_York',
+    usageType: 'business',
+    businessDescription: 'A test business',
+    goals: 'Build amazing software',
+    workflows: ['write-code', 'review-prs'],
 };
 
 describe('setupIpcHandlers', () => {

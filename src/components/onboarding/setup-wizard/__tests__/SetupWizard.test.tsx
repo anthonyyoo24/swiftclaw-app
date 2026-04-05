@@ -32,15 +32,22 @@ vi.mock('../steps/DeploymentStep', () => ({ DeploymentStep: () => <div data-test
 vi.mock('../steps/DeployProgressView', async () => {
     const { useEffect } = await import('react');
     return {
-        DeployProgressView: ({ onVisualComplete, backendComplete }: {
+        DeployProgressView: ({ onVisualComplete, backendComplete, currentStep = 0, totalSteps = 0, progressLabel = '' }: {
             onVisualComplete: () => void;
             backendComplete: boolean;
-            duration?: number;
+            currentStep?: number;
+            totalSteps?: number;
+            progressLabel?: string;
         }) => {
             useEffect(() => {
                 if (backendComplete) onVisualComplete();
             }, [backendComplete, onVisualComplete]);
-            return <div data-testid="step-deploy-progress">Deploying...</div>;
+            return (
+                <div data-testid="step-deploy-progress">
+                    <div data-testid="deploy-progress-steps">{currentStep}/{totalSteps}</div>
+                    <div data-testid="deploy-progress-label">{progressLabel}</div>
+                </div>
+            );
         },
     };
 });
@@ -83,11 +90,13 @@ vi.mock('../schema', async () => {
 const mockSendDeploymentStart = vi.fn();
 const mockOnDeploymentSuccess = vi.fn<(cb: () => void) => (() => void)>(() => vi.fn()); // returns cleanup fn
 const mockOnDeploymentError = vi.fn<(cb: (data: { message?: string }) => void) => (() => void)>(() => vi.fn());
+const mockOnDeploymentProgress = vi.fn<(cb: (data: { step: number; label: string }) => void) => (() => void)>(() => vi.fn());
 
 beforeEach(() => {
     mockSendDeploymentStart.mockReset();
     mockOnDeploymentSuccess.mockReset().mockReturnValue(vi.fn());
     mockOnDeploymentError.mockReset().mockReturnValue(vi.fn());
+    mockOnDeploymentProgress.mockReset().mockReturnValue(vi.fn());
 
     Object.defineProperty(window, 'electron', {
         value: {
@@ -95,6 +104,7 @@ beforeEach(() => {
                 sendDeploymentStart: mockSendDeploymentStart,
                 onDeploymentSuccess: mockOnDeploymentSuccess,
                 onDeploymentError: mockOnDeploymentError,
+                onDeploymentProgress: mockOnDeploymentProgress,
             },
         },
         writable: true,
@@ -131,6 +141,7 @@ describe('SetupWizard component', () => {
         // At idle, the loading branch of the effect is skipped entirely.
         expect(mockOnDeploymentSuccess).not.toHaveBeenCalled();
         expect(mockOnDeploymentError).not.toHaveBeenCalled();
+        expect(mockOnDeploymentProgress).not.toHaveBeenCalled();
     });
 
     it('does NOT call sendDeploymentStart on initial mount', () => {
@@ -143,6 +154,7 @@ describe('SetupWizard component', () => {
         expect(typeof window.electron!.ipcRenderer.sendDeploymentStart).toBe('function');
         expect(typeof window.electron!.ipcRenderer.onDeploymentSuccess).toBe('function');
         expect(typeof window.electron!.ipcRenderer.onDeploymentError).toBe('function');
+        expect(typeof window.electron!.ipcRenderer.onDeploymentProgress).toBe('function');
     });
 
     it('window.electron.ipcRenderer.onDeploymentSuccess returns a cleanup function', () => {
@@ -179,6 +191,8 @@ describe('SetupWizard component', () => {
         await user.click(screen.getByTestId('btn-next'));
 
         expect(screen.getByTestId('step-deploy-progress')).toBeInTheDocument();
+        expect(screen.getByTestId('deploy-progress-steps')).toHaveTextContent('0/4');
+        expect(screen.getByTestId('deploy-progress-label')).toHaveTextContent('Getting things ready...');
     });
 
     it('registers IPC subscriptions when deployState transitions to loading', async () => {
@@ -190,7 +204,27 @@ describe('SetupWizard component', () => {
 
         expect(mockOnDeploymentSuccess).toHaveBeenCalledOnce();
         expect(mockOnDeploymentError).toHaveBeenCalledOnce();
+        expect(mockOnDeploymentProgress).toHaveBeenCalledOnce();
         expect(mockSendDeploymentStart).toHaveBeenCalledOnce();
+    });
+
+    it('updates DeployProgressView when onDeploymentProgress fires', async () => {
+        let capturedProgressCallback: ((data: { step: number; label: string }) => void) | undefined;
+        mockOnDeploymentProgress.mockImplementationOnce((cb: (data: { step: number; label: string }) => void) => {
+            capturedProgressCallback = cb;
+            return vi.fn();
+        });
+
+        const user = userEvent.setup();
+        render(<SetupWizard />);
+
+        await navigateToDeployStep(user);
+        await user.click(screen.getByTestId('btn-next'));
+
+        await act(async () => { capturedProgressCallback?.({ step: 2, label: 'Connecting your Telegram...' }); });
+
+        expect(screen.getByTestId('deploy-progress-steps')).toHaveTextContent('2/4');
+        expect(screen.getByTestId('deploy-progress-label')).toHaveTextContent('Connecting your Telegram...');
     });
 
     it('renders DeploySuccessView after onDeploymentSuccess fires and visual completes', async () => {
@@ -230,4 +264,3 @@ describe('SetupWizard component', () => {
         expect(screen.getByText('Deployment failed')).toBeInTheDocument();
     });
 });
-

@@ -3,8 +3,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { DeployProgressView } from '../DeployProgressView';
 
-// Shared default props — backendComplete is false so Phase 1 runs in isolation
 const defaultProps = {
+    currentStep: 0,
+    totalSteps: 5,
+    progressLabel: 'Getting things ready...',
     backendComplete: false,
     onVisualComplete: vi.fn(),
 };
@@ -20,151 +22,94 @@ describe('DeployProgressView', () => {
     });
 
     it('renders the "Deploying Agent" heading on mount', () => {
-        render(<DeployProgressView duration={10000} {...defaultProps} />);
+        render(<DeployProgressView {...defaultProps} />);
         expect(screen.getByText('Deploying Agent')).toBeInTheDocument();
     });
 
-    it('renders the progressbar with aria-valuenow=0 initially', () => {
-        render(<DeployProgressView duration={10000} {...defaultProps} />);
+    it('renders the progressLabel in the status region', () => {
+        render(<DeployProgressView {...defaultProps} progressLabel="Connecting your Telegram..." />);
+        const status = screen.getByRole('status');
+        expect(status).toHaveTextContent('Connecting your Telegram...');
+    });
+
+    it('renders progress bar with aria-valuenow=0 when currentStep=0', () => {
+        render(<DeployProgressView {...defaultProps} currentStep={0} totalSteps={5} />);
         const bar = screen.getByRole('progressbar');
         expect(bar).toHaveAttribute('aria-valuenow', '0');
     });
 
-    it('advances to the first step message shortly after mount', async () => {
-        render(<DeployProgressView duration={10000} {...defaultProps} />);
-
-        // The component fires a 50ms timeout to kick off the first step
-        await act(async () => {
-            vi.advanceTimersByTime(100);
-        });
-
-        const status = screen.getByRole('status');
-        expect(status).toHaveTextContent('Authenticating with Provider...');
-    });
-
-    it('progress bar increases as time passes', async () => {
-        render(<DeployProgressView duration={10000} {...defaultProps} />);
-        const STEP_DURATION = 10000 / 5; // 2000ms per step
-
-        await act(async () => {
-            vi.advanceTimersByTime(50); // kick first step
-            vi.advanceTimersByTime(STEP_DURATION * 2); // advance 2 steps
-        });
-
+    it('renders progress bar at 40% when currentStep=2 and totalSteps=5', () => {
+        render(<DeployProgressView {...defaultProps} currentStep={2} totalSteps={5} />);
         const bar = screen.getByRole('progressbar');
-        const valuenow = Number(bar.getAttribute('aria-valuenow'));
-        // After 2 steps: (2/5)*100 = 40, capped at 90
-        expect(valuenow).toBeGreaterThan(0);
-        expect(valuenow).toBeLessThanOrEqual(90);
+        expect(bar).toHaveAttribute('aria-valuenow', '40');
     });
 
-    it('shows the last step message after all steps have advanced', async () => {
-        render(<DeployProgressView duration={5000} {...defaultProps} />);
-        const STEP_DURATION = 5000 / 5; // 1000ms per step
-
-        await act(async () => {
-            vi.advanceTimersByTime(50);
-            vi.advanceTimersByTime(STEP_DURATION * 5);
-        });
-
-        const status = screen.getByRole('status');
-        expect(status).toHaveTextContent('Finalizing agent startup...');
+    it('renders progress bar at 100% when currentStep equals totalSteps', () => {
+        render(<DeployProgressView {...defaultProps} currentStep={5} totalSteps={5} />);
+        const bar = screen.getByRole('progressbar');
+        expect(bar).toHaveAttribute('aria-valuenow', '100');
     });
 
-    it('holds at 90% once timer finishes and backendComplete is false', async () => {
+    it('updates progress bar when currentStep prop changes', () => {
+        const { rerender } = render(<DeployProgressView {...defaultProps} currentStep={1} totalSteps={4} />);
+        const bar = screen.getByRole('progressbar');
+        expect(bar).toHaveAttribute('aria-valuenow', '25');
+
+        rerender(<DeployProgressView {...defaultProps} currentStep={3} totalSteps={4} />);
+        expect(bar).toHaveAttribute('aria-valuenow', '75');
+    });
+
+    it('does not call onVisualComplete while backendComplete is false', async () => {
         const onVisualComplete = vi.fn();
-        render(<DeployProgressView duration={5000} backendComplete={false} onVisualComplete={onVisualComplete} />);
-
-        await act(async () => {
-            vi.advanceTimersByTime(5000 * 2); // well past all steps
-        });
-
-        const bar = screen.getByRole('progressbar');
-        expect(Number(bar.getAttribute('aria-valuenow'))).toBe(90);
+        render(<DeployProgressView {...defaultProps} backendComplete={false} onVisualComplete={onVisualComplete} />);
+        await act(async () => { vi.advanceTimersByTime(1000); });
         expect(onVisualComplete).not.toHaveBeenCalled();
     });
 
-    it('completes to 100% when backendComplete becomes true after timer', async () => {
+    it('calls onVisualComplete ~250ms after backendComplete becomes true', async () => {
         const onVisualComplete = vi.fn();
         const { rerender } = render(
-            <DeployProgressView duration={5000} backendComplete={false} onVisualComplete={onVisualComplete} />
+            <DeployProgressView {...defaultProps} backendComplete={false} onVisualComplete={onVisualComplete} />
         );
 
-        // Let Phase 1 run to completion
-        await act(async () => {
-            vi.advanceTimersByTime(5000 * 2);
-        });
+        rerender(<DeployProgressView {...defaultProps} backendComplete={true} onVisualComplete={onVisualComplete} />);
 
-        // Signal backend success
-        rerender(
-            <DeployProgressView duration={5000} backendComplete={true} onVisualComplete={onVisualComplete} />
-        );
-
-        // Advance past the 250ms completion animation
-        await act(async () => {
-            vi.advanceTimersByTime(300);
-        });
-
-        const bar = screen.getByRole('progressbar');
-        expect(Number(bar.getAttribute('aria-valuenow'))).toBe(100);
-    });
-
-    it('calls onVisualComplete after the completion animation finishes', async () => {
-        const onVisualComplete = vi.fn();
-        const { rerender } = render(
-            <DeployProgressView duration={5000} backendComplete={false} onVisualComplete={onVisualComplete} />
-        );
-
-        await act(async () => {
-            vi.advanceTimersByTime(5000 * 2);
-        });
-
-        rerender(
-            <DeployProgressView duration={5000} backendComplete={true} onVisualComplete={onVisualComplete} />
-        );
-
-        // Not yet called before the animation window
+        // Not yet called before the 250ms animation window
         expect(onVisualComplete).not.toHaveBeenCalled();
 
-        await act(async () => {
-            vi.advanceTimersByTime(300);
-        });
+        await act(async () => { vi.advanceTimersByTime(300); });
+        expect(onVisualComplete).toHaveBeenCalledOnce();
+    });
+
+    it('renders progress bar at 100% once backendComplete is true', async () => {
+        const { rerender } = render(
+            <DeployProgressView {...defaultProps} currentStep={3} totalSteps={5} backendComplete={false} />
+        );
+
+        rerender(<DeployProgressView {...defaultProps} currentStep={3} totalSteps={5} backendComplete={true} />);
+
+        await act(async () => { vi.advanceTimersByTime(300); });
+
+        const bar = screen.getByRole('progressbar');
+        expect(bar).toHaveAttribute('aria-valuenow', '100');
+    });
+
+    it('does not call onVisualComplete multiple times if backendComplete stays true', async () => {
+        const onVisualComplete = vi.fn();
+        const { rerender } = render(
+            <DeployProgressView {...defaultProps} backendComplete={true} onVisualComplete={onVisualComplete} />
+        );
+
+        await act(async () => { vi.advanceTimersByTime(300); });
+        rerender(<DeployProgressView {...defaultProps} backendComplete={true} onVisualComplete={onVisualComplete} />);
+        await act(async () => { vi.advanceTimersByTime(300); });
 
         expect(onVisualComplete).toHaveBeenCalledOnce();
     });
 
-    it('does not complete early when backendComplete arrives mid-Phase 1', async () => {
-        const onVisualComplete = vi.fn();
-        const STEP_DURATION = 5000 / 5; // 1000ms
-
-        // Start with backendComplete already true
-        render(
-            <DeployProgressView duration={5000} backendComplete={true} onVisualComplete={onVisualComplete} />
-        );
-
-        // Advance only partway through Phase 1
-        await act(async () => {
-            vi.advanceTimersByTime(50 + STEP_DURATION * 2);
-        });
-
+    it('sets aria-valuetext to progressLabel', () => {
+        render(<DeployProgressView {...defaultProps} progressLabel="Bringing Maya online..." />);
         const bar = screen.getByRole('progressbar');
-        const percent = Number(bar.getAttribute('aria-valuenow'));
-        // Still in Phase 1 — should not have jumped to 100%
-        expect(percent).toBeLessThan(90);
-        expect(onVisualComplete).not.toHaveBeenCalled();
-    });
-
-    it('cleans up timers on unmount (no state-update warnings)', () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-        const { unmount } = render(<DeployProgressView duration={10000} {...defaultProps} />);
-        unmount();
-
-        // Advance past full duration + buffer; if cleanup failed, timer callbacks
-        // would fire here and attempt state updates on the unmounted component
-        vi.advanceTimersByTime(11000);
-
-        expect(consoleSpy).not.toHaveBeenCalled();
-        consoleSpy.mockRestore();
+        expect(bar).toHaveAttribute('aria-valuetext', 'Bringing Maya online...');
     });
 });

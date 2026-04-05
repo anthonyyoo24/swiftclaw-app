@@ -33,6 +33,11 @@ vi.mock('fs', () => ({
         copyFileSync: vi.fn(),
         symlinkSync: vi.fn(),
         unlinkSync: vi.fn(),
+        promises: {
+            writeFile: vi.fn().mockResolvedValue(undefined),
+            copyFile: vi.fn().mockResolvedValue(undefined),
+            unlink: vi.fn().mockResolvedValue(undefined),
+        },
     },
 }));
 
@@ -41,6 +46,9 @@ import fs from 'fs';
 import { OpenClawService } from '../OpenClawService';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+type MockedFsPromises = Record<'writeFile' | 'copyFile' | 'unlink', MockInstance>;
+type MockedFs = Record<string, MockInstance> & { promises: MockedFsPromises };
 
 /**
  * Creates a fake ChildProcess EventEmitter that exits with the given code.
@@ -110,12 +118,13 @@ describe('OpenClawService.deploy()', () => {
         await vi.runAllTimersAsync();
         await deployPromise;
 
-        // Seven spawn calls: onboard + plugins disable + grammy install + channels add + agents add maya + gateway restart + status --deep
-        expect(spawnMock).toHaveBeenCalledTimes(7);
+        // Five spawn calls: onboard + plugins disable + grammy install + channels add + agents add maya
+        expect(spawnMock).toHaveBeenCalledTimes(5);
         const [cmd, args] = spawnMock.mock.calls[0];
 
-        expect(cmd).toMatch(/^npx/);
-        expect(args).toContain('openclaw@latest');
+        // Uses local binary, not npx
+        expect(cmd).not.toMatch(/^npx/);
+        expect(cmd).toMatch(/openclaw/);
         expect(args).toContain('onboard');
         expect(args).toContain('--non-interactive');
         expect(args).toContain('--accept-risk');
@@ -184,6 +193,19 @@ describe('OpenClawService.deploy()', () => {
         const errorReply = replies.find(([channel]) => channel === 'deployment:error');
         expect(errorReply).toBeDefined();
         expect(spawnMock).not.toHaveBeenCalled();
+    });
+
+    it('passes --workspace pointing to workspace-sarah to the onboard command', async () => {
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        const event = makeMockEvent();
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const [, onboardArgs] = spawnMock.mock.calls[0];
+        expect(onboardArgs).toContain('--workspace');
+        const wsIndex = (onboardArgs as string[]).indexOf('--workspace');
+        expect((onboardArgs as string[])[wsIndex + 1]).toMatch(/workspace-sarah$/);
     });
 
     it('ignores a concurrent deploy call and emits error for the second', async () => {
@@ -287,16 +309,14 @@ describe('Phase 3 – channel configuration', () => {
             .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
             .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
-            .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
-            .mockReturnValueOnce(makeFakeProcess(0)); // status --deep
+            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'telegram', channelToken: 'tg-secret' });
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(7);
+        expect(spawnMock).toHaveBeenCalledTimes(5);
         const [, args] = spawnMock.mock.calls[3];
         expect(args).toContain('channels');
         expect(args).toContain('add');
@@ -312,16 +332,14 @@ describe('Phase 3 – channel configuration', () => {
             .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
             .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
-            .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
-            .mockReturnValueOnce(makeFakeProcess(0)); // status --deep
+            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'discord', channelToken: 'dc-secret' });
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(7);
+        expect(spawnMock).toHaveBeenCalledTimes(5);
         const [, args] = spawnMock.mock.calls[3];
         expect(args).toContain('--channel');
         expect(args).toContain('discord');
@@ -355,9 +373,7 @@ describe('Phase 3 – channel configuration', () => {
             .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
             .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
-            .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
-            .mockReturnValueOnce(makeFakeProcess(0)); // status --deep
+            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'telegram' });
@@ -390,136 +406,6 @@ describe('Phase 3 – channel configuration', () => {
     });
 });
 
-// ── Phase 7: Gateway startup & health check ───────────────────────────────────
-
-describe('Phase 7 — gateway startup and health check', () => {
-    let spawnMock: MockInstance;
-    let service: OpenClawService;
-
-    beforeEach(() => {
-        vi.useFakeTimers();
-        spawnMock = vi.mocked(childProcess.spawn);
-        spawnMock.mockReset();
-        service = new OpenClawService();
-    });
-
-    afterEach(() => {
-        vi.useRealTimers();
-    });
-
-    it('calls gateway restart after all workspace steps complete', async () => {
-        spawnMock.mockImplementation(() => makeFakeProcess(0));
-        const event = makeMockEvent();
-
-        const p = service.deploy(event, BASE_PAYLOAD);
-        await vi.runAllTimersAsync();
-        await p;
-
-        const gatewayCalls = spawnMock.mock.calls.filter(([, args]) =>
-            (args as string[]).includes('gateway') && (args as string[]).includes('restart')
-        );
-        expect(gatewayCalls).toHaveLength(1);
-        expect(gatewayCalls[0][1]).toContain('openclaw@latest');
-    });
-
-    it('falls back to gateway start if gateway restart exits non-zero', async () => {
-        spawnMock
-            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
-            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
-            .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
-            .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
-            .mockReturnValueOnce(makeFakeProcess(1)) // gateway restart fails
-            .mockReturnValueOnce(makeFakeProcess(0)) // gateway start succeeds
-            .mockReturnValueOnce(makeFakeProcess(0)); // status --deep
-        const event = makeMockEvent();
-
-        const p = service.deploy(event, BASE_PAYLOAD);
-        await vi.runAllTimersAsync();
-        await p;
-
-        const startCall = spawnMock.mock.calls.find(([, args]) =>
-            (args as string[]).includes('gateway') && (args as string[]).includes('start')
-        );
-        expect(startCall).toBeDefined();
-
-        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
-        expect(replies.find(([ch]) => ch === 'deployment:success')).toBeDefined();
-    });
-
-    it('calls status --deep --json after gateway restart', async () => {
-        spawnMock.mockImplementation(() => makeFakeProcess(0));
-        const event = makeMockEvent();
-
-        const p = service.deploy(event, BASE_PAYLOAD);
-        await vi.runAllTimersAsync();
-        await p;
-
-        const statusCall = spawnMock.mock.calls.find(([, args]) =>
-            (args as string[]).includes('status') &&
-            (args as string[]).includes('--deep') &&
-            (args as string[]).includes('--json')
-        );
-        expect(statusCall).toBeDefined();
-        expect(statusCall![1]).toContain('openclaw@latest');
-    });
-
-    it('emits deployment:error if both gateway restart and gateway start fail', async () => {
-        spawnMock
-            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
-            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
-            .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
-            .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
-            .mockReturnValueOnce(makeFakeProcess(1)) // gateway restart fails
-            .mockReturnValueOnce(makeFakeProcess(1)); // gateway start also fails
-        const event = makeMockEvent();
-
-        const p = service.deploy(event, BASE_PAYLOAD);
-        await vi.runAllTimersAsync();
-        await p;
-
-        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
-        expect(replies.find(([ch]) => ch === 'deployment:error')).toBeDefined();
-        expect(replies.find(([ch]) => ch === 'deployment:success')).toBeUndefined();
-    });
-
-    it('emits deployment:error if status --deep exits non-zero', async () => {
-        spawnMock
-            .mockReturnValueOnce(makeFakeProcess(0)) // onboard
-            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
-            .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
-            .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
-            .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
-            .mockReturnValueOnce(makeFakeProcess(1)); // status --deep fails
-        const event = makeMockEvent();
-
-        const p = service.deploy(event, BASE_PAYLOAD);
-        await vi.runAllTimersAsync();
-        await p;
-
-        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
-        expect(replies.find(([ch]) => ch === 'deployment:error')).toBeDefined();
-        expect(replies.find(([ch]) => ch === 'deployment:success')).toBeUndefined();
-    });
-
-    it('emits step 8 before step 9', async () => {
-        spawnMock.mockImplementation(() => makeFakeProcess(0));
-        const event = makeMockEvent();
-
-        const p = service.deploy(event, BASE_PAYLOAD);
-        await vi.runAllTimersAsync();
-        await p;
-
-        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
-        const step8 = replies.find(([ch, data]) => ch === 'deployment:progress' && data.step === 8);
-        const step9 = replies.find(([ch, data]) => ch === 'deployment:progress' && data.step === 9);
-        expect(step8).toBeDefined();
-        expect(step9).toBeDefined();
-        expect(replies.indexOf(step9!)).toBeGreaterThan(replies.indexOf(step8!));
-    });
-});
 
 // ── Phase 4–6: Agent workspace initialization ─────────────────────────────────
 
@@ -527,7 +413,8 @@ describe('Phase 4–6 — agent workspace initialization', () => {
     let spawnMock: MockInstance;
     let service: OpenClawService;
     // Convenience: cast the mocked fs default export
-    const fsMock = () => fs as unknown as Record<string, MockInstance>;
+    const fsMock = () => fs as unknown as MockedFs;
+    const fsPromisesMock = () => fsMock().promises;
 
     const TWO_AGENT_PAYLOAD: DeploymentPayload = {
         ...BASE_PAYLOAD,
@@ -543,6 +430,9 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         // Clear fs call history before each test
         for (const method of ['writeFileSync', 'mkdirSync', 'copyFileSync', 'symlinkSync', 'unlinkSync']) {
             fsMock()[method].mockClear();
+        }
+        for (const method of ['writeFile', 'copyFile', 'unlink'] as const) {
+            fsPromisesMock()[method].mockClear();
         }
     });
 
@@ -572,14 +462,14 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         expect((jackArgs as string[]).join('/')).toContain('workspace-jack');
     });
 
-    it('total spawn count = 2 (onboard + channels add) + N agents + 2 (gateway restart + status deep)', async () => {
+    it('total spawn count = 3 (onboard + plugins disable + grammy) + 1 (channels add) + N agents', async () => {
         const event = makeMockEvent();
         const p = service.deploy(event, TWO_AGENT_PAYLOAD);
         await vi.runAllTimersAsync();
         await p;
 
-        // onboard(1) + plugins disable(1) + grammy install(1) + channels add(1) + agents add maya+jack(2) + gateway restart(1) + status --deep(1) = 8
-        expect(spawnMock).toHaveBeenCalledTimes(8);
+        // onboard(1) + plugins disable(1) + grammy install(1) + channels add(1) + agents add maya+jack(2) = 6
+        expect(spawnMock).toHaveBeenCalledTimes(6);
     });
 
     it('writes USER.md directly into each agent workspace (no shared dir)', async () => {
@@ -593,7 +483,7 @@ describe('Phase 4–6 — agent workspace initialization', () => {
             expect.anything()
         );
 
-        const userMdCall = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+        const userMdCall = (fsPromisesMock().writeFile.mock.calls as [string, string, string][])
             .find(([filePath]) => filePath.includes('workspace-maya') && filePath.endsWith('USER.md'));
         expect(userMdCall).toBeDefined();
     });
@@ -604,7 +494,7 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        const userMdCall = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+        const userMdCall = (fsPromisesMock().writeFile.mock.calls as [string, string, string][])
             .find(([filePath]) => filePath.includes('workspace-maya') && filePath.endsWith('USER.md'));
 
         expect(userMdCall).toBeDefined();
@@ -622,7 +512,7 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        const userMdCall = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+        const userMdCall = (fsPromisesMock().writeFile.mock.calls as [string, string, string][])
             .find(([filePath]) => filePath.includes('workspace-maya') && filePath.endsWith('USER.md'));
 
         expect(userMdCall).toBeDefined();
@@ -631,13 +521,28 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         expect(content).not.toContain('__CUSTOM__:');
     });
 
+    it('does not include usageType in USER.md content', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const userMdCall = (fsPromisesMock().writeFile.mock.calls as [string, string, string][])
+            .find(([filePath]) => filePath.includes('workspace-maya') && filePath.endsWith('USER.md'));
+
+        expect(userMdCall).toBeDefined();
+        const content = userMdCall![1];
+        expect(content).not.toContain('usageType');
+        expect(content).not.toContain('usage type');
+    });
+
     it('writes a unique AGENTS.md into each agent workspace', async () => {
         const event = makeMockEvent();
         const p = service.deploy(event, TWO_AGENT_PAYLOAD);
         await vi.runAllTimersAsync();
         await p;
 
-        const agentsMdCalls = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+        const agentsMdCalls = (fsPromisesMock().writeFile.mock.calls as [string, string, string][])
             .filter(([filePath]) => filePath.endsWith('AGENTS.md'));
 
         expect(agentsMdCalls).toHaveLength(2);
@@ -651,7 +556,7 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        const agentsMdCalls = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+        const agentsMdCalls = (fsPromisesMock().writeFile.mock.calls as [string, string, string][])
             .filter(([filePath]) => filePath.endsWith('AGENTS.md'));
 
         const sarahContent = agentsMdCalls.find(([p]) => p.includes('workspace-sarah'))?.[1];
@@ -668,19 +573,19 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        const withToolsCalls = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+        const withToolsCalls = (fsPromisesMock().writeFile.mock.calls as [string, string, string][])
             .filter(([fp]) => fp.endsWith('AGENTS.md'));
         expect(withToolsCalls[0][1]).toContain('## Selected Tools');
         expect(withToolsCalls[0][1]).toContain('- github');
 
-        fsMock().writeFileSync.mockClear();
+        fsPromisesMock().writeFile.mockClear();
 
         const event2 = makeMockEvent();
         const p2 = service.deploy(event2, { ...BASE_PAYLOAD, tools: [] });
         await vi.runAllTimersAsync();
         await p2;
 
-        const withoutToolsCalls = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+        const withoutToolsCalls = (fsPromisesMock().writeFile.mock.calls as [string, string, string][])
             .filter(([fp]) => fp.endsWith('AGENTS.md'));
         expect(withoutToolsCalls[0][1]).not.toContain('## Selected Tools');
     });
@@ -691,7 +596,7 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        const copyCalls = fsMock().copyFileSync.mock.calls as [string, string][];
+        const copyCalls = fsPromisesMock().copyFile.mock.calls as [string, string][];
         expect(copyCalls).toHaveLength(2);
 
         const [mayaSrc, mayaDest] = copyCalls[0];
@@ -712,7 +617,7 @@ describe('Phase 4–6 — agent workspace initialization', () => {
 
         expect(fsMock().symlinkSync).not.toHaveBeenCalled();
 
-        const userMdCalls = (fsMock().writeFileSync.mock.calls as [string, string, string][])
+        const userMdCalls = (fsPromisesMock().writeFile.mock.calls as [string, string, string][])
             .filter(([filePath]) => filePath.endsWith('USER.md'));
         expect(userMdCalls).toHaveLength(2);
 
@@ -722,15 +627,12 @@ describe('Phase 4–6 — agent workspace initialization', () => {
     });
 
     it('removes BOOTSTRAP.md from each agent workspace after seeding', async () => {
-        fsMock().existsSync.mockImplementation((p: string) =>
-            (p as string).endsWith('BOOTSTRAP.md')
-        );
         const event = makeMockEvent();
         const p = service.deploy(event, TWO_AGENT_PAYLOAD);
         await vi.runAllTimersAsync();
         await p;
 
-        const unlinkCalls = (fsMock().unlinkSync.mock.calls as [string][])
+        const unlinkCalls = (fsPromisesMock().unlink.mock.calls as [string][])
             .filter(([p]) => (p as string).endsWith('BOOTSTRAP.md'));
         expect(unlinkCalls).toHaveLength(2);
         expect(unlinkCalls[0][0]).toContain('workspace-maya');
@@ -766,7 +668,7 @@ describe('Phase 4–6 — agent workspace initialization', () => {
 describe('Step 1.5 — plugin dependency repair', () => {
     let spawnMock: MockInstance;
     let service: OpenClawService;
-    const fsMock = () => fs as unknown as Record<string, MockInstance>;
+    const fsMock = () => fs as unknown as MockedFs;
 
     beforeEach(() => {
         vi.useFakeTimers();
@@ -787,9 +689,7 @@ describe('Step 1.5 — plugin dependency repair', () => {
             .mockReturnValueOnce(makeFakeProcess(1)) // plugins disable fails (non-fatal)
             .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
-            .mockReturnValueOnce(makeFakeProcess(0)) // gateway restart
-            .mockReturnValueOnce(makeFakeProcess(0)); // status --deep
+            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
         const event = makeMockEvent();
 
         const p = service.deploy(event, BASE_PAYLOAD);
@@ -831,9 +731,8 @@ describe('Step 1.5 — plugin dependency repair', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        // onboard + plugins disable + channels add + agents add + gateway restart + status --deep = 6
-        // (no grammy install spawn)
-        expect(spawnMock).toHaveBeenCalledTimes(6);
+        // onboard + plugins disable + channels add + agents add = 4 (no grammy install spawn)
+        expect(spawnMock).toHaveBeenCalledTimes(4);
         const cmdArgs = spawnMock.mock.calls.map(([, args]) => (args as string[]).join(' '));
         expect(cmdArgs.some(a => a.includes('grammy'))).toBe(false);
     });
@@ -855,7 +754,7 @@ describe('Step 1.5 — plugin dependency repair', () => {
         expect(args).toContain('--prefix');
     });
 
-    it('calls plugins disable with openclaw@latest and amazon-bedrock', async () => {
+    it('calls plugins disable with amazon-bedrock via local binary', async () => {
         spawnMock.mockImplementation(() => makeFakeProcess(0));
         const event = makeMockEvent();
 
@@ -863,9 +762,11 @@ describe('Step 1.5 — plugin dependency repair', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        // plugins disable is the 2nd spawn call (index 1)
-        const [, args] = spawnMock.mock.calls[1];
-        expect(args).toContain('openclaw@latest');
+        // plugins disable is the 2nd spawn call (index 1); local binary, no npx/openclaw@latest prefix
+        const [cmd, args] = spawnMock.mock.calls[1];
+        expect(cmd).toMatch(/openclaw/);
+        expect(cmd).not.toMatch(/^npx/);
+        expect(args).not.toContain('openclaw@latest');
         expect(args).toContain('plugins');
         expect(args).toContain('disable');
         expect(args).toContain('amazon-bedrock');
@@ -877,7 +778,7 @@ describe('Step 1.5 — plugin dependency repair', () => {
 describe('buildCliEnv — NODE_PATH injection', () => {
     let spawnMock: MockInstance;
     let service: OpenClawService;
-    const fsMock = () => fs as unknown as Record<string, MockInstance>;
+    const fsMock = () => fs as unknown as MockedFs;
 
     beforeEach(() => {
         vi.useFakeTimers();
@@ -893,12 +794,7 @@ describe('buildCliEnv — NODE_PATH injection', () => {
         fsMock().existsSync.mockReturnValue(false);
     });
 
-    it('prepends plugin-deps/node_modules to NODE_PATH when the directory exists', async () => {
-        // Return true only for the plugin-deps/node_modules path (not the grammy subdir)
-        fsMock().existsSync.mockImplementation((p: unknown) => {
-            const s = String(p);
-            return s.includes('plugin-deps') && s.endsWith('node_modules');
-        });
+    it('always includes plugin-deps/node_modules in NODE_PATH', async () => {
         const event = makeMockEvent();
         const p = service.deploy(event, BASE_PAYLOAD);
         await vi.runAllTimersAsync();
@@ -909,17 +805,5 @@ describe('buildCliEnv — NODE_PATH injection', () => {
         const env = (opts as { env: NodeJS.ProcessEnv }).env;
         expect(env).toHaveProperty('NODE_PATH');
         expect(env.NODE_PATH).toContain('plugin-deps');
-    });
-
-    it('does not add plugin-deps to NODE_PATH when directory does not exist', async () => {
-        // Default: existsSync returns false for everything
-        const event = makeMockEvent();
-        const p = service.deploy(event, BASE_PAYLOAD);
-        await vi.runAllTimersAsync();
-        await p;
-
-        const [, , opts] = spawnMock.mock.calls[0];
-        const env = (opts as { env: NodeJS.ProcessEnv }).env;
-        expect(String(env.NODE_PATH ?? '')).not.toContain('plugin-deps');
     });
 });

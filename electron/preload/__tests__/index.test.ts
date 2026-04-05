@@ -44,6 +44,7 @@ type ExposedIpc = {
     sendDeploymentStart: (payload: unknown) => void;
     onDeploymentSuccess: (cb: () => void) => () => void;
     onDeploymentError: (cb: (data: unknown) => void) => () => void;
+    onDeploymentProgress: (cb: (data: unknown) => void) => () => void;
 };
 
 function getIpc(): ExposedIpc {
@@ -74,6 +75,7 @@ describe('preload contextBridge API', () => {
         expect(keys).toEqual([
             'onAuthOauthComplete',
             'onDeploymentError',
+            'onDeploymentProgress',
             'onDeploymentSuccess',
             'sendAuthOauthCancel',
             'sendAuthOauthStart',
@@ -152,6 +154,26 @@ describe('preload contextBridge API', () => {
 
         expect(mockIpcRenderer.removeListener).toHaveBeenCalledWith(
             'deployment:success',
+            expect.any(Function)
+        );
+    });
+
+    // ── onDeploymentProgress ─────────────────────────────────────────────────
+
+    it('onDeploymentProgress registers a listener on deployment:progress', () => {
+        const ipc = getIpc();
+        ipc.onDeploymentProgress(vi.fn());
+
+        expect(mockIpcRenderer.on).toHaveBeenCalledWith('deployment:progress', expect.any(Function));
+    });
+
+    it('onDeploymentProgress cleanup removes the deployment:progress listener', () => {
+        const ipc = getIpc();
+        const cleanup = ipc.onDeploymentProgress(vi.fn());
+        cleanup();
+
+        expect(mockIpcRenderer.removeListener).toHaveBeenCalledWith(
+            'deployment:progress',
             expect.any(Function)
         );
     });
