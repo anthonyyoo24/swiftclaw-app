@@ -53,7 +53,7 @@ const SECRET_FLAGS = /^--(?:[\w-]*api[_-]?key|secret|token|password|auth[_-]?tok
 const SECRET_VALUE_PATTERN = /^[A-Za-z0-9_\-]{20,}$/;
 
 /** Strip ANSI/OSC terminal escape sequences from a string. */
-function stripAnsi(str: string): string {
+export function stripAnsi(str: string): string {
     return str
         .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '')          // CSI sequences (colors, cursor movement, erase)
         .replace(/\x1B\][^\x07\x1B]*(?:\x07|\x1B\\)/g, '') // OSC sequences (window title, progress)

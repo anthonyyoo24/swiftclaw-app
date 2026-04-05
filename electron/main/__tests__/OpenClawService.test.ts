@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } fr
 import { EventEmitter } from 'events';
 import type { IpcMainEvent } from 'electron';
 import type { DeploymentPayload } from '../../../src/types/ai';
+import { stripAnsi } from '../OpenClawService';
 
 // ── Mock child_process before importing the service ──────────────────────────
 vi.mock('child_process', () => ({
@@ -805,5 +806,46 @@ describe('buildCliEnv — NODE_PATH injection', () => {
         const env = (opts as { env: NodeJS.ProcessEnv }).env;
         expect(env).toHaveProperty('NODE_PATH');
         expect(env.NODE_PATH).toContain('plugin-deps');
+    });
+});
+
+// ── stripAnsi ─────────────────────────────────────────────────────────────────
+
+describe('stripAnsi', () => {
+    it('returns plain strings unchanged', () => {
+        expect(stripAnsi('hello world')).toBe('hello world');
+        expect(stripAnsi('')).toBe('');
+    });
+
+    it('strips CSI color sequences', () => {
+        expect(stripAnsi('\x1B[31mred text\x1B[0m')).toBe('red text');
+        expect(stripAnsi('\x1B[1;32mbold green\x1B[0m')).toBe('bold green');
+    });
+
+    it('strips CSI cursor movement sequences', () => {
+        expect(stripAnsi('\x1B[2J\x1B[H')).toBe('');          // clear screen + move home
+        expect(stripAnsi('line\x1B[2Krest')).toBe('linerest'); // erase line
+    });
+
+    it('strips OSC sequences (window title, progress)', () => {
+        expect(stripAnsi('\x1B]0;My Terminal\x07')).toBe('');
+        expect(stripAnsi('\x1B]9;4;1;50\x07progress')).toBe('progress');
+        expect(stripAnsi('\x1B]0;title\x1B\\')).toBe('');      // ST terminator variant
+    });
+
+    it('strips two-byte escape sequences (0x40–0x5F range)', () => {
+        expect(stripAnsi('\x1BM')).toBe('');   // reverse index (0x4D)
+        expect(stripAnsi('\x1B@')).toBe('');   // ICH (0x40, range start)
+        expect(stripAnsi('\x1B_')).toBe('');   // APC (0x5F, range end)
+    });
+
+    it('strips mixed sequences while preserving content', () => {
+        const input = '\x1B[32m✓\x1B[0m Deployment \x1B[1mcomplete\x1B[0m';
+        expect(stripAnsi(input)).toBe('✓ Deployment complete');
+    });
+
+    it('handles multiple sequences in CLI progress output', () => {
+        const input = '\x1B[2K\x1B[1G\x1B[34mStep 3/8\x1B[0m: Installing deps';
+        expect(stripAnsi(input)).toBe('Step 3/8: Installing deps');
     });
 });
