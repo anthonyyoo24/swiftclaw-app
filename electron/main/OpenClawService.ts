@@ -526,7 +526,8 @@ exit [lindex $result 3]
             // Step 1: Auth + bootstrapping
             this.emitProgress(event, 1, 'Getting things ready...');
 
-            const baseArgs = ['onboard', '--non-interactive', '--accept-risk'];
+            const sarahWorkspacePath = path.join(os.homedir(), '.openclaw', 'workspace-sarah');
+            const baseArgs = ['onboard', '--non-interactive', '--accept-risk', '--workspace', sarahWorkspacePath];
             let onboardArgs: string[] = [];
 
             if (payload.aiAuthType === 'oauth') {
