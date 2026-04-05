@@ -81,7 +81,6 @@ export function ToolsStep() {
     const value = rawValue || [];
     const [isAddingCustom, setIsAddingCustom] = useState(false);
     const [customInputValue, setCustomInputValue] = useState("");
-    const [addedCustomTools, setAddedCustomTools] = useState<string[]>([]);
 
     const toggle = (id: string) => {
         if (value.includes(id)) {
@@ -93,10 +92,10 @@ export function ToolsStep() {
 
     const predefinedIds = new Set(TOOL_OPTIONS.map((t) => t.id));
 
-    // Custom tools are derived from what the user explicitly added, not just the current form value
-    const customTools: ToolOption[] = addedCustomTools
-        .filter((id) => !predefinedIds.has(id))
-        .map((id) => ({
+    // Derive custom tools from the persisted wizard value so they survive step navigation
+    const customTools: ToolOption[] = value
+        .filter((id: string) => !predefinedIds.has(id))
+        .map((id: string) => ({
             id,
             label: id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' '),
             // sz=128 returns a real logo at high-res; the generic globe is returned at 16px
@@ -107,10 +106,7 @@ export function ToolsStep() {
 
     const removeCustomTool = (e: React.MouseEvent, id: string) => {
         e.stopPropagation(); // prevent toggling selection
-        setAddedCustomTools((prev) => prev.filter((t) => t !== id));
-        if (value.includes(id)) {
-            onChange(value.filter((v: string) => v !== id));
-        }
+        onChange(value.filter((v: string) => v !== id));
     };
 
     return (
@@ -210,9 +206,6 @@ export function ToolsStep() {
                                 if (e.key === "Enter") {
                                     e.preventDefault();
                                     const cleanId = customInputValue.trim().toLowerCase().replace(/\s+/g, '-');
-                                    if (cleanId && !addedCustomTools.includes(cleanId) && !predefinedIds.has(cleanId)) {
-                                        setAddedCustomTools((prev) => [...prev, cleanId]);
-                                    }
                                     if (cleanId && !value.includes(cleanId)) {
                                         onChange([...value, cleanId]);
                                     }
