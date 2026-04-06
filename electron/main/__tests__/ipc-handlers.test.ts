@@ -123,7 +123,12 @@ describe('setupIpcHandlers', () => {
 
         await ipcHandlers['deployment:start'](event, { ...VALID_PAYLOAD, aiApiKey: '', channelToken: '' });
 
-        const [, loggedPayload] = consoleSpy.mock.calls[0] as [string, DeploymentPayload];
+        expect(consoleSpy.mock.calls.length).toBeGreaterThan(0);
+        const deploymentLogCall = consoleSpy.mock.calls.find(
+            (call) => call[0] === 'Received deployment:start with payload:'
+        );
+        expect(deploymentLogCall).toBeDefined();
+        const loggedPayload = deploymentLogCall![1] as DeploymentPayload;
         expect(loggedPayload.aiApiKey).toBe('');
         expect(loggedPayload.channelToken).toBe('');
 
