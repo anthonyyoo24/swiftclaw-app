@@ -1,13 +1,19 @@
-import { IpcMainEvent, app } from 'electron';
+import { IpcMainEvent } from 'electron';
 import { spawn, type ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
-
 
 import { DeploymentPayload } from '../../src/types/ai';
 import { OAUTH_PROVIDER_MAP, SOUL_TEMPLATE_FILES } from '../../src/constants/ai-core';
 import { IPC_EVENTS } from '../../src/constants/ipc';
+import {
+    getOpenClawConfigPath,
+    getOpenClawWorkspacePath,
+    getOpenClawPluginDepsDir,
+    resolveOpenClawBinary,
+    getResourcesPath,
+    updateOpenClawConfig,
+} from './openclaw-helpers';
 
 
 
@@ -78,21 +84,12 @@ export class OpenClawService {
 
 
     /**
-     * Returns the path to the bundled resources/ directory.
-     * In production this is process.resourcesPath; in dev it is relative to __dirname.
-     */
-    private getResourcesPath(): string {
-        if (app.isPackaged) return process.resourcesPath;
-        return path.join(__dirname, '../../resources');
-    }
-
-    /**
      * Reads the correct AGENTS.md template for the given agent from resources/agent-templates/,
      * then appends a Selected Tools section if tools were provided.
      */
     private generateAgentsMd(agentId: string, tools: string[]): string {
         const templateFile = agentId === 'sarah' ? 'sarah.md' : 'default.md';
-        const templatePath = path.join(this.getResourcesPath(), 'agent-templates', templateFile);
+        const templatePath = path.join(getResourcesPath(), 'agent-templates', templateFile);
         const base = fs.readFileSync(templatePath, 'utf-8');
         if (tools.length === 0) return base;
         const toolsList = tools.map(t => `- ${t}`).join('\n');
@@ -107,7 +104,7 @@ export class OpenClawService {
      */
     private buildCliEnv(): NodeJS.ProcessEnv {
         const env: NodeJS.ProcessEnv = { ...process.env };
-        const pluginDepsModules = path.join(this.getPluginDepsDir(), 'node_modules');
+        const pluginDepsModules = path.join(getOpenClawPluginDepsDir(), 'node_modules');
         env.NODE_PATH = env.NODE_PATH
             ? `${pluginDepsModules}${path.delimiter}${env.NODE_PATH}`
             : pluginDepsModules;
@@ -143,7 +140,7 @@ export class OpenClawService {
         try {
             console.log(`[OAuth] Starting native Expect-driven TTY flow for provider: ${entry.provider}`);
 
-            const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
+            const configPath = getOpenClawConfigPath();
             let beforeMtime = 0;
             if (fs.existsSync(configPath)) {
                 beforeMtime = fs.statSync(configPath).mtimeMs;
@@ -161,7 +158,7 @@ export class OpenClawService {
                 throw new Error(`[OAuth] Unsafe method value rejected: ${entry.method}`);
             }
 
-            const openClawBin = this.resolveOpenClawBinary();
+            const openClawBin = resolveOpenClawBinary();
             // No inner quotes — the outer bash -c "..." in the Expect script provides the quoting.
             // Adding quotes here would produce `bash -c ""/path/to/bin" ..."` which Tcl
             // misparses as an empty string followed by extra characters.
@@ -246,7 +243,7 @@ exit [lindex $result 3]
         try {
             console.log('[OAuth/Anthropic] Starting two-stage automated flow');
 
-            const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
+            const configPath = getOpenClawConfigPath();
             let beforeMtime = 0;
             if (fs.existsSync(configPath)) {
                 beforeMtime = fs.statSync(configPath).mtimeMs;
@@ -313,7 +310,7 @@ expect eof
             console.log('[OAuth/Anthropic] Stage 2: Registering token with OpenClaw...');
 
             const stage2Script = `
-spawn -noecho bash -c "${this.resolveOpenClawBinary()} models auth paste-token --provider anthropic"
+spawn -noecho bash -c "${resolveOpenClawBinary()} models auth paste-token --provider anthropic"
 set timeout 300
 expect -re "Paste token"
 send "${capturedToken}\\r"
@@ -417,28 +414,13 @@ exit [lindex $result 3]
     }
 
     /**
-     * Resolves the path to the locally installed openclaw binary.
-     * In production, electron-vite's externalizeDepsPlugin keeps node_modules intact
-     * alongside the compiled main process, so the binary lives next to app.getAppPath().
-     * In development, it lives in the project's node_modules/.bin/.
-     */
-    private resolveOpenClawBinary(): string {
-        const binName = process.platform === 'win32' ? 'openclaw.cmd' : 'openclaw';
-        if (app.isPackaged) {
-            return path.join(app.getAppPath(), 'node_modules', '.bin', binName);
-        }
-        // __dirname is dist/main/ after electron-vite compilation; walk up to the package root
-        return path.join(__dirname, '..', '..', 'node_modules', '.bin', binName);
-    }
-
-    /**
      * Safely executes a local openclaw binary command using an argument array.
      * Replaces runNpxCommand for all openclaw subcommands — no npx overhead,
      * no remote package resolution, uses the pinned version from package.json.
      */
     private async runLocalOpenClawCommand(args: string[], env: NodeJS.ProcessEnv): Promise<{ stdout: string; stderr: string }> {
         return new Promise((resolve, reject) => {
-            const binary = this.resolveOpenClawBinary();
+            const binary = resolveOpenClawBinary();
             const sanitizedArgs = this.sanitizeArgs(args);
             console.log(`[OpenClawService] Executing: ${binary} ${sanitizedArgs.map(a => a.includes(' ') ? `"${a}"` : a).join(' ')}`);
 
@@ -476,23 +458,13 @@ exit [lindex $result 3]
     }
 
     /**
-     * Returns the directory used to install plugin peer deps that are missing
-     * from the OpenClaw npx cache. Kept separate from the cache so we never
-     * touch the npx-managed node_modules (which causes ENOTEMPTY when npm tries
-     * to atomically rename the openclaw package during a subsequent install).
-     */
-    private getPluginDepsDir(): string {
-        return path.join(os.homedir(), '.openclaw', 'plugin-deps');
-    }
-
-    /**
      * Installs grammy into ~/.openclaw/plugin-deps/ if not already present.
      * The directory is added to NODE_PATH in buildCliEnv() so every openclaw
      * child process can resolve require('grammy') via the standard module
      * resolution path.
      */
     private async ensureGrammyInstalled(env: NodeJS.ProcessEnv): Promise<void> {
-        const depsDir = this.getPluginDepsDir();
+        const depsDir = getOpenClawPluginDepsDir();
         const grammyDir = path.join(depsDir, 'node_modules', 'grammy');
         if (fs.existsSync(grammyDir)) {
             console.log('[OpenClawService] grammy already present; skipping install.');
@@ -538,7 +510,7 @@ exit [lindex $result 3]
             // Step 1: Auth + bootstrapping
             this.emitProgress(event, 1, 'Getting things ready...');
 
-            const sarahWorkspacePath = path.join(os.homedir(), '.openclaw', 'workspace-sarah');
+            const sarahWorkspacePath = getOpenClawWorkspacePath('sarah');
             const baseArgs = ['onboard', '--non-interactive', '--accept-risk', '--workspace', sarahWorkspacePath];
             let onboardArgs: string[] = [];
 
@@ -592,7 +564,6 @@ exit [lindex $result 3]
             // Write the selected model to ~/.openclaw/openclaw.json
             // openclaw onboard doesn't accept a --model flag; the default model
             // must be written directly to the config file.
-            const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
             const providerPrefix: Record<string, string> = {
                 'openai-api': 'openai',
                 'openai-codex': 'openai-codex',
@@ -602,22 +573,15 @@ exit [lindex $result 3]
             const prefix = providerPrefix[payload.aiProvider] || payload.aiProvider;
             const modelPrimary = `${prefix}/${payload.aiModel}`;
 
-            let config: Record<string, unknown> = {};
-            if (fs.existsSync(configPath)) {
-                try {
-                    config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-                } catch { /* start fresh if unparseable */ }
-            }
-
-            const agents = (config.agents ?? {}) as Record<string, unknown>;
-            const defaults = (agents.defaults ?? {}) as Record<string, unknown>;
-            const model = (defaults.model ?? {}) as Record<string, unknown>;
-            model.primary = modelPrimary;
-            defaults.model = model;
-            agents.defaults = defaults;
-            config.agents = agents;
-
-            fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+            updateOpenClawConfig((config) => {
+                const agents = (config.agents ?? {}) as Record<string, unknown>;
+                const defaults = (agents.defaults ?? {}) as Record<string, unknown>;
+                const model = (defaults.model ?? {}) as Record<string, unknown>;
+                model.primary = modelPrimary;
+                defaults.model = model;
+                agents.defaults = defaults;
+                config.agents = agents;
+            });
             console.log(`[OpenClawService] Set default model to: ${modelPrimary}`);
 
             // Step 1.5: Fix bundled plugin peer-dep failures before any command
@@ -651,7 +615,7 @@ exit [lindex $result 3]
             for (const agentId of payload.agentTemplateIds) {
                 const displayName = agentId.charAt(0).toUpperCase() + agentId.slice(1);
                 this.emitProgress(event, stepCounter, `Bringing ${displayName} online...`);
-                const workspacePath = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`);
+                const workspacePath = getOpenClawWorkspacePath(agentId);
                 await this.runLocalOpenClawCommand([
                     'agents', 'add', agentId,
                     '--workspace', workspacePath,
@@ -663,31 +627,28 @@ exit [lindex $result 3]
             // Final step: Write USER.md, AGENTS.md, copy SOUL.md (combined)
             this.emitProgress(event, stepCounter, 'Finalizing agent configuration...');
             const userMdContent = generateUserMd(payload);
-            await Promise.all(payload.agentTemplateIds.map(agentId => {
-                const agentWorkspace = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`);
-                return fs.promises.writeFile(path.join(agentWorkspace, 'USER.md'), userMdContent, 'utf-8');
-            }));
+            await Promise.all(payload.agentTemplateIds.map(agentId =>
+                fs.promises.writeFile(path.join(getOpenClawWorkspacePath(agentId), 'USER.md'), userMdContent, 'utf-8')
+            ));
 
-            await Promise.all(payload.agentTemplateIds.map(agentId => {
-                const agentWorkspace = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`);
-                return fs.promises.writeFile(
-                    path.join(agentWorkspace, 'AGENTS.md'),
+            await Promise.all(payload.agentTemplateIds.map(agentId =>
+                fs.promises.writeFile(
+                    path.join(getOpenClawWorkspacePath(agentId), 'AGENTS.md'),
                     this.generateAgentsMd(agentId, payload.tools ?? []),
                     'utf-8'
-                );
-            }));
+                )
+            ));
 
-            const resourcesPath = this.getResourcesPath();
+            const resourcesPath = getResourcesPath();
             await Promise.all(payload.agentTemplateIds.map(async agentId => {
                 const templateFile = SOUL_TEMPLATE_FILES[agentId];
                 if (!templateFile) {
                     throw new Error(`No SOUL.md template found for agent: ${agentId}`);
                 }
+                const workspacePath = getOpenClawWorkspacePath(agentId);
                 const src = path.join(resourcesPath, 'soul-templates', templateFile);
-                const dest = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`, 'SOUL.md');
-                await fs.promises.copyFile(src, dest);
-                const bootstrapPath = path.join(os.homedir(), '.openclaw', `workspace-${agentId}`, 'BOOTSTRAP.md');
-                await fs.promises.unlink(bootstrapPath).catch(() => { /* may not exist */ });
+                await fs.promises.copyFile(src, path.join(workspacePath, 'SOUL.md'));
+                await fs.promises.unlink(path.join(workspacePath, 'BOOTSTRAP.md')).catch(() => { /* may not exist */ });
             }));
 
             event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });
