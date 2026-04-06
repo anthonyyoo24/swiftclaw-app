@@ -848,4 +848,98 @@ describe('stripAnsi', () => {
         const input = '\x1B[2K\x1B[1G\x1B[34mStep 3/8\x1B[0m: Installing deps';
         expect(stripAnsi(input)).toBe('Step 3/8: Installing deps');
     });
+
+    it('strips bracketed-paste markers that expect injects around pasted tokens', () => {
+        expect(stripAnsi('\x1b[?2004hsk-ant-oat01-abc123\x1b[?2004l')).toBe('sk-ant-oat01-abc123');
+    });
+});
+
+// ── isPastingToken flag ───────────────────────────────────────────────────────
+
+describe('OpenClawService — isPastingToken flag', () => {
+    type ServicePrivate = {
+        isPastingToken: boolean;
+        wasCancelled: boolean;
+        resetState: () => void;
+    };
+
+    it('starts as false', () => {
+        const svc = new OpenClawService();
+        expect((svc as unknown as ServicePrivate).isPastingToken).toBe(false);
+    });
+
+    it('resetState clears isPastingToken when true', () => {
+        const svc = new OpenClawService();
+        (svc as unknown as ServicePrivate).isPastingToken = true;
+        (svc as unknown as ServicePrivate).resetState();
+        expect((svc as unknown as ServicePrivate).isPastingToken).toBe(false);
+    });
+});
+
+// ── Stage 2 stdout/stderr suppression ────────────────────────────────────────
+
+describe('Stage 2 data handler suppression', () => {
+    let consoleSpy: ReturnType<typeof vi.spyOn>;
+    let consoleErrSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        consoleErrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('does not log when isPastingToken is true — handles split data events', () => {
+        let isPastingToken = true;
+        const handler = (data: Buffer) => {
+            if (isPastingToken) return;
+            const line = stripAnsi(data.toString()).trim();
+            if (line) console.log(`[OAuth/Anthropic Stage2]: ${line}`);
+        };
+
+        const token = 'sk-ant-oat01-' + 'A'.repeat(60);
+        // Simulate token split across two data events
+        handler(Buffer.from(token.slice(0, 40)));
+        handler(Buffer.from(token.slice(40)));
+        // Simulate ANSI-wrapped token
+        handler(Buffer.from(`\x1b[32m${token}\x1b[0m`));
+
+        expect(consoleSpy).not.toHaveBeenCalled();
+
+        // After flag clears, non-sensitive output logs normally
+        isPastingToken = false;
+        handler(Buffer.from('Authentication complete'));
+        expect(consoleSpy).toHaveBeenCalledWith('[OAuth/Anthropic Stage2]: Authentication complete');
+    });
+
+    it('does not log stderr when isPastingToken is true', () => {
+        let isPastingToken = true;
+        const handler = (data: Buffer) => {
+            if (isPastingToken) return;
+            const line = stripAnsi(data.toString()).trim();
+            if (line) console.error(`[OAuth/Anthropic Stage2 stderr]: ${line}`);
+        };
+
+        handler(Buffer.from('sk-ant-oat01-' + 'B'.repeat(60)));
+        expect(consoleErrSpy).not.toHaveBeenCalled();
+
+        isPastingToken = false;
+        handler(Buffer.from('some stderr output'));
+        expect(consoleErrSpy).toHaveBeenCalledWith('[OAuth/Anthropic Stage2 stderr]: some stderr output');
+    });
+
+    it('old includes() guard fails when ANSI codes are interspersed within the token', () => {
+        // Demonstrates the root vulnerability: ANSI reset codes mid-token prevent
+        // includes(capturedToken) from matching, so the fragment would be logged.
+        const token = 'sk-ant-oat01-' + 'C'.repeat(60);
+        const half = Math.floor(token.length / 2);
+        const interspersed = token.slice(0, half) + '\x1b[0m' + token.slice(half);
+
+        // Old guard fails — full token not found due to embedded ANSI
+        expect(interspersed.includes(token)).toBe(false);
+        // stripAnsi reconstructs the bare token correctly
+        expect(stripAnsi(interspersed)).toBe(token);
+    });
 });

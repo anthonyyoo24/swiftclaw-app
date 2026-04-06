@@ -69,9 +69,11 @@ export function stripAnsi(str: string): string {
 export class OpenClawService {
     private cliProcess: ChildProcess | null = null;
     private wasCancelled = false;
+    private isPastingToken = false;
 
     private resetState() {
         this.wasCancelled = false;
+        this.isPastingToken = false;
         if (this.cliProcess && !this.cliProcess.killed) {
             this.cliProcess.kill();
         }
@@ -319,27 +321,26 @@ catch wait result
 exit [lindex $result 3]
 `;
 
+            this.isPastingToken = true;
             this.cliProcess = spawn('expect', ['-c', stage2Script], {
                 stdio: ['ignore', 'pipe', 'pipe'],
                 env: this.buildCliEnv(),
             });
 
-            this.cliProcess.stdout?.on('data', (data: Buffer) => {
-                const line = data.toString().trim();
-                // Avoid logging the raw token back if it echoes
-                if (line && !line.includes(capturedToken)) {
-                    console.log(`[OAuth/Anthropic Stage2]: ${line}`);
-                }
+            this.cliProcess.stdout?.on('data', (_data: Buffer) => {
+                if (this.isPastingToken) return;
+                const line = stripAnsi(_data.toString()).trim();
+                if (line) console.log(`[OAuth/Anthropic Stage2]: ${line}`);
             });
-            this.cliProcess.stderr?.on('data', (data: Buffer) => {
-                const line = data.toString().trim();
-                if (line && !line.includes(capturedToken)) {
-                    console.error(`[OAuth/Anthropic Stage2 stderr]: ${line}`);
-                }
+            this.cliProcess.stderr?.on('data', (_data: Buffer) => {
+                if (this.isPastingToken) return;
+                const line = stripAnsi(_data.toString()).trim();
+                if (line) console.error(`[OAuth/Anthropic Stage2 stderr]: ${line}`);
             });
 
             const exitCode = await new Promise<number>((resolve, reject) => {
                 this.cliProcess!.on('close', (code) => {
+                    this.isPastingToken = false;
                     if (this.wasCancelled) { reject(new Error('Cancelled')); return; }
                     resolve(code ?? 1);
                 });
