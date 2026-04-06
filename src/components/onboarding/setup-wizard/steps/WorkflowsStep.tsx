@@ -127,13 +127,13 @@ export function WorkflowsStep() {
                     );
                 })}
 
-                {customWorkflows.map((entry) => {
+                {customWorkflows.map((entry, index) => {
                     const raw = entry.slice(CUSTOM_PREFIX.length);
                     const displayLabel = raw.length > 40 ? raw.slice(0, 40) + "…" : raw;
                     const isBeingEdited = editingEntry === entry;
                     return (
                         <div
-                            key={entry}
+                            key={index}
                             className={cn(
                                 "relative group flex items-center gap-3 px-4 py-3.5 rounded-xl border shadow-md",
                                 isBeingEdited
