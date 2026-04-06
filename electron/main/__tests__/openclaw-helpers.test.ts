@@ -41,26 +41,26 @@ beforeEach(() => {
 
 describe('getOpenClawHome', () => {
     it('returns <homedir>/.openclaw', () => {
-        expect(getOpenClawHome()).toBe('/home/testuser/.openclaw');
+        expect(getOpenClawHome()).toBe(path.join('/home/testuser', '.openclaw'));
     });
 });
 
 describe('getOpenClawConfigPath', () => {
     it('returns the openclaw.json path inside the home dir', () => {
-        expect(getOpenClawConfigPath()).toBe('/home/testuser/.openclaw/openclaw.json');
+        expect(getOpenClawConfigPath()).toBe(path.join('/home/testuser', '.openclaw', 'openclaw.json'));
     });
 });
 
 describe('getOpenClawWorkspacePath', () => {
     it('returns workspace-<agentId> inside the home dir', () => {
-        expect(getOpenClawWorkspacePath('sarah')).toBe('/home/testuser/.openclaw/workspace-sarah');
-        expect(getOpenClawWorkspacePath('alex')).toBe('/home/testuser/.openclaw/workspace-alex');
+        expect(getOpenClawWorkspacePath('sarah')).toBe(path.join('/home/testuser', '.openclaw', 'workspace-sarah'));
+        expect(getOpenClawWorkspacePath('alex')).toBe(path.join('/home/testuser', '.openclaw', 'workspace-alex'));
     });
 });
 
 describe('getOpenClawPluginDepsDir', () => {
     it('returns plugin-deps inside the home dir', () => {
-        expect(getOpenClawPluginDepsDir()).toBe('/home/testuser/.openclaw/plugin-deps');
+        expect(getOpenClawPluginDepsDir()).toBe(path.join('/home/testuser', '.openclaw', 'plugin-deps'));
     });
 });
 
