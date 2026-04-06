@@ -60,5 +60,6 @@ export function updateOpenClawConfig(updater: (config: Record<string, unknown>) 
         } catch { /* start fresh if unparseable */ }
     }
     updater(config);
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
 }
