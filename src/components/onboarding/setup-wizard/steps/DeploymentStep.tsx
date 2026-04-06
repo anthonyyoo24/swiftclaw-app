@@ -23,6 +23,7 @@ const PROVIDER_ICONS: Record<string, React.ReactNode> = {
 };
 
 export function DeploymentStep({ aiProvider, aiModel, selectedChannel, agentTemplateIds }: DeploymentStepProps) {
+    const providerBase = aiProvider?.split('-')[0];
     const providerOption = aiProvider ? PROVIDER_OPTIONS.find((p) => p.id === aiProvider) : undefined;
     const modelOption = aiProvider ? MODEL_OPTIONS[aiProvider]?.find((m) => m.id === aiModel) : undefined;
     const channelOption = CHANNELS.find((c) => c.id === selectedChannel);
@@ -97,7 +98,7 @@ export function DeploymentStep({ aiProvider, aiModel, selectedChannel, agentTemp
                         <div className="flex items-start justify-between">
                             <div className="flex items-start gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0 mt-0.5">
-                                    {aiProvider && PROVIDER_ICONS[aiProvider] ? PROVIDER_ICONS[aiProvider] : (
+                                    {providerBase && PROVIDER_ICONS[providerBase] ? PROVIDER_ICONS[providerBase] : (
                                         <Icon icon="solar:cpu-linear" className="text-neutral-400" />
                                     )}
                                 </div>
