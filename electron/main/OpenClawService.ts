@@ -159,19 +159,18 @@ export class OpenClawService {
             }
 
             const openClawBin = resolveOpenClawBinary();
-            // No inner quotes — the outer bash -c "..." in the Expect script provides the quoting.
-            // Adding quotes here would produce `bash -c ""/path/to/bin" ..."` which Tcl
-            // misparses as an empty string followed by extra characters.
-            let cliCommand = `${openClawBin} models auth login --provider ${entry.provider}`;
+            // Invoke the binary directly (no bash -c) so Tcl brace-quoting handles
+            // spaces in the path without shell word-splitting.
+            let tclSpawnArgs = `models auth login --provider ${entry.provider}`;
             if (entry.method) {
-                cliCommand += ` --method ${entry.method}`;
+                tclSpawnArgs += ` --method ${entry.method}`;
             }
 
             // macOS / Linux: Route through 'expect' to simulate a TTY invisibly in the background.
             // This satisfies the `process.stdin.isTTY` check inside OpenClaw and auto-answers
             // any interactive confirmation prompts (Gemini caution, etc.) with "y".
             const expectScript = `
-spawn -noecho bash -c "${cliCommand}"
+spawn -noecho {${openClawBin}} ${tclSpawnArgs}
 set timeout 300
 expect {
     -re "Continue with.*\\?" {
@@ -309,8 +308,9 @@ expect eof
             // ── Stage 2: Pipe the token into OpenClaw paste-token ──
             console.log('[OAuth/Anthropic] Stage 2: Registering token with OpenClaw...');
 
+            const openClawBin = resolveOpenClawBinary();
             const stage2Script = `
-spawn -noecho bash -c "${resolveOpenClawBinary()} models auth paste-token --provider anthropic"
+spawn -noecho {${openClawBin}} models auth paste-token --provider anthropic
 set timeout 300
 expect -re "Paste token"
 send "${capturedToken}\\r"
