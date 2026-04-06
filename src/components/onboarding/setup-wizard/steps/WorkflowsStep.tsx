@@ -59,6 +59,14 @@ export function WorkflowsStep() {
 
     const customWorkflows = value.filter((v: string) => v.startsWith(CUSTOM_PREFIX));
 
+    const trimmed = tempWorkflowValue.trim();
+    const newEntry = CUSTOM_PREFIX + trimmed;
+    const isDuplicate = trimmed.length > 0 && (
+        editingEntry !== null
+            ? newEntry !== editingEntry && value.includes(newEntry)
+            : value.includes(newEntry)
+    );
+
     const togglePreset = (id: string) => {
         if (value.includes(id)) {
             onChange(value.filter((v: string) => v !== id));
@@ -186,6 +194,7 @@ export function WorkflowsStep() {
                             aria-label="Custom workflow description"
                             value={tempWorkflowValue}
                             onChange={(e) => setTempWorkflowValue(e.target.value)}
+                            aria-invalid={isDuplicate}
                             placeholder="Describe the workflow you want to automate..."
                             variant="glass"
                             className="min-h-20 no-drag select-text relative z-50 resize-none pb-10"
@@ -203,10 +212,10 @@ export function WorkflowsStep() {
                             <button
                                 type="button"
                                 onClick={addCustomWorkflow}
-                                disabled={!tempWorkflowValue.trim() || (editingEntry !== null && tempWorkflowValue.trim() === editingEntry.slice(CUSTOM_PREFIX.length))}
+                                disabled={!trimmed || isDuplicate || (editingEntry !== null && trimmed === editingEntry.slice(CUSTOM_PREFIX.length))}
                                 className={cn(
                                     "px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
-                                    (tempWorkflowValue.trim() && (editingEntry === null || tempWorkflowValue.trim() !== editingEntry.slice(CUSTOM_PREFIX.length)))
+                                    (trimmed && !isDuplicate && (editingEntry === null || trimmed !== editingEntry.slice(CUSTOM_PREFIX.length)))
                                         ? "bg-white text-black hover:bg-white/90 cursor-pointer"
                                         : "bg-white/10 text-neutral-500 cursor-not-allowed"
                                 )}
@@ -215,6 +224,9 @@ export function WorkflowsStep() {
                             </button>
                         </div>
                     </div>
+                    {isDuplicate && (
+                        <p className="text-xs text-red-400 mt-2">This workflow already exists.</p>
+                    )}
                 </div>
             )}
         </div>
