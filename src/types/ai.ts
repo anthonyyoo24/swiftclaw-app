@@ -6,9 +6,17 @@ export interface DeploymentPayload {
     aiProvider: string;
     aiModel: string;
     aiApiKey?: string;
-    selectedChannel: 'discord' | 'telegram' | 'whatsapp';
+    selectedChannel: 'discord' | 'telegram';
     channelToken: string;
     agentTemplateIds: string[];
+    userName: string;
+    timezone: string;
+    usageType: 'business' | 'personal';
+    businessDescription?: string;
+    personalContext?: string;
+    goals: string;
+    workflows: string[];
+    tools?: string[];
 }
 
 export interface OAuthProviderEntry {

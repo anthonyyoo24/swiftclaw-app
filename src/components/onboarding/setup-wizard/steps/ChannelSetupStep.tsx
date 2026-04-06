@@ -25,14 +25,6 @@ export const CHANNELS: ChannelOption[] = [
         colorClass: "bg-[#5865F2]/10 text-[#5865F2]",
         tokenLabel: "Bot Token",
     },
-    {
-        id: "whatsapp",
-        name: "WhatsApp",
-        description: "Business API Setup",
-        icon: "mdi:whatsapp",
-        colorClass: "bg-[#25D366]/10 text-[#25D366]",
-        tokenLabel: "API Key",
-    },
 ];
 
 export function ChannelSetupStep() {

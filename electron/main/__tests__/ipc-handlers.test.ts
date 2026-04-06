@@ -44,6 +44,12 @@ const VALID_PAYLOAD: DeploymentPayload = {
     selectedChannel: 'telegram',
     channelToken: 'tg-token-xyz',
     agentTemplateIds: ['maya'],
+    userName: 'Test User',
+    timezone: 'America/New_York',
+    usageType: 'business',
+    businessDescription: 'A test business',
+    goals: 'Build amazing software',
+    workflows: ['write-code', 'review-prs'],
 };
 
 describe('setupIpcHandlers', () => {
@@ -106,6 +112,25 @@ describe('setupIpcHandlers', () => {
         const logged = consoleSpy.mock.calls.flat().map(String).join(' ');
         expect(logged).not.toContain('sk-ultrasecretkey99');
         expect(logged).not.toContain('super-secret-channel-token');
+
+        consoleSpy.mockRestore();
+    });
+
+    it('logs empty string (not undefined) for missing aiApiKey and channelToken', async () => {
+        mockDeploy.mockResolvedValue(undefined);
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const event = makeMockEvent();
+
+        await ipcHandlers['deployment:start'](event, { ...VALID_PAYLOAD, aiApiKey: '', channelToken: '' });
+
+        expect(consoleSpy.mock.calls.length).toBeGreaterThan(0);
+        const deploymentLogCall = consoleSpy.mock.calls.find(
+            (call) => call[0] === 'Received deployment:start with payload:'
+        );
+        expect(deploymentLogCall).toBeDefined();
+        const loggedPayload = deploymentLogCall![1] as DeploymentPayload;
+        expect(loggedPayload.aiApiKey).toBe('');
+        expect(loggedPayload.channelToken).toBe('');
 
         consoleSpy.mockRestore();
     });

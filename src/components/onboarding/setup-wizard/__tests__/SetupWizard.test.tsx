@@ -32,33 +32,49 @@ vi.mock('../steps/DeploymentStep', () => ({ DeploymentStep: () => <div data-test
 vi.mock('../steps/DeployProgressView', async () => {
     const { useEffect } = await import('react');
     return {
-        DeployProgressView: ({ onVisualComplete, backendComplete }: {
+        DeployProgressView: ({ onVisualComplete, backendComplete, currentStep, totalSteps, progressLabel }: {
             onVisualComplete: () => void;
             backendComplete: boolean;
-            duration?: number;
+            currentStep: number;
+            totalSteps: number;
+            progressLabel: string;
         }) => {
             useEffect(() => {
                 if (backendComplete) onVisualComplete();
             }, [backendComplete, onVisualComplete]);
-            return <div data-testid="step-deploy-progress">Deploying...</div>;
+            return (
+                <div data-testid="step-deploy-progress">
+                    <div data-testid="deploy-progress-steps">{currentStep}/{totalSteps}</div>
+                    <div data-testid="deploy-progress-label">{progressLabel}</div>
+                </div>
+            );
         },
     };
 });
 vi.mock('../steps/DeploySuccessView', () => ({ DeploySuccessView: () => <div data-testid="step-deploy-success">Success</div> }));
-vi.mock('../steps/DeployErrorView', () => ({ DeployErrorView: ({ error }: { error: string }) => <div data-testid="step-deploy-error">{error}</div> }));
+vi.mock('../steps/DeployErrorView', () => ({ DeployErrorView: ({ error, onRetry }: { error: string; onRetry: () => void }) => (
+    <div data-testid="step-deploy-error">
+        {error}
+        <button onClick={onRetry} data-testid="btn-retry">Retry</button>
+    </div>
+) }));
 vi.mock('../WelcomeIllustration', () => ({ WelcomeIllustration: () => null }));
 
 // Mock WizardShell to render children + a simple Next button
 vi.mock('@/components/ui/wizard/WizardShell', () => ({
-    WizardShell: ({ children, onNext, canProgress }: {
+    WizardShell: ({ children, onNext, onReset, canProgress }: {
         children: React.ReactNode;
         onNext: () => void;
+        onReset: () => void;
         canProgress: boolean;
     }) => (
         <div>
             {children}
             <button onClick={onNext} disabled={!canProgress} data-testid="btn-next">
                 Next
+            </button>
+            <button onClick={onReset} data-testid="btn-reset">
+                Reset
             </button>
         </div>
     ),
@@ -83,11 +99,13 @@ vi.mock('../schema', async () => {
 const mockSendDeploymentStart = vi.fn();
 const mockOnDeploymentSuccess = vi.fn<(cb: () => void) => (() => void)>(() => vi.fn()); // returns cleanup fn
 const mockOnDeploymentError = vi.fn<(cb: (data: { message?: string }) => void) => (() => void)>(() => vi.fn());
+const mockOnDeploymentProgress = vi.fn<(cb: (data: { step: number; label: string }) => void) => (() => void)>(() => vi.fn());
 
 beforeEach(() => {
     mockSendDeploymentStart.mockReset();
     mockOnDeploymentSuccess.mockReset().mockReturnValue(vi.fn());
     mockOnDeploymentError.mockReset().mockReturnValue(vi.fn());
+    mockOnDeploymentProgress.mockReset().mockReturnValue(vi.fn());
 
     Object.defineProperty(window, 'electron', {
         value: {
@@ -95,6 +113,7 @@ beforeEach(() => {
                 sendDeploymentStart: mockSendDeploymentStart,
                 onDeploymentSuccess: mockOnDeploymentSuccess,
                 onDeploymentError: mockOnDeploymentError,
+                onDeploymentProgress: mockOnDeploymentProgress,
             },
         },
         writable: true,
@@ -131,32 +150,12 @@ describe('SetupWizard component', () => {
         // At idle, the loading branch of the effect is skipped entirely.
         expect(mockOnDeploymentSuccess).not.toHaveBeenCalled();
         expect(mockOnDeploymentError).not.toHaveBeenCalled();
+        expect(mockOnDeploymentProgress).not.toHaveBeenCalled();
     });
 
     it('does NOT call sendDeploymentStart on initial mount', () => {
         render(<SetupWizard />);
         expect(mockSendDeploymentStart).not.toHaveBeenCalled();
-    });
-
-    it('window.electron IPC mock is correctly wired with all required methods', () => {
-        // Ensures beforeEach wires the full IPC contract that SetupWizard depends on.
-        expect(typeof window.electron!.ipcRenderer.sendDeploymentStart).toBe('function');
-        expect(typeof window.electron!.ipcRenderer.onDeploymentSuccess).toBe('function');
-        expect(typeof window.electron!.ipcRenderer.onDeploymentError).toBe('function');
-    });
-
-    it('window.electron.ipcRenderer.onDeploymentSuccess returns a cleanup function', () => {
-        // When loading does run, the cleanup returned by onDeploymentSuccess must be
-        // callable. Verify the mock returns a valid cleanup fn from beforeEach.
-        const cleanup = window.electron!.ipcRenderer.onDeploymentSuccess(vi.fn());
-        expect(typeof cleanup).toBe('function');
-        expect(() => cleanup()).not.toThrow();
-    });
-
-    it('window.electron.ipcRenderer.onDeploymentError returns a cleanup function', () => {
-        const cleanup = window.electron!.ipcRenderer.onDeploymentError(vi.fn());
-        expect(typeof cleanup).toBe('function');
-        expect(() => cleanup()).not.toThrow();
     });
 
     // ── Deployment flow ──────────────────────────────────────────────────────
@@ -179,6 +178,8 @@ describe('SetupWizard component', () => {
         await user.click(screen.getByTestId('btn-next'));
 
         expect(screen.getByTestId('step-deploy-progress')).toBeInTheDocument();
+        expect(screen.getByTestId('deploy-progress-steps')).toHaveTextContent('0/4');
+        expect(screen.getByTestId('deploy-progress-label')).toHaveTextContent('Getting things ready...');
     });
 
     it('registers IPC subscriptions when deployState transitions to loading', async () => {
@@ -190,7 +191,27 @@ describe('SetupWizard component', () => {
 
         expect(mockOnDeploymentSuccess).toHaveBeenCalledOnce();
         expect(mockOnDeploymentError).toHaveBeenCalledOnce();
+        expect(mockOnDeploymentProgress).toHaveBeenCalledOnce();
         expect(mockSendDeploymentStart).toHaveBeenCalledOnce();
+    });
+
+    it('updates DeployProgressView when onDeploymentProgress fires', async () => {
+        let capturedProgressCallback: ((data: { step: number; label: string }) => void) | undefined;
+        mockOnDeploymentProgress.mockImplementationOnce((cb: (data: { step: number; label: string }) => void) => {
+            capturedProgressCallback = cb;
+            return vi.fn();
+        });
+
+        const user = userEvent.setup();
+        render(<SetupWizard />);
+
+        await navigateToDeployStep(user);
+        await user.click(screen.getByTestId('btn-next'));
+
+        await act(async () => { capturedProgressCallback?.({ step: 2, label: 'Connecting your Telegram...' }); });
+
+        expect(screen.getByTestId('deploy-progress-steps')).toHaveTextContent('2/4');
+        expect(screen.getByTestId('deploy-progress-label')).toHaveTextContent('Connecting your Telegram...');
     });
 
     it('renders DeploySuccessView after onDeploymentSuccess fires and visual completes', async () => {
@@ -229,5 +250,73 @@ describe('SetupWizard component', () => {
         expect(screen.getByTestId('step-deploy-error')).toBeInTheDocument();
         expect(screen.getByText('Deployment failed')).toBeInTheDocument();
     });
-});
 
+    it('resets deployError when handleStartDeployment is called (Retry)', async () => {
+        let capturedErrorCallback: ((data: { message?: string }) => void) | undefined;
+        mockOnDeploymentError.mockImplementation((cb: (data: { message?: string }) => void) => {
+            capturedErrorCallback = cb;
+            return vi.fn();
+        });
+
+        const user = userEvent.setup();
+        render(<SetupWizard />);
+
+        await navigateToDeployStep(user);
+        await user.click(screen.getByTestId('btn-next')); // Start 1
+
+        // Trigger error
+        await act(async () => { capturedErrorCallback?.({ message: 'First failure' }); });
+        expect(screen.getByTestId('step-deploy-error')).toHaveTextContent('First failure');
+
+        await user.click(screen.getByTestId('btn-retry')); // Start 2 (Retry)
+
+        // Verify it's back in loading state with progress reset
+        expect(screen.getByTestId('step-deploy-progress')).toBeInTheDocument();
+        expect(screen.getByTestId('deploy-progress-steps')).toHaveTextContent('0/4');
+    });
+
+    it('resets ALL deployment state when handleReset is called', async () => {
+        let capturedProgressCallback: ((data: { step: number; label: string }) => void) | undefined;
+        let capturedErrorCallback: ((data: { message?: string }) => void) | undefined;
+        
+        mockOnDeploymentProgress.mockImplementation((cb: (data: { step: number; label: string }) => void) => {
+            capturedProgressCallback = cb;
+            return vi.fn();
+        });
+        mockOnDeploymentError.mockImplementation((cb: (data: { message?: string }) => void) => {
+            capturedErrorCallback = cb;
+            return vi.fn();
+        });
+
+        const user = userEvent.setup();
+        render(<SetupWizard />);
+
+        await navigateToDeployStep(user);
+        await user.click(screen.getByTestId('btn-next')); // Start
+
+        // Set some stale state
+        await act(async () => { 
+            capturedProgressCallback?.({ step: 3, label: 'Almost done' });
+            capturedErrorCallback?.({ message: 'Something went wrong' });
+        });
+
+        // Trigger reset
+        await user.click(screen.getByTestId('btn-reset'));
+
+        // Verify we are back at welcome
+        expect(screen.getByTestId('step-welcome')).toBeInTheDocument();
+
+        // Navigate back to deploy — idle view should show, not stale error
+        await navigateToDeployStep(user);
+        expect(screen.getByTestId('step-deploy')).toBeInTheDocument();
+        expect(screen.queryByTestId('step-deploy-error')).not.toBeInTheDocument();
+
+        // Start again and verify progress resets cleanly
+        await user.click(screen.getByTestId('btn-next'));
+
+        expect(screen.getByTestId('step-deploy-progress')).toBeInTheDocument();
+        expect(screen.getByTestId('deploy-progress-steps')).toHaveTextContent('0/4');
+        expect(screen.getByTestId('deploy-progress-label')).toHaveTextContent('Getting things ready...');
+        expect(screen.queryByTestId('step-deploy-error')).not.toBeInTheDocument();
+    });
+});

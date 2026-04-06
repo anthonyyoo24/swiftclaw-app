@@ -2,12 +2,54 @@ import { IpcMainEvent } from 'electron';
 import { spawn, type ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
-
 
 import { DeploymentPayload } from '../../src/types/ai';
-import { OAUTH_PROVIDER_MAP } from '../../src/constants/ai-core';
+import { OAUTH_PROVIDER_MAP, SOUL_TEMPLATE_FILES } from '../../src/constants/ai-core';
 import { IPC_EVENTS } from '../../src/constants/ipc';
+import {
+    getOpenClawConfigPath,
+    getOpenClawWorkspacePath,
+    getOpenClawPluginDepsDir,
+    resolveOpenClawBinary,
+    getResourcesPath,
+    updateOpenClawConfig,
+} from './openclaw-helpers';
+
+
+
+// ── Template generators ───────────────────────────────────────────────────────
+
+function generateUserMd(payload: {
+    userName: string;
+    timezone: string;
+    usageType: string;
+    businessDescription?: string;
+    personalContext?: string;
+    goals: string;
+    workflows: string[];
+}): string {
+    const context = payload.usageType === 'business'
+        ? (payload.businessDescription ?? '')
+        : (payload.personalContext ?? '');
+    const workflowList = payload.workflows
+        .map(w => w.startsWith('__CUSTOM__:') ? w.slice('__CUSTOM__:'.length) : w)
+        .map(w => `- ${w}`)
+        .join('\n');
+
+    return `# About ${payload.userName}
+
+**Timezone:** ${payload.timezone}
+
+## Context
+${context}
+
+## Goals
+${payload.goals}
+
+## Workflows
+${workflowList}
+`;
+}
 
 
 /** Flags whose immediately following argument contains a secret value. */
@@ -16,12 +58,22 @@ const SECRET_FLAGS = /^--(?:[\w-]*api[_-]?key|secret|token|password|auth[_-]?tok
 /** Fallback: redact any standalone value that looks like a long random credential (≥20 alphanum chars). */
 const SECRET_VALUE_PATTERN = /^[A-Za-z0-9_\-]{20,}$/;
 
+/** Strip ANSI/OSC terminal escape sequences from a string. */
+export function stripAnsi(str: string): string {
+    return str
+        .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '')          // CSI sequences (colors, cursor movement, erase)
+        .replace(/\x1B\][^\x07\x1B]*(?:\x07|\x1B\\)/g, '') // OSC sequences (window title, progress)
+        .replace(/\x1B[@-_]/g, '');                         // two-byte escape sequences
+}
+
 export class OpenClawService {
     private cliProcess: ChildProcess | null = null;
     private wasCancelled = false;
+    private isPastingToken = false;
 
     private resetState() {
         this.wasCancelled = false;
+        this.isPastingToken = false;
         if (this.cliProcess && !this.cliProcess.killed) {
             this.cliProcess.kill();
         }
@@ -34,11 +86,30 @@ export class OpenClawService {
 
 
     /**
+     * Reads the correct AGENTS.md template for the given agent from resources/agent-templates/,
+     * then appends a Selected Tools section if tools were provided.
+     */
+    private generateAgentsMd(agentId: string, tools: string[]): string {
+        const templateFile = agentId === 'sarah' ? 'sarah.md' : 'default.md';
+        const templatePath = path.join(getResourcesPath(), 'agent-templates', templateFile);
+        const base = fs.readFileSync(templatePath, 'utf-8');
+        if (tools.length === 0) return base;
+        const toolsList = tools.map(t => `- ${t}`).join('\n');
+        return `${base}\n## Selected Tools\n${toolsList}\n`;
+    }
+
+    /**
      * Builds the environment for spawned CLI processes.
+     * Includes NODE_PATH pointing at ~/.openclaw/plugin-deps/node_modules so
+     * that openclaw child processes can resolve grammy (and any other peer deps
+     * we install there) without us touching the npx-managed cache directory.
      */
     private buildCliEnv(): NodeJS.ProcessEnv {
         const env: NodeJS.ProcessEnv = { ...process.env };
-
+        const pluginDepsModules = path.join(getOpenClawPluginDepsDir(), 'node_modules');
+        env.NODE_PATH = env.NODE_PATH
+            ? `${pluginDepsModules}${path.delimiter}${env.NODE_PATH}`
+            : pluginDepsModules;
         return env;
     }
 
@@ -71,7 +142,7 @@ export class OpenClawService {
         try {
             console.log(`[OAuth] Starting native Expect-driven TTY flow for provider: ${entry.provider}`);
 
-            const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
+            const configPath = getOpenClawConfigPath();
             let beforeMtime = 0;
             if (fs.existsSync(configPath)) {
                 beforeMtime = fs.statSync(configPath).mtimeMs;
@@ -89,16 +160,19 @@ export class OpenClawService {
                 throw new Error(`[OAuth] Unsafe method value rejected: ${entry.method}`);
             }
 
-            let cliCommand = `npx -y openclaw@latest models auth login --provider ${entry.provider}`;
+            const openClawBin = resolveOpenClawBinary();
+            // Invoke the binary directly (no bash -c) so Tcl brace-quoting handles
+            // spaces in the path without shell word-splitting.
+            let tclSpawnArgs = `models auth login --provider ${entry.provider}`;
             if (entry.method) {
-                cliCommand += ` --method ${entry.method}`;
+                tclSpawnArgs += ` --method ${entry.method}`;
             }
 
             // macOS / Linux: Route through 'expect' to simulate a TTY invisibly in the background.
             // This satisfies the `process.stdin.isTTY` check inside OpenClaw and auto-answers
             // any interactive confirmation prompts (Gemini caution, etc.) with "y".
             const expectScript = `
-spawn -noecho bash -c "${cliCommand}"
+spawn -noecho {${openClawBin}} ${tclSpawnArgs}
 set timeout 300
 expect {
     -re "Continue with.*\\?" {
@@ -117,13 +191,13 @@ exit [lindex $result 3]
             });
 
             this.cliProcess.stdout?.on('data', (data) => {
-                const line = data.toString().trim();
+                const line = stripAnsi(data.toString()).trim();
                 if (line && !line.includes('Complete sign-in in browser')) {
                     console.log(`[OAuth CLI]: ${line}`);
                 }
             });
             this.cliProcess.stderr?.on('data', (data) => {
-                const line = data.toString().trim();
+                const line = stripAnsi(data.toString()).trim();
                 if (line && !line.includes('Complete sign-in in browser')) {
                     console.error(`[OAuth CLI stderr]: ${line}`);
                 }
@@ -170,7 +244,7 @@ exit [lindex $result 3]
         try {
             console.log('[OAuth/Anthropic] Starting two-stage automated flow');
 
-            const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
+            const configPath = getOpenClawConfigPath();
             let beforeMtime = 0;
             if (fs.existsSync(configPath)) {
                 beforeMtime = fs.statSync(configPath).mtimeMs;
@@ -194,12 +268,13 @@ expect eof
 
                 this.cliProcess.stdout?.on('data', (data: Buffer) => {
                     const text = data.toString();
-                    console.log(`[OAuth/Anthropic Stage1]: ${text.trim()}`);
+                    const line = stripAnsi(text).trim();
+                    if (line) console.log(`[OAuth/Anthropic Stage1]: ${line}`);
                     stdoutBuffer += text;
                 });
 
                 this.cliProcess.stderr?.on('data', (data: Buffer) => {
-                    const line = data.toString().trim();
+                    const line = stripAnsi(data.toString()).trim();
                     if (line) console.error(`[OAuth/Anthropic Stage1 stderr]: ${line}`);
                 });
 
@@ -235,40 +310,45 @@ expect eof
             // ── Stage 2: Pipe the token into OpenClaw paste-token ──
             console.log('[OAuth/Anthropic] Stage 2: Registering token with OpenClaw...');
 
+            const openClawBin = resolveOpenClawBinary();
             const stage2Script = `
-spawn -noecho bash -c "npx -y openclaw@latest models auth paste-token --provider anthropic"
-set timeout 60
-expect {
-    -re "Paste token" {
-        send "${capturedToken}\\r"
-        exp_continue
-    }
-    eof
-}
+spawn -noecho {${openClawBin}} models auth paste-token --provider anthropic
+set timeout 300
+expect -re "Paste token"
+send "${capturedToken}\\r"
+expect eof
 catch wait result
 exit [lindex $result 3]
 `;
 
+            this.isPastingToken = true;
             this.cliProcess = spawn('expect', ['-c', stage2Script], {
                 stdio: ['ignore', 'pipe', 'pipe'],
                 env: this.buildCliEnv(),
             });
 
-            this.cliProcess.stdout?.on('data', (data: Buffer) => {
-                const line = data.toString().trim();
+            this.cliProcess.stdout?.on('data', (_data: Buffer) => {
+                if (this.isPastingToken) return;
+                const line = stripAnsi(_data.toString()).trim();
                 if (line) console.log(`[OAuth/Anthropic Stage2]: ${line}`);
             });
-            this.cliProcess.stderr?.on('data', (data: Buffer) => {
-                const line = data.toString().trim();
+            this.cliProcess.stderr?.on('data', (_data: Buffer) => {
+                if (this.isPastingToken) return;
+                const line = stripAnsi(_data.toString()).trim();
                 if (line) console.error(`[OAuth/Anthropic Stage2 stderr]: ${line}`);
             });
 
-            await new Promise<void>((resolve, reject) => {
+            const exitCode = await new Promise<number>((resolve, reject) => {
                 this.cliProcess!.on('close', (code) => {
+                    this.isPastingToken = false;
                     if (this.wasCancelled) { reject(new Error('Cancelled')); return; }
-                    if (code === 0) { resolve(); } else { reject(new Error(`paste-token exited with code ${code}`)); }
+                    resolve(code ?? 1);
                 });
             });
+
+            if (exitCode !== 0) {
+                console.warn(`[OAuth/Anthropic] Stage 2 exited with code ${exitCode}`);
+            }
 
             // ── Verify config was updated ──
             let afterMtime = 0;
@@ -335,15 +415,17 @@ exit [lindex $result 3]
     }
 
     /**
-     * Safely executes an npx command using an argument array to prevent shell injection.
+     * Safely executes a local openclaw binary command using an argument array.
+     * Replaces runNpxCommand for all openclaw subcommands — no npx overhead,
+     * no remote package resolution, uses the pinned version from package.json.
      */
-    private async runNpxCommand(args: string[], env: NodeJS.ProcessEnv): Promise<{ stdout: string; stderr: string }> {
+    private async runLocalOpenClawCommand(args: string[], env: NodeJS.ProcessEnv): Promise<{ stdout: string; stderr: string }> {
         return new Promise((resolve, reject) => {
-            const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+            const binary = resolveOpenClawBinary();
             const sanitizedArgs = this.sanitizeArgs(args);
-            console.log(`[OpenClawService] Executing: ${command} ${sanitizedArgs.map(a => a.includes(' ') ? `"${a}"` : a).join(' ')}`);
+            console.log(`[OpenClawService] Executing: ${binary} ${sanitizedArgs.map(a => a.includes(' ') ? `"${a}"` : a).join(' ')}`);
 
-            this.cliProcess = spawn(command, args, {
+            this.cliProcess = spawn(binary, args, {
                 env,
                 shell: false,
                 stdio: ['ignore', 'pipe', 'pipe']
@@ -376,6 +458,45 @@ exit [lindex $result 3]
         });
     }
 
+    /**
+     * Installs grammy into ~/.openclaw/plugin-deps/ if not already present.
+     * The directory is added to NODE_PATH in buildCliEnv() so every openclaw
+     * child process can resolve require('grammy') via the standard module
+     * resolution path.
+     */
+    private async ensureGrammyInstalled(env: NodeJS.ProcessEnv): Promise<void> {
+        const depsDir = getOpenClawPluginDepsDir();
+        const grammyDir = path.join(depsDir, 'node_modules', 'grammy');
+        if (fs.existsSync(grammyDir)) {
+            console.log('[OpenClawService] grammy already present; skipping install.');
+            return;
+        }
+
+        fs.mkdirSync(depsDir, { recursive: true });
+        console.log(`[OpenClawService] Installing grammy into ${depsDir}...`);
+
+        await new Promise<void>((resolve, reject) => {
+            const command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+            const proc = spawn(command, [
+                'install', '--no-save', '--no-audit', '--no-fund',
+                '--legacy-peer-deps', '--ignore-scripts',
+                '--prefix', depsDir,
+                'grammy',
+            ], { env, shell: false, stdio: ['ignore', 'pipe', 'pipe'] });
+            let stderr = '';
+            proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
+            proc.on('close', (code) => {
+                if (code === 0) {
+                    console.log('[OpenClawService] grammy installed successfully.');
+                    resolve();
+                } else {
+                    reject(new Error(`grammy install failed (code ${code}): ${stderr.trim()}`));
+                }
+            });
+            proc.on('error', reject);
+        });
+    }
+
     async deploy(event: IpcMainEvent, payload: DeploymentPayload) {
         if (this.cliProcess) {
             console.warn('[OpenClawService] Operation already in progress, ignoring.');
@@ -385,11 +506,13 @@ exit [lindex $result 3]
         this.resetState();
         try {
             console.log('Orchestrating deployment for:', payload.agentTemplateIds);
+            const cliEnv = this.buildCliEnv();
 
-            // Step 1: Auth (UI Step 1 -> Phase 2 OpenClaw Bootstrapping)
-            this.emitProgress(event, 1, 'Bootstrapping core OpenClaw configuration...');
+            // Step 1: Auth + bootstrapping
+            this.emitProgress(event, 1, 'Getting things ready...');
 
-            const baseArgs = ['openclaw@latest', 'onboard', '--non-interactive', '--accept-risk'];
+            const sarahWorkspacePath = getOpenClawWorkspacePath('sarah');
+            const baseArgs = ['onboard', '--non-interactive', '--accept-risk', '--workspace', sarahWorkspacePath];
             let onboardArgs: string[] = [];
 
             if (payload.aiAuthType === 'oauth') {
@@ -399,11 +522,10 @@ exit [lindex $result 3]
                 const entry = OAUTH_PROVIDER_MAP[payload.aiProvider];
                 const authChoice = entry?.provider || payload.aiProvider;
 
-                //'--skip-health is temporary
                 onboardArgs = [
                     ...baseArgs,
                     '--auth-choice', authChoice,
-                    '--skip-channels', '--skip-skills', '--skip-health'
+                    '--install-daemon', '--skip-channels', '--skip-skills', '--skip-health'
                 ];
             } else {
                 // API Key Flow
@@ -425,17 +547,16 @@ exit [lindex $result 3]
                     apiKeyFlag = '--openai-api-key';
                 }
 
-                //'--skip-health is temporary
                 onboardArgs = [
                     ...baseArgs,
                     '--auth-choice', authChoice,
                     apiKeyFlag, apiKey,
                     '--secret-input-mode', 'plaintext',
-                    '--skip-channels', '--skip-skills', '--skip-health'
+                    '--install-daemon', '--skip-channels', '--skip-skills', '--skip-health'
                 ];
             }
 
-            const { stdout, stderr } = await this.runNpxCommand(onboardArgs, this.buildCliEnv());
+            const { stdout, stderr } = await this.runLocalOpenClawCommand(onboardArgs, cliEnv);
             if (stderr && stderr.trim()) {
                 console.warn(`Command stderr: ${stderr}`);
             }
@@ -444,7 +565,6 @@ exit [lindex $result 3]
             // Write the selected model to ~/.openclaw/openclaw.json
             // openclaw onboard doesn't accept a --model flag; the default model
             // must be written directly to the config file.
-            const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
             const providerPrefix: Record<string, string> = {
                 'openai-api': 'openai',
                 'openai-codex': 'openai-codex',
@@ -454,48 +574,83 @@ exit [lindex $result 3]
             const prefix = providerPrefix[payload.aiProvider] || payload.aiProvider;
             const modelPrimary = `${prefix}/${payload.aiModel}`;
 
-            let config: Record<string, unknown> = {};
-            if (fs.existsSync(configPath)) {
-                try {
-                    config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-                } catch { /* start fresh if unparseable */ }
-            }
-
-            const agents = (config.agents ?? {}) as Record<string, unknown>;
-            const defaults = (agents.defaults ?? {}) as Record<string, unknown>;
-            const model = (defaults.model ?? {}) as Record<string, unknown>;
-            model.primary = modelPrimary;
-            defaults.model = model;
-            agents.defaults = defaults;
-            config.agents = agents;
-
-            fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+            updateOpenClawConfig((config) => {
+                const agents = (config.agents ?? {}) as Record<string, unknown>;
+                const defaults = (agents.defaults ?? {}) as Record<string, unknown>;
+                const model = (defaults.model ?? {}) as Record<string, unknown>;
+                model.primary = modelPrimary;
+                defaults.model = model;
+                agents.defaults = defaults;
+                config.agents = agents;
+            });
             console.log(`[OpenClawService] Set default model to: ${modelPrimary}`);
 
-            // Step 2: Channels (UI Step 2 -> roughly 2s)
-            this.emitProgress(event, 2, 'Executing channels add...');
-            await new Promise(r => setTimeout(r, 2000));
+            // Step 1.5: Fix bundled plugin peer-dep failures before any command
+            // that triggers a full plugin registry load (scope="all").
+            this.emitProgress(event, 1, 'Getting things ready...');
+            // Disable amazon-bedrock — its peer dep (@aws-sdk/client-bedrock) is
+            // absent from the npx cache and is not needed; skip the install.
+            try {
+                await this.runLocalOpenClawCommand(['plugins', 'disable', 'amazon-bedrock'], cliEnv);
+            } catch { /* may already be disabled; non-fatal */ }
+            // Install grammy for the telegram plugin into an isolated directory.
+            // buildCliEnv() adds that directory to NODE_PATH so all subsequent
+            // openclaw child processes resolve require('grammy') from there.
+            await this.ensureGrammyInstalled(cliEnv);
 
-            // Step 3: Workspaces (UI Step 3 -> roughly 2s)
-            this.emitProgress(event, 3, 'Creating agent workspaces...');
-            await new Promise(r => setTimeout(r, 2000));
+            // Step 2: Channels
+            const channelLabel = payload.selectedChannel === 'discord' ? 'Discord' : 'Telegram';
+            this.emitProgress(event, 2, `Connecting your ${channelLabel}...`);
+            if (payload.selectedChannel === 'telegram' || payload.selectedChannel === 'discord') {
+                await this.runLocalOpenClawCommand([
+                    'channels', 'add',
+                    '--channel', payload.selectedChannel,
+                    '--token', payload.channelToken,
+                ], cliEnv);
+            } else {
+                throw new Error(`Unsupported channel: ${payload.selectedChannel}`);
+            }
 
-            // Steps 4-7: UI Step 4 -> roughly 2s total
-            this.emitProgress(event, 4, 'Writing USER.md...');
-            await new Promise(r => setTimeout(r, 500));
+            // Steps 3–N: Create agent workspaces (one step per agent)
+            let stepCounter = 3;
+            for (const agentId of payload.agentTemplateIds) {
+                const displayName = agentId.charAt(0).toUpperCase() + agentId.slice(1);
+                this.emitProgress(event, stepCounter, `Bringing ${displayName} online...`);
+                const workspacePath = getOpenClawWorkspacePath(agentId);
+                await this.runLocalOpenClawCommand([
+                    'agents', 'add', agentId,
+                    '--workspace', workspacePath,
+                    '--non-interactive',
+                ], cliEnv);
+                stepCounter++;
+            }
 
-            this.emitProgress(event, 5, 'Writing AGENTS.md...');
-            await new Promise(r => setTimeout(r, 500));
+            // Final step: Write USER.md, AGENTS.md, copy SOUL.md (combined)
+            this.emitProgress(event, stepCounter, 'Finalizing agent configuration...');
+            const userMdContent = generateUserMd(payload);
+            await Promise.all(payload.agentTemplateIds.map(agentId =>
+                fs.promises.writeFile(path.join(getOpenClawWorkspacePath(agentId), 'USER.md'), userMdContent, 'utf-8')
+            ));
 
-            this.emitProgress(event, 6, 'Copying SOUL.md templates...');
-            await new Promise(r => setTimeout(r, 500));
+            await Promise.all(payload.agentTemplateIds.map(agentId =>
+                fs.promises.writeFile(
+                    path.join(getOpenClawWorkspacePath(agentId), 'AGENTS.md'),
+                    this.generateAgentsMd(agentId, payload.tools ?? []),
+                    'utf-8'
+                )
+            ));
 
-            this.emitProgress(event, 7, 'Creating symlinks...');
-            await new Promise(r => setTimeout(r, 500));
-
-            // Step 8: Gateway Startup & Health Checks (UI Step 5 -> roughly 2s)
-            this.emitProgress(event, 8, 'Starting Gateway & Health Checks...');
-            await new Promise(r => setTimeout(r, 2000));
+            const resourcesPath = getResourcesPath();
+            await Promise.all(payload.agentTemplateIds.map(async agentId => {
+                const templateFile = SOUL_TEMPLATE_FILES[agentId];
+                if (!templateFile) {
+                    throw new Error(`No SOUL.md template found for agent: ${agentId}`);
+                }
+                const workspacePath = getOpenClawWorkspacePath(agentId);
+                const src = path.join(resourcesPath, 'soul-templates', templateFile);
+                await fs.promises.copyFile(src, path.join(workspacePath, 'SOUL.md'));
+                await fs.promises.unlink(path.join(workspacePath, 'BOOTSTRAP.md')).catch(() => { /* may not exist */ });
+            }));
 
             event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });
 

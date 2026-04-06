@@ -9,8 +9,8 @@ import { DeploymentPayload } from '../../src/types/ai';
 const sanitizeDeploymentPayload = (payload: DeploymentPayload): DeploymentPayload => {
     return {
         ...payload,
-        aiApiKey: payload.aiApiKey ? '***REDACTED***' : undefined,
-        channelToken: payload.channelToken ? '***REDACTED***' : undefined,
+        aiApiKey: payload.aiApiKey ? '***REDACTED***' : '',
+        channelToken: payload.channelToken ? '***REDACTED***' : '',
     };
 };
 
