@@ -32,12 +32,12 @@ vi.mock('../steps/DeploymentStep', () => ({ DeploymentStep: () => <div data-test
 vi.mock('../steps/DeployProgressView', async () => {
     const { useEffect } = await import('react');
     return {
-        DeployProgressView: ({ onVisualComplete, backendComplete, currentStep = 0, totalSteps = 0, progressLabel = '' }: {
+        DeployProgressView: ({ onVisualComplete, backendComplete, currentStep, totalSteps, progressLabel }: {
             onVisualComplete: () => void;
             backendComplete: boolean;
-            currentStep?: number;
-            totalSteps?: number;
-            progressLabel?: string;
+            currentStep: number;
+            totalSteps: number;
+            progressLabel: string;
         }) => {
             useEffect(() => {
                 if (backendComplete) onVisualComplete();
