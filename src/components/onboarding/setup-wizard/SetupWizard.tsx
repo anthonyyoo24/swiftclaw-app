@@ -263,6 +263,8 @@ export function SetupWizard() {
         }
 
         setBackendDone(false);
+        setDeployError("");
+        setDeployProgress({ step: 0, label: "Getting things ready..." });
         setDeployState('loading');
     }, [methods]);
 
@@ -300,6 +302,8 @@ export function SetupWizard() {
         setCurrentStepIndex(0);
         setVisitedIds(new Set(["welcome"]));
         setBackendDone(false);
+        setDeployError("");
+        setDeployProgress({ step: 0, label: "Getting things ready..." });
         setDeployState('idle');
     };
 

@@ -132,7 +132,7 @@ Use this agent when you need:
 - **Patent Landscape**: Emerging technologies, R&D trends, innovation hotspots with IP analysis
 - **Startup Ecosystem**: Funding rounds, pivot patterns, success indicators with venture intelligence
 - **Academic Research**: University partnerships, breakthrough technologies, publication trends
-- **Open Source Projects**: Community momentum, adoption patterns, commercial potentialwho is an admin assistant? Who does 
+- **Open Source Projects**: Community momentum, adoption patterns, commercial potential
 - **Standards Development**: Industry consortiums, protocol evolution, adoption timelines
 
 ### Technology Assessment
