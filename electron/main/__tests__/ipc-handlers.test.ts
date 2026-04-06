@@ -123,9 +123,9 @@ describe('setupIpcHandlers', () => {
 
         await ipcHandlers['deployment:start'](event, { ...VALID_PAYLOAD, aiApiKey: '', channelToken: '' });
 
-        const logged = consoleSpy.mock.calls.flat().map(String).join(' ');
-        // Empty string fields should appear as '' in the serialized log, not as 'undefined'
-        expect(logged).not.toContain('undefined');
+        const [, loggedPayload] = consoleSpy.mock.calls[0] as [string, DeploymentPayload];
+        expect(loggedPayload.aiApiKey).toBe('');
+        expect(loggedPayload.channelToken).toBe('');
 
         consoleSpy.mockRestore();
     });
