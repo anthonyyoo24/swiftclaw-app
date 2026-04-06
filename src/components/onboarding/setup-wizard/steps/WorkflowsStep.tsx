@@ -154,7 +154,8 @@ export function WorkflowsStep() {
                             <button
                                 type="button"
                                 onClick={() => startEditingWorkflow(entry)}
-                                className="absolute -bottom-1.5 -right-1.5 p-1 rounded-full bg-neutral-800 border border-neutral-700 text-neutral-400 opacity-0 group-hover:opacity-100 hover:text-blue-400 hover:border-blue-500/30 transition-all z-10 cursor-pointer"
+                                aria-label="Edit workflow"
+                                className="absolute -bottom-1.5 -right-1.5 p-1 rounded-full bg-neutral-800 border border-neutral-700 text-neutral-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 hover:text-blue-400 hover:border-blue-500/30 transition-all z-10 cursor-pointer"
                                 title="Edit workflow"
                             >
                                 <Pencil className="w-3 h-3 translate-x-px" />
@@ -162,7 +163,8 @@ export function WorkflowsStep() {
                             <button
                                 type="button"
                                 onClick={() => removeCustomWorkflow(entry)}
-                                className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-neutral-800 border border-neutral-700 text-neutral-400 opacity-0 group-hover:opacity-100 hover:text-red-400 hover:border-red-500/30 transition-all z-10 cursor-pointer"
+                                aria-label="Remove workflow"
+                                className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-neutral-800 border border-neutral-700 text-neutral-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 hover:text-red-400 hover:border-red-500/30 transition-all z-10 cursor-pointer"
                                 title="Remove workflow"
                             >
                                 <X className="w-3 h-3" />
