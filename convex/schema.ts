@@ -1,7 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
+  ...authTables,
+
   agents: defineTable({
     name: v.string(),
     role: v.string(),
@@ -39,16 +42,21 @@ export default defineSchema({
     content: v.string(),
     attachments: v.optional(v.array(v.id("documents"))),
     createdAt: v.number(),
-  }),
+  }).index("by_taskId", ["taskId"]),
 
   activities: defineTable({
-    type: v.string(),
+    type: v.union(
+      v.literal("started"),
+      v.literal("blocked"),
+      v.literal("completed"),
+      v.literal("message")
+    ),
     agentId: v.id("agents"),
     message: v.string(),
     relatedTaskId: v.optional(v.id("tasks")),
     relatedDocumentId: v.optional(v.id("documents")),
     createdAt: v.number(),
-  }),
+  }).index("by_agentId", ["agentId"]),
 
   notifications: defineTable({
     forAgentId: v.id("agents"),
@@ -62,7 +70,7 @@ export default defineSchema({
     taskId: v.optional(v.id("tasks")),
     delivered: v.boolean(),
     createdAt: v.number(),
-  }),
+  }).index("by_forAgentId", ["forAgentId"]),
 
   documents: defineTable({
     title: v.string(),

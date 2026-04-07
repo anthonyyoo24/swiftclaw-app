@@ -2,9 +2,10 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
 export const get = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("agents").collect();
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = Math.min(args.limit ?? 50, 200);
+    return await ctx.db.query("agents").take(limit);
   },
 });
 
@@ -28,6 +29,8 @@ export const create = mutation({
     avatar: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
     const now = Date.now();
     return await ctx.db.insert("agents", {
       ...args,
@@ -48,6 +51,8 @@ export const updateStatus = mutation({
     currentTaskId: v.optional(v.id("tasks")),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
     const { id, ...fields } = args;
     await ctx.db.patch(id, { ...fields, updatedAt: Date.now() });
   },

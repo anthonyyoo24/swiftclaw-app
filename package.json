@@ -35,6 +35,8 @@
     ]
   },
   "dependencies": {
+    "@auth/core": "^0.34.3",
+    "@convex-dev/auth": "^0.0.91",
     "@hookform/resolvers": "^5.2.2",
     "@iconify/react": "^6.0.2",
     "@lobehub/icons": "^5.0.1",

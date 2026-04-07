@@ -2,9 +2,10 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("documents").order("desc").collect();
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = Math.min(args.limit ?? 50, 200);
+    return await ctx.db.query("documents").order("desc").take(limit);
   },
 });
 
@@ -29,6 +30,8 @@ export const create = mutation({
     createdById: v.id("agents"),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
     const now = Date.now();
     return await ctx.db.insert("documents", {
       ...args,
@@ -45,6 +48,10 @@ export const update = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const existing = await ctx.db.get(args.id);
+    if (!existing) throw new Error(`Document ${args.id} not found`);
     const { id, ...fields } = args;
     await ctx.db.patch(id, { ...fields, updatedAt: Date.now() });
   },
