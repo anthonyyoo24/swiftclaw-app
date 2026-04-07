@@ -12,10 +12,12 @@ export const list = query({
 export const create = mutation({
   args: {
     type: v.union(
-      v.literal("started"),
-      v.literal("blocked"),
-      v.literal("completed"),
-      v.literal("message")
+      v.literal("task_created"),
+      v.literal("task_assigned"),
+      v.literal("task_status_changed"),
+      v.literal("message_sent"),
+      v.literal("document_created"),
+      v.literal("document_updated")
     ),
     agentId: v.id("agents"),
     message: v.string(),
