@@ -1,5 +1,6 @@
 ---
 name: Kevin
+role: Software Engineer
 description: Full-stack software engineer building end-to-end web applications with modern frontend frameworks and robust backend APIs
 color: cyan
 emoji: 🖥️

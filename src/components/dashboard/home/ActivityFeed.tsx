@@ -1,15 +1,32 @@
+"use client";
+
+import { useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
+import { Doc } from "@convex/_generated/dataModel";
 import { Icon } from "@iconify/react";
+import { timeAgo } from "@/lib/utils";
 
 type FeedItemType = "started" | "blocked" | "completed" | "message";
 
-interface FeedItem {
-    id: string;
-    agentName: string;
-    eventType: string;
-    description: React.ReactNode;
-    timestamp: string;
-    type: FeedItemType;
-}
+type ActivityType = Doc<"activities">["type"];
+
+const TYPE_MAP: Record<ActivityType, FeedItemType> = {
+    task_created: "started",
+    task_assigned: "started",
+    task_status_changed: "started",
+    message_sent: "message",
+    document_created: "completed",
+    document_updated: "completed",
+};
+
+const EVENT_LABELS: Record<ActivityType, string> = {
+    task_created: "Task Created",
+    task_assigned: "Task Assigned",
+    task_status_changed: "Status Changed",
+    message_sent: "Message Sent",
+    document_created: "Document Created",
+    document_updated: "Document Updated",
+};
 
 const typeStyles: Record<FeedItemType, { bg: string; border: string; text: string; icon: string }> = {
     started: { bg: "bg-blue-500/10", border: "border-blue-500/30", text: "text-blue-400", icon: "lucide:play" },
@@ -18,65 +35,11 @@ const typeStyles: Record<FeedItemType, { bg: string; border: string; text: strin
     message: { bg: "bg-purple-500/10", border: "border-purple-500/30", text: "text-purple-400", icon: "lucide:message-square" },
 };
 
-const FEED_ITEMS: FeedItem[] = [
-    {
-        id: "1",
-        agentName: "Jarvis",
-        eventType: "Task Started",
-        type: "started",
-        timestamp: "2 min ago",
-        description: (
-            <>
-                Jarvis started working on{" "}
-                <span className="text-white font-medium">Orchestrating deployment pipeline</span>.
-            </>
-        ),
-    },
-    {
-        id: "2",
-        agentName: "Friday",
-        eventType: "Blocked",
-        type: "blocked",
-        timestamp: "15 min ago",
-        description: (
-            <>
-                Friday marked <span className="text-white font-medium">Feature Implementation</span>{" "}
-                as blocked:{" "}
-                <span className="italic text-red-400">Waiting for PR review on #342</span>.
-            </>
-        ),
-    },
-    {
-        id: "3",
-        agentName: "Karen",
-        eventType: "Document Created",
-        type: "completed",
-        timestamp: "1 hour ago",
-        description: (
-            <>
-                Karen completed and published{" "}
-                <span className="text-white font-medium">Landing Page Copy v2</span>.
-            </>
-        ),
-    },
-    {
-        id: "4",
-        agentName: "Friday",
-        eventType: "Message Sent",
-        type: "message",
-        timestamp: "2 hours ago",
-        description: (
-            <>
-                Friday sent a message in{" "}
-                <span className="text-white font-medium">Engineering Channel</span>:{" "}
-                &quot;I&apos;ve pushed the initial commit for the new dashboard component.&quot;
-            </>
-        ),
-    },
-];
+type EnrichedActivity = Doc<"activities"> & { agentName: string };
 
-function FeedItemCard({ item, isLast }: { item: FeedItem; isLast: boolean }) {
-    const styles = typeStyles[item.type];
+function FeedItemCard({ item, isLast }: { item: EnrichedActivity; isLast: boolean }) {
+    const feedType = TYPE_MAP[item.type];
+    const styles = typeStyles[feedType];
     return (
         <div className="flex gap-4 group">
             <div className="flex flex-col items-center shrink-0">
@@ -91,12 +54,12 @@ function FeedItemCard({ item, isLast }: { item: FeedItem; isLast: boolean }) {
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-semibold text-white">{item.agentName}</span>
                             <span className="text-[10px] text-neutral-300 font-medium px-2 py-0.5 rounded-md bg-white/10 border border-white/5">
-                                {item.eventType}
+                                {EVENT_LABELS[item.type]}
                             </span>
                         </div>
-                        <span className="text-[11px] text-neutral-500 font-medium">{item.timestamp}</span>
+                        <span className="text-[11px] text-neutral-500 font-medium">{timeAgo(item.createdAt)}</span>
                     </div>
-                    <p className="text-[13px] text-neutral-300 leading-relaxed">{item.description}</p>
+                    <p className="text-[13px] text-neutral-300 leading-relaxed">{item.message}</p>
                 </div>
             </div>
         </div>
@@ -104,19 +67,32 @@ function FeedItemCard({ item, isLast }: { item: FeedItem; isLast: boolean }) {
 }
 
 export function ActivityFeed() {
+    const activities = useQuery(api.activities.list, {});
+
     return (
         <main className="flex-1 flex flex-col bg-transparent relative min-w-0">
-            {/* Header */}
-            <div className="h-14 border-b border-white/5 flex items-center px-6 shrink-0 bg-white/[0.01] backdrop-blur-sm z-10">
+            <div className="h-14 border-b border-white/5 flex items-center px-6 shrink-0 bg-white/1 backdrop-blur-sm z-10">
                 <h3 className="text-sm font-semibold text-white tracking-tight">Activity Feed</h3>
             </div>
 
-            {/* Feed */}
             <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
                 <div className="max-w-3xl">
-                    {FEED_ITEMS.map((item, index) => (
-                        <FeedItemCard key={item.id} item={item} isLast={index === FEED_ITEMS.length - 1} />
-                    ))}
+                    {activities === undefined ? (
+                        <div className="flex items-center justify-center h-20 text-neutral-500 text-sm">Loading...</div>
+                    ) : activities.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-48 gap-2 text-neutral-500">
+                            <Icon icon="lucide:activity" className="text-3xl" />
+                            <p className="text-sm">No activity yet</p>
+                        </div>
+                    ) : (
+                        (activities as EnrichedActivity[]).map((item, index) => (
+                            <FeedItemCard
+                                key={item._id}
+                                item={item}
+                                isLast={index === activities.length - 1}
+                            />
+                        ))
+                    )}
                 </div>
             </div>
         </main>

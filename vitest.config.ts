@@ -15,6 +15,7 @@ export default defineConfig({
                 },
                 resolve: {
                     alias: {
+                        '@convex': path.resolve(__dirname, './convex'),
                         '@': path.resolve(__dirname, './src'),
                     },
                 },
@@ -28,6 +29,7 @@ export default defineConfig({
                 },
                 resolve: {
                     alias: {
+                        '@convex': path.resolve(__dirname, './convex'),
                         '@': path.resolve(__dirname, './src'),
                     },
                 },

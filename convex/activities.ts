@@ -5,7 +5,13 @@ export const list = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const limit = Math.min(args.limit ?? 50, 200);
-    return await ctx.db.query("activities").order("desc").take(limit);
+    const activities = await ctx.db.query("activities").order("desc").take(limit);
+    return await Promise.all(
+      activities.map(async (activity) => {
+        const agent = await ctx.db.get(activity.agentId);
+        return { ...activity, agentName: agent?.name ?? "Unknown Agent" };
+      })
+    );
   },
 });
 
