@@ -77,14 +77,7 @@ export function ActivityFeed() {
 
             <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
                 <div className="max-w-3xl">
-                    {activities === undefined ? (
-                        <div className="flex items-center justify-center h-20 text-neutral-500 text-sm">Loading...</div>
-                    ) : activities.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-48 gap-2 text-neutral-500">
-                            <Icon icon="lucide:activity" className="text-3xl" />
-                            <p className="text-sm">No activity yet</p>
-                        </div>
-                    ) : (
+                    {activities?.length ? (
                         (activities as EnrichedActivity[]).map((item, index) => (
                             <FeedItemCard
                                 key={item._id}
@@ -92,6 +85,11 @@ export function ActivityFeed() {
                                 isLast={index === activities.length - 1}
                             />
                         ))
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-48 gap-2 text-neutral-500">
+                            <Icon icon="lucide:activity" className="text-3xl" />
+                            <p className="text-sm">No activity yet</p>
+                        </div>
                     )}
                 </div>
             </div>

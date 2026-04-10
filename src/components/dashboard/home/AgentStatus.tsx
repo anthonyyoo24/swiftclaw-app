@@ -71,14 +71,7 @@ export function AgentStatus({ roleEmojis }: { roleEmojis: Record<string, string>
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                {agents === undefined ? (
-                    <div className="flex items-center justify-center h-20 text-neutral-500 text-sm">Loading...</div>
-                ) : agents.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-32 gap-2 text-neutral-500">
-                        <Icon icon="lucide:bot" className="text-2xl" />
-                        <p className="text-sm">No agents deployed</p>
-                    </div>
-                ) : (
+                {agents?.length ? (
                     agents.map((agent) => (
                         <AgentCard
                             key={agent._id}
@@ -90,6 +83,11 @@ export function AgentStatus({ roleEmojis }: { roleEmojis: Record<string, string>
                             roleEmojis={roleEmojis}
                         />
                     ))
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-32 gap-2 text-neutral-500">
+                        <Icon icon="lucide:bot" className="text-2xl" />
+                        <p className="text-sm">No agents deployed</p>
+                    </div>
                 )}
             </div>
         </aside>
