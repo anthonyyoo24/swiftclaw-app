@@ -31,7 +31,7 @@ export default defineSchema({
       v.literal("done")
     ),
     assigneeIds: v.array(v.id("agents")),
-    createdById: v.id("agents"),
+    createdById: v.optional(v.id("agents")),
     createdAt: v.number(),
     updatedAt: v.number(),
   }),

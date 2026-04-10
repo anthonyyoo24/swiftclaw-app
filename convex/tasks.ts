@@ -28,7 +28,7 @@ export const create = mutation({
       v.literal("done")
     ),
     assigneeIds: v.array(v.id("agents")),
-    createdById: v.id("agents"),
+    createdById: v.optional(v.id("agents")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();

@@ -1,18 +1,11 @@
+"use client";
+
 import { Icon } from "@iconify/react";
+import { useMutation } from "convex/react";
+import { api } from "@convex/_generated/api";
+import { Doc } from "@convex/_generated/dataModel";
 
-export type TagColor = 'red' | 'blue' | 'purple' | 'orange' | 'emerald' | 'neutral';
-
-export interface TaskCardProps {
-    tagLabel: string;
-    tagColor: TagColor;
-    title: string;
-    date: string;
-    comments?: number;
-    assigneeIcon: string;
-    assigneeColor?: TagColor;
-    hasOptions?: boolean;
-    isDone?: boolean;
-}
+type TagColor = "red" | "blue" | "purple" | "orange" | "emerald" | "neutral";
 
 const colorStyles: Record<TagColor, { tag: string; iconBg: string }> = {
     red: { tag: "bg-red-500/10 text-red-400 border-red-500/20", iconBg: "bg-red-500/20 border-red-500/30 text-red-400" },
@@ -23,48 +16,68 @@ const colorStyles: Record<TagColor, { tag: string; iconBg: string }> = {
     neutral: { tag: "bg-neutral-500/10 text-neutral-400 border-neutral-500/20", iconBg: "bg-white/10 border-white/20 border-dashed text-neutral-400" },
 };
 
-export function TaskCard({ 
-    tagLabel, 
-    tagColor, 
-    title, 
-    date, 
-    comments, 
-    assigneeIcon, 
-    assigneeColor = 'neutral',
-    hasOptions = false,
-    isDone = false
-}: TaskCardProps) {
-    const styles = colorStyles[tagColor];
-    const iconStyles = colorStyles[assigneeColor].iconBg;
+const STATUS_TAG: Record<Doc<"tasks">["status"], { label: string; color: TagColor }> = {
+    inbox: { label: "Inbox", color: "neutral" },
+    assigned: { label: "Assigned", color: "blue" },
+    in_progress: { label: "In Progress", color: "orange" },
+    review: { label: "Review", color: "purple" },
+    done: { label: "Done", color: "emerald" },
+};
+
+interface TaskCardProps {
+    task: Doc<"tasks">;
+    onClick: () => void;
+    isSelected?: boolean;
+}
+
+export function TaskCard({ task, onClick, isSelected = false }: TaskCardProps) {
+    const updateStatus = useMutation(api.tasks.updateStatus);
+    const { label, color } = STATUS_TAG[task.status];
+    const styles = colorStyles[color];
+    const isDone = task.status === "done";
+
+    const date = new Date(task.createdAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+    });
+
+    function handleCancel(e: React.MouseEvent) {
+        e.stopPropagation();
+        updateStatus({ id: task._id, status: "done" });
+    }
 
     return (
-        <div className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer shadow-sm flex flex-col min-h-30">
+        <div
+            onClick={onClick}
+            className={`p-3 bg-white/5 border rounded-xl hover:bg-white/10 transition-colors cursor-pointer shadow-sm flex flex-col min-h-30 ${
+                isSelected ? "border-blue-500/40 bg-blue-500/5" : "border-white/10"
+            }`}
+        >
             <div className="flex items-center justify-between mb-2">
                 <span className={`px-2 py-0.5 rounded-md border text-[10px] font-medium ${styles.tag}`}>
-                    {tagLabel}
+                    {label}
                 </span>
-                {hasOptions && (
-                    <Icon icon="lucide:more-horizontal" className="text-neutral-500 hover:text-white transition-colors" />
+                {!isDone && (
+                    <button
+                        type="button"
+                        onClick={handleCancel}
+                        className="text-neutral-600 hover:text-red-400 transition-colors p-0.5 rounded"
+                        title="Mark as done"
+                    >
+                        <Icon icon="lucide:x" className="text-[12px]" />
+                    </button>
                 )}
             </div>
-            <p className={`text-[13px] font-medium mb-3 ${isDone ? 'text-neutral-400 line-through' : 'text-white'}`}>
-                {title}
+            <p className={`text-[13px] font-medium mb-3 ${isDone ? "text-neutral-400 line-through" : "text-white"}`}>
+                {task.title}
             </p>
             <div className="flex items-center justify-between mt-auto">
-                <div className="flex items-center gap-3 text-neutral-500">
-                    <div className="flex items-center gap-1.5">
-                        <Icon icon="lucide:calendar" className="text-[10px]" />
-                        <span className="text-[11px] font-medium">{date}</span>
-                    </div>
-                    {typeof comments === 'number' && (
-                        <div className="flex items-center gap-1.5">
-                            <Icon icon="lucide:message-square" className="text-[11px]" />
-                            <span className="text-[11px] font-medium">{comments}</span>
-                        </div>
-                    )}
+                <div className="flex items-center gap-1.5 text-neutral-500">
+                    <Icon icon="lucide:calendar" className="text-[10px]" />
+                    <span className="text-[11px] font-medium">{date}</span>
                 </div>
-                <div className={`relative flex items-center justify-center w-6 h-6 rounded-full border ${iconStyles}`}>
-                    <Icon icon={assigneeIcon} className="text-[10px]" />
+                <div className={`flex items-center justify-center w-6 h-6 rounded-full border ${colorStyles.neutral.iconBg}`}>
+                    <Icon icon="lucide:bot" className="text-[10px]" />
                 </div>
             </div>
         </div>
