@@ -20,30 +20,12 @@ export function TaskBoard() {
     const [selectedTaskId, setSelectedTaskId] = useState<Id<"tasks"> | null>(null);
     const tasks = useQuery(api.tasks.list, {});
 
-    if (tasks === undefined) {
-        return (
-            <div className="flex-1 overflow-x-auto overflow-y-hidden p-[10.7px]">
-                <div className="flex gap-[10.7px] h-full min-w-max md:w-full pb-2">
-                    {COLUMN_CONFIG.map((col) => (
-                        <TaskColumn key={col.status} title={col.title} count={0} isDimmed={col.isDimmed}>
-                            <div className="space-y-3">
-                                {[1, 2].map((i) => (
-                                    <div key={i} className="h-24 rounded-xl bg-white/5 animate-pulse" />
-                                ))}
-                            </div>
-                        </TaskColumn>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="flex flex-1 overflow-hidden">
             <div className="flex-1 overflow-x-auto overflow-y-hidden p-[10.7px]">
                 <div className="flex gap-[10.7px] h-full min-w-max md:w-full pb-2">
                     {COLUMN_CONFIG.map((col) => {
-                        const colTasks = tasks.filter((t) => t.status === col.status);
+                        const colTasks = (tasks ?? []).filter((t) => t.status === col.status);
                         return (
                             <TaskColumn
                                 key={col.status}
