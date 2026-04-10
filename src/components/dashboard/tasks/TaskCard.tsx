@@ -49,9 +49,8 @@ export function TaskCard({ task, onClick, isSelected = false }: TaskCardProps) {
     return (
         <div
             onClick={onClick}
-            className={`p-3 bg-white/5 border rounded-xl hover:bg-white/10 transition-colors cursor-pointer shadow-sm flex flex-col min-h-30 ${
-                isSelected ? "border-blue-500/40 bg-blue-500/5" : "border-white/10"
-            }`}
+            className={`p-3 bg-white/5 border rounded-xl hover:bg-white/10 transition-colors cursor-pointer shadow-sm flex flex-col min-h-30 ${isSelected ? "border-blue-500/40 bg-blue-500/5" : "border-white/10"
+                }`}
         >
             <div className="flex items-center justify-between mb-2">
                 <span className={`px-2 py-0.5 rounded-md border text-[10px] font-medium ${styles.tag}`}>
@@ -60,10 +59,10 @@ export function TaskCard({ task, onClick, isSelected = false }: TaskCardProps) {
                 <button
                     type="button"
                     onClick={handleCancel}
-                    className="text-neutral-600 hover:text-red-400 transition-colors p-0.5 rounded"
+                    className="text-neutral-600 hover:text-red-400 transition-colors p-0.5 rounded cursor-pointer"
                     title="Remove task"
                 >
-                    <Icon icon="lucide:x" className="text-[12px]" />
+                    <Icon icon="lucide:x" className="text-[16px]" />
                 </button>
             </div>
             <p className={`text-[13px] font-medium mb-3 ${isDone ? "text-neutral-400 line-through" : "text-white"}`}>
