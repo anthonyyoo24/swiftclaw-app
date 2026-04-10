@@ -18,7 +18,7 @@ const COLUMN_CONFIG: { status: "inbox" | "assigned" | "in_progress" | "review" |
 
 export function TaskBoard() {
     const [selectedTaskId, setSelectedTaskId] = useState<Id<"tasks"> | null>(null);
-    const tasks = useQuery(api.tasks.list);
+    const tasks = useQuery(api.tasks.list, {});
 
     if (tasks === undefined) {
         return (
