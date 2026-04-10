@@ -13,7 +13,7 @@ interface TaskDetailPanelProps {
 export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
     const task = useQuery(api.tasks.getById, { id: taskId });
     const messages = useQuery(api.taskMessages.listByTask, { taskId });
-    const updateStatus = useMutation(api.tasks.updateStatus);
+    const removeTask = useMutation(api.tasks.remove);
 
     if (task === undefined) {
         return (
@@ -40,7 +40,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
     });
 
     function handleCancel() {
-        updateStatus({ id: taskId, status: "done" });
+        removeTask({ id: taskId });
         onClose();
     }
 

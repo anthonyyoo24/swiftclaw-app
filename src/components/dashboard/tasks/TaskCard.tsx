@@ -31,7 +31,7 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onClick, isSelected = false }: TaskCardProps) {
-    const updateStatus = useMutation(api.tasks.updateStatus);
+    const removeTask = useMutation(api.tasks.remove);
     const { label, color } = STATUS_TAG[task.status];
     const styles = colorStyles[color];
     const isDone = task.status === "done";
@@ -43,7 +43,7 @@ export function TaskCard({ task, onClick, isSelected = false }: TaskCardProps) {
 
     function handleCancel(e: React.MouseEvent) {
         e.stopPropagation();
-        updateStatus({ id: task._id, status: "done" });
+        removeTask({ id: task._id });
     }
 
     return (
@@ -57,16 +57,14 @@ export function TaskCard({ task, onClick, isSelected = false }: TaskCardProps) {
                 <span className={`px-2 py-0.5 rounded-md border text-[10px] font-medium ${styles.tag}`}>
                     {label}
                 </span>
-                {!isDone && (
-                    <button
-                        type="button"
-                        onClick={handleCancel}
-                        className="text-neutral-600 hover:text-red-400 transition-colors p-0.5 rounded"
-                        title="Mark as done"
-                    >
-                        <Icon icon="lucide:x" className="text-[12px]" />
-                    </button>
-                )}
+                <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="text-neutral-600 hover:text-red-400 transition-colors p-0.5 rounded"
+                    title="Remove task"
+                >
+                    <Icon icon="lucide:x" className="text-[12px]" />
+                </button>
             </div>
             <p className={`text-[13px] font-medium mb-3 ${isDone ? "text-neutral-400 line-through" : "text-white"}`}>
                 {task.title}
