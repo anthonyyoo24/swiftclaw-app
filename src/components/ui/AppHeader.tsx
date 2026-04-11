@@ -31,6 +31,7 @@ const CONNECTION_STATUS_MAP: Record<string, GatewayStatusType> = {
     connected: "online",
     connecting: "connecting",
     offline: "offline",
+    error: "error",
 };
 
 export function AppHeader({
@@ -43,6 +44,7 @@ export function AppHeader({
     onReset
 }: AppHeaderProps) {
     const storeConnectionStatus = useGatewayStore((s) => s.status);
+    const reconnect = useGatewayStore((s) => s.reconnect);
     const resolvedGatewayStatus: GatewayStatusType =
         gatewayStatus ?? CONNECTION_STATUS_MAP[storeConnectionStatus] ?? "error";
 
@@ -96,7 +98,7 @@ export function AppHeader({
                     <div className="h-4 w-px bg-white/10 mx-0.5" />
                 )}
 
-                {showGatewayStatus && <GatewayStatus status={resolvedGatewayStatus} />}
+                {showGatewayStatus && <GatewayStatus status={resolvedGatewayStatus} onRetry={reconnect} />}
                 {rightSlot && <div className="flex items-center">{rightSlot}</div>}
             </div>
         </header>

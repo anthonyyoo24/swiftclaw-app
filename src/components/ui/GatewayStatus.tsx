@@ -15,6 +15,7 @@ export type GatewayStatusType = "online" | "offline" | "connecting" | "error";
 
 interface GatewayStatusProps {
     status: GatewayStatusType;
+    onRetry?: () => void;
     className?: string;
 }
 
@@ -54,7 +55,7 @@ const statusConfig: Record<GatewayStatusType, {
  * Small pill-shaped status indicator for the OpenClaw Gateway.
  * Shows status icon, label, and a status dot.
  */
-export function GatewayStatus({ status, className }: GatewayStatusProps) {
+export function GatewayStatus({ status, onRetry, className }: GatewayStatusProps) {
     const config = statusConfig[status];
 
     return (
@@ -79,6 +80,19 @@ export function GatewayStatus({ status, className }: GatewayStatusProps) {
                     status === "connecting" ? "animate-spin" : "group-hover:scale-110"
                 )}
             />
+
+            {status === "error" && onRetry && (
+                <>
+                    <div className="w-px h-3 bg-current opacity-20" />
+                    <button
+                        onClick={onRetry}
+                        className="opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+                        title="Retry connection"
+                    >
+                        <Icon icon="solar:restart-linear" className="size-3" />
+                    </button>
+                </>
+            )}
         </div>
     );
 }

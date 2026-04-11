@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-export type GatewayConnectionStatus = "offline" | "connecting" | "connected";
+export type GatewayConnectionStatus = "offline" | "connecting" | "connected" | "error";
 
 export type AgentSession = {
     sessionKey: string;
@@ -26,6 +26,7 @@ type GatewayState = {
     status: GatewayConnectionStatus;
     sessions: AgentSession[];
     connect: (port: number) => void;
+    reconnect: () => void;
     disconnect: () => void;
     listSessions: () => Promise<AgentSession[]>;
     invokeSkill: (payload: InvokeSkillPayload) => Promise<unknown>;
@@ -34,7 +35,7 @@ type GatewayState = {
 const REQUEST_TIMEOUT_MS = 15_000;
 const BACKOFF_BASE_MS = 1_000;
 const BACKOFF_MAX_MS = 30_000;
-const BACKOFF_MAX_ATTEMPTS = 8;
+const BACKOFF_MAX_ATTEMPTS = 1;
 const CLIENT_ID = "swiftclaw-dashboard";
 const CLIENT_VERSION = "1.0.0";
 
@@ -152,9 +153,17 @@ function openConnection(port: number, setStatus: (s: GatewayConnectionStatus) =>
     socket.onclose = () => {
         ws = null;
         rejectAllPending("gateway disconnected");
-        setStatus("offline");
-        if (!isIntentionallyClosed && currentPort !== null) {
-            scheduleReconnect(currentPort, setStatus);
+        const willReconnect =
+            !isIntentionallyClosed &&
+            currentPort !== null &&
+            reconnectAttempt < BACKOFF_MAX_ATTEMPTS;
+        if (willReconnect) {
+            setStatus("connecting");
+            scheduleReconnect(currentPort!, setStatus);
+        } else if (isIntentionallyClosed) {
+            setStatus("offline");
+        } else {
+            setStatus("error");
         }
     };
 
@@ -195,6 +204,14 @@ export const useGatewayStore = create<GatewayState>((set, get) => ({
         reconnectAttempt = 0;
         clearReconnectTimer();
         openConnection(port, (status) => set({ status }));
+    },
+
+    reconnect() {
+        if (currentPort === null) return;
+        isIntentionallyClosed = false;
+        reconnectAttempt = 0;
+        clearReconnectTimer();
+        openConnection(currentPort, (status) => set({ status }));
     },
 
     disconnect() {
