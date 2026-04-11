@@ -18,7 +18,7 @@ export default defineSchema({
     avatar: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }),
+  }).index("by_name", ["name"]),
 
   tasks: defineTable({
     title: v.string(),

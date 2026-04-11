@@ -40,6 +40,40 @@ export const create = mutation({
   },
 });
 
+export const syncAgent = mutation({
+  args: {
+    name: v.string(),
+    role: v.string(),
+    sessionKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("agents")
+      .withIndex("by_name", (q) => q.eq("name", args.name))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        sessionKey: args.sessionKey,
+        role: args.role,
+        status: "active",
+        updatedAt: now,
+      });
+      return existing._id;
+    }
+
+    return await ctx.db.insert("agents", {
+      name: args.name,
+      role: args.role,
+      sessionKey: args.sessionKey,
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
 export const updateStatus = mutation({
   args: {
     id: v.id("agents"),

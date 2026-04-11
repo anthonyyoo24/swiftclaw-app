@@ -4,13 +4,14 @@ import { Icon } from "@iconify/react";
 import { cn } from "@/lib/utils";
 import { GatewayStatus, GatewayStatusType } from "./GatewayStatus";
 import { dispatchOnboardingStatusChanged } from "@/hooks/useOnboardingStatus";
+import { useGatewayStore } from "@/store/gatewayStore";
 
 interface AppHeaderProps {
     /** Text shown after the "/" separator, e.g. "Workspace" or "Setup Wizard" */
     subtitle: string;
     /** Optional content rendered on the right side of the header */
     rightSlot?: React.ReactNode;
-    /** Current status of the gateway */
+    /** Current status of the gateway. When omitted, reads from gatewayStore automatically. */
     gatewayStatus?: GatewayStatusType;
     /** Extra className for the header element, useful for padding overrides */
     className?: string;
@@ -26,15 +27,24 @@ interface AppHeaderProps {
  * Shared top-bar used by both the dashboard layout and the onboarding WizardShell.
  * Renders the SwiftClaw logo + "SwiftClaw / {subtitle}" breadcrumb.
  */
+const CONNECTION_STATUS_MAP: Record<string, GatewayStatusType> = {
+    connected: "online",
+    connecting: "connecting",
+    offline: "offline",
+};
+
 export function AppHeader({
     subtitle,
     rightSlot,
-    gatewayStatus = "error",
+    gatewayStatus,
     className,
     showReset = true,
     showGatewayStatus = true,
     onReset
 }: AppHeaderProps) {
+    const storeConnectionStatus = useGatewayStore((s) => s.status);
+    const resolvedGatewayStatus: GatewayStatusType =
+        gatewayStatus ?? CONNECTION_STATUS_MAP[storeConnectionStatus] ?? "error";
 
     const handleResetOnboarding = () => {
         if (onReset) {
@@ -86,7 +96,7 @@ export function AppHeader({
                     <div className="h-4 w-px bg-white/10 mx-0.5" />
                 )}
 
-                {showGatewayStatus && <GatewayStatus status={gatewayStatus} />}
+                {showGatewayStatus && <GatewayStatus status={resolvedGatewayStatus} />}
                 {rightSlot && <div className="flex items-center">{rightSlot}</div>}
             </div>
         </header>

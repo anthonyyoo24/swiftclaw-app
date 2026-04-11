@@ -6,4 +6,5 @@ export const IPC_EVENTS = {
     DEPLOYMENT_PROGRESS: 'deployment:progress',
     DEPLOYMENT_SUCCESS: 'deployment:success',
     DEPLOYMENT_ERROR: 'deployment:error',
+    GATEWAY_GET_PORT: 'gateway:get-port',
 } as const;

@@ -1,7 +1,9 @@
 import { ipcMain } from 'electron';
+import fs from 'fs';
 import { OpenClawService } from './OpenClawService';
 import { IPC_EVENTS } from '../../src/constants/ipc';
 import { DeploymentPayload } from '../../src/types/ai';
+import { getOpenClawConfigPath } from './openclaw-helpers';
 
 /**
  * Redacts sensitive fields from the deployment payload for safe logging.
@@ -31,5 +33,16 @@ export function setupIpcHandlers() {
         const safePayload = sanitizeDeploymentPayload(payload);
         console.log('Received deployment:start with payload:', safePayload);
         await service.deploy(event, payload);
+    });
+
+    ipcMain.handle(IPC_EVENTS.GATEWAY_GET_PORT, () => {
+        const configPath = getOpenClawConfigPath();
+        if (!fs.existsSync(configPath)) return 18789;
+        try {
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+            return (config as Record<string, Record<string, unknown>>)?.gateway?.port ?? 18789;
+        } catch {
+            return 18789;
+        }
     });
 }
