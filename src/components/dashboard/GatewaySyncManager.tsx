@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useMutation } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useGatewayStore } from "@/store/gatewayStore";
 
@@ -14,6 +14,9 @@ const DEFAULT_PORT = 18789;
  * - On connect, fetches sessions and upserts each into Convex
  */
 export function GatewaySyncManager() {
+    // Pre-warm tasks cache so TaskBoard never hits the undefined loading state
+    useQuery(api.tasks.list, {});
+
     const status = useGatewayStore((s) => s.status);
     const connect = useGatewayStore((s) => s.connect);
     const disconnect = useGatewayStore((s) => s.disconnect);
@@ -44,7 +47,7 @@ export function GatewaySyncManager() {
             cancelled = true;
             disconnect();
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Sync agents whenever the connection transitions to "connected"
