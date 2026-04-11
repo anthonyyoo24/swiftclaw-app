@@ -34,6 +34,14 @@ export default defineConfig({
                     },
                 },
             },
+            {
+                extends: true,
+                test: {
+                    name: 'convex',
+                    environment: 'edge-runtime',
+                    include: ['convex/**/*.test.ts'],
+                },
+            },
         ],
     },
 });

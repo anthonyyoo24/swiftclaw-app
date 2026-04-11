@@ -73,6 +73,7 @@ describe('preload contextBridge API', () => {
         const keys = Object.keys(ipc).sort();
 
         expect(keys).toEqual([
+            'getGatewayPort',
             'onAuthOauthComplete',
             'onDeploymentError',
             'onDeploymentProgress',

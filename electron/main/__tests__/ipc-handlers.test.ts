@@ -3,21 +3,36 @@ import type { IpcMainEvent } from 'electron';
 import type { DeploymentPayload } from '../../../src/types/ai';
 
 // ── Hoist mocks so factory closures can reference them ───────────────────────
-const { mockDeploy, mockAuthenticate, mockCancel } = vi.hoisted(() => ({
+const { mockDeploy, mockAuthenticate, mockCancel, mockExistsSync, mockReadFileSync } = vi.hoisted(() => ({
     mockDeploy: vi.fn(),
     mockAuthenticate: vi.fn(),
     mockCancel: vi.fn(),
+    mockExistsSync: vi.fn<(path: string) => boolean>(),
+    mockReadFileSync: vi.fn<(path: string, encoding: string) => string>(),
 }));
 
-// ── Capture ipcMain.on registrations ─────────────────────────────────────────
+// ── Capture ipcMain.on and ipcMain.handle registrations ──────────────────────
 const ipcHandlers: Record<string, (...args: unknown[]) => unknown> = {};
+const ipcInvokeHandlers: Record<string, (...args: unknown[]) => unknown> = {};
 
 vi.mock('electron', () => ({
     ipcMain: {
         on: vi.fn((channel: string, handler: (...args: unknown[]) => unknown) => {
             ipcHandlers[channel] = handler;
         }),
+        handle: vi.fn((channel: string, handler: (...args: unknown[]) => unknown) => {
+            ipcInvokeHandlers[channel] = handler;
+        }),
     },
+}));
+
+vi.mock('fs', () => ({
+    default: {
+        existsSync: mockExistsSync,
+        readFileSync: mockReadFileSync,
+    },
+    existsSync: mockExistsSync,
+    readFileSync: mockReadFileSync,
 }));
 
 // ── Mock OpenClawService as a proper constructor ──────────────────────────────
@@ -57,6 +72,8 @@ describe('setupIpcHandlers', () => {
         mockDeploy.mockReset();
         mockAuthenticate.mockReset();
         mockCancel.mockReset();
+        mockExistsSync.mockReset();
+        mockReadFileSync.mockReset();
         setupIpcHandlers();
     });
 
@@ -133,5 +150,38 @@ describe('setupIpcHandlers', () => {
         expect(loggedPayload.channelToken).toBe('');
 
         consoleSpy.mockRestore();
+    });
+
+    describe('gateway:get-port handler', () => {
+        it('registers a handler for gateway:get-port', () => {
+            expect(ipcInvokeHandlers['gateway:get-port']).toBeDefined();
+        });
+
+        it('returns 18789 when the config file does not exist', () => {
+            mockExistsSync.mockReturnValue(false);
+            const result = ipcInvokeHandlers['gateway:get-port']();
+            expect(result).toBe(18789);
+        });
+
+        it('returns the gateway.port value from the config file', () => {
+            mockExistsSync.mockReturnValue(true);
+            mockReadFileSync.mockReturnValue(JSON.stringify({ gateway: { port: 19000 } }));
+            const result = ipcInvokeHandlers['gateway:get-port']();
+            expect(result).toBe(19000);
+        });
+
+        it('returns 18789 when the config file has no gateway.port field', () => {
+            mockExistsSync.mockReturnValue(true);
+            mockReadFileSync.mockReturnValue(JSON.stringify({ gateway: {} }));
+            const result = ipcInvokeHandlers['gateway:get-port']();
+            expect(result).toBe(18789);
+        });
+
+        it('returns 18789 when the config file contains invalid JSON', () => {
+            mockExistsSync.mockReturnValue(true);
+            mockReadFileSync.mockReturnValue('not-valid-json{{');
+            const result = ipcInvokeHandlers['gateway:get-port']();
+            expect(result).toBe(18789);
+        });
     });
 });
