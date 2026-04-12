@@ -51,3 +51,8 @@ app.on('window-all-closed', () => {
         app.quit()
     }
 })
+
+// Route OS signals through app.quit() so the will-quit lifecycle fires
+// (and the gateway gets stopped cleanly on Ctrl+C)
+process.on('SIGINT', () => app.quit())
+process.on('SIGTERM', () => app.quit())
