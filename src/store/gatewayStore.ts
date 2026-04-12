@@ -4,6 +4,8 @@ import { create } from "zustand";
 
 export type GatewayConnectionStatus = "offline" | "connecting" | "connected" | "error";
 
+export type GatewayAuth = { token?: string; password?: string };
+
 export type AgentSession = {
     sessionKey: string;
     name: string;
@@ -25,7 +27,7 @@ type PendingRequest = {
 type GatewayState = {
     status: GatewayConnectionStatus;
     sessions: AgentSession[];
-    connect: (port: number) => void;
+    connect: (port: number, auth?: GatewayAuth) => void;
     reconnect: () => void;
     disconnect: () => void;
     listSessions: () => Promise<AgentSession[]>;
@@ -33,10 +35,10 @@ type GatewayState = {
 };
 
 const REQUEST_TIMEOUT_MS = 15_000;
-const BACKOFF_BASE_MS = 1_000;
-const BACKOFF_MAX_MS = 30_000;
-const BACKOFF_MAX_ATTEMPTS = 1;
-const CLIENT_ID = "swiftclaw-dashboard";
+const BACKOFF_BASE_MS = 500;
+const BACKOFF_MAX_MS = 10_000;
+const BACKOFF_MAX_ATTEMPTS = 10;
+const CLIENT_ID = "gateway-client";
 const CLIENT_VERSION = "1.0.0";
 
 function generateId(): string {
@@ -45,6 +47,7 @@ function generateId(): string {
 
 let ws: WebSocket | null = null;
 let currentPort: number | null = null;
+let currentAuth: GatewayAuth = {};
 let reconnectAttempt = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let isIntentionallyClosed = false;
@@ -74,11 +77,11 @@ function scheduleReconnect(port: number, setStatus: (s: GatewayConnectionStatus)
     clearReconnectTimer();
     reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
-        openConnection(port, setStatus);
+        openConnection(port, setStatus, currentAuth);
     }, delay);
 }
 
-function openConnection(port: number, setStatus: (s: GatewayConnectionStatus) => void) {
+function openConnection(port: number, setStatus: (s: GatewayConnectionStatus) => void, auth: GatewayAuth = {}) {
     if (ws) {
         ws.onopen = null;
         ws.onmessage = null;
@@ -91,30 +94,13 @@ function openConnection(port: number, setStatus: (s: GatewayConnectionStatus) =>
     setStatus("connecting");
     currentPort = port;
 
+    console.log(`[gateway] connecting to ws://localhost:${port} (attempt ${reconnectAttempt + 1})`);
+
     const socket = new WebSocket(`ws://localhost:${port}`);
     ws = socket;
 
     socket.onopen = () => {
-        const connectReq = {
-            type: "req",
-            id: "connect-handshake",
-            method: "connect",
-            params: {
-                minProtocol: 3,
-                maxProtocol: 3,
-                role: "operator",
-                scopes: ["operator.read"],
-                client: {
-                    id: CLIENT_ID,
-                    displayName: "SwiftClaw Dashboard",
-                    version: CLIENT_VERSION,
-                    platform: navigator.platform,
-                    mode: "ui",
-                    instanceId: generateId(),
-                },
-            },
-        };
-        socket.send(JSON.stringify(connectReq));
+        console.log("[gateway] websocket open — waiting for connect.challenge");
     };
 
     socket.onmessage = (event: MessageEvent) => {
@@ -125,12 +111,48 @@ function openConnection(port: number, setStatus: (s: GatewayConnectionStatus) =>
             return;
         }
 
+        // Server sends connect.challenge first — respond with our connect request
+        if (frame.type === "event" && frame.event === "connect.challenge") {
+            console.log("[gateway] challenge received — sending connect request");
+            const authField = auth.token
+                ? { token: auth.token }
+                : auth.password
+                    ? { password: auth.password }
+                    : undefined;
+
+            const connectReq = {
+                type: "req",
+                id: "connect-handshake",
+                method: "connect",
+                params: {
+                    minProtocol: 3,
+                    maxProtocol: 3,
+                    role: "operator",
+                    scopes: ["operator.read"],
+                    ...(authField ? { auth: authField } : {}),
+                    client: {
+                        id: CLIENT_ID,
+                        displayName: "SwiftClaw Dashboard",
+                        version: CLIENT_VERSION,
+                        platform: navigator.platform,
+                        mode: "ui",
+                        instanceId: generateId(),
+                    },
+                },
+            };
+            socket.send(JSON.stringify(connectReq));
+            return;
+        }
+
         if (frame.type === "res") {
             if (frame.id === "connect-handshake") {
                 if (frame.ok === true) {
+                    console.log("[gateway] handshake accepted — connected");
                     reconnectAttempt = 0;
                     setStatus("connected");
                 } else {
+                    const reason = (frame.error as Record<string, unknown> | undefined)?.message ?? frame.error ?? "unknown";
+                    console.warn(`[gateway] handshake rejected: ${JSON.stringify(reason)}`);
                     socket.close();
                 }
                 return;
@@ -158,11 +180,15 @@ function openConnection(port: number, setStatus: (s: GatewayConnectionStatus) =>
             currentPort !== null &&
             reconnectAttempt < BACKOFF_MAX_ATTEMPTS;
         if (willReconnect) {
+            const delay = Math.min(BACKOFF_BASE_MS * 2 ** reconnectAttempt, BACKOFF_MAX_MS);
+            console.log(`[gateway] disconnected — retrying in ${delay}ms (attempt ${reconnectAttempt + 1}/${BACKOFF_MAX_ATTEMPTS})`);
             setStatus("connecting");
             scheduleReconnect(currentPort!, setStatus);
         } else if (isIntentionallyClosed) {
+            console.log("[gateway] disconnected intentionally");
             setStatus("offline");
         } else {
+            console.warn(`[gateway] max reconnect attempts reached — giving up`);
             setStatus("error");
         }
     };
@@ -199,11 +225,12 @@ export const useGatewayStore = create<GatewayState>((set, get) => ({
     status: "offline",
     sessions: [],
 
-    connect(port: number) {
+    connect(port: number, auth: GatewayAuth = {}) {
+        currentAuth = auth;
         isIntentionallyClosed = false;
         reconnectAttempt = 0;
         clearReconnectTimer();
-        openConnection(port, (status) => set({ status }));
+        openConnection(port, (status) => set({ status }), auth);
     },
 
     reconnect() {
@@ -211,7 +238,7 @@ export const useGatewayStore = create<GatewayState>((set, get) => ({
         isIntentionallyClosed = false;
         reconnectAttempt = 0;
         clearReconnectTimer();
-        openConnection(currentPort, (status) => set({ status }));
+        openConnection(currentPort, (status) => set({ status }), currentAuth);
     },
 
     disconnect() {

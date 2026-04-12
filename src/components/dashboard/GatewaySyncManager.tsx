@@ -24,21 +24,34 @@ export function GatewaySyncManager() {
     const syncAgent = useMutation(api.agents.syncAgent);
     const hasSynced = useRef(false);
 
-    // Connect on mount, disconnect on unmount
+    // Connect on mount, disconnect on unmount.
+    // A short delay gives the gateway daemon (spawned by the main process)
+    // time to begin listening before the first WebSocket attempt.
     useEffect(() => {
         let cancelled = false;
 
+        const GATEWAY_STARTUP_DELAY_MS = 1_500;
+
         async function init() {
             let port = DEFAULT_PORT;
-            if (typeof window !== "undefined" && window.electron?.ipcRenderer?.getGatewayPort) {
+            let auth: { token?: string; password?: string } = {};
+
+            if (typeof window !== "undefined" && window.electron?.ipcRenderer) {
                 try {
-                    port = await window.electron.ipcRenderer.getGatewayPort();
+                    [port, auth] = await Promise.all([
+                        window.electron.ipcRenderer.getGatewayPort(),
+                        window.electron.ipcRenderer.getGatewayAuth(),
+                    ]);
                 } catch {
-                    // fall through to default
+                    // fall through to defaults
                 }
             }
+
+            // Wait briefly for the gateway process to start listening
+            await new Promise((resolve) => setTimeout(resolve, GATEWAY_STARTUP_DELAY_MS));
+
             if (!cancelled) {
-                connect(port);
+                connect(port, auth);
             }
         }
 

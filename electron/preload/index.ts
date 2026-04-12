@@ -31,6 +31,7 @@ try {
                 return () => ipcRenderer.removeListener('deployment:progress', subscription);
             },
             getGatewayPort: (): Promise<number> => ipcRenderer.invoke('gateway:get-port'),
+            getGatewayAuth: (): Promise<{ token?: string; password?: string }> => ipcRenderer.invoke('gateway:get-auth'),
         }
     })
 } catch (error) {

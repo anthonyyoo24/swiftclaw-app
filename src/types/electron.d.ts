@@ -10,6 +10,7 @@ export interface ElectronAPI {
         onDeploymentError: (callback: (data: { message?: string }) => void) => () => void;
         onDeploymentProgress: (callback: (data: { step: number; label: string }) => void) => () => void;
         getGatewayPort: () => Promise<number>;
+        getGatewayAuth: () => Promise<{ token?: string; password?: string }>;
     };
 }
 
