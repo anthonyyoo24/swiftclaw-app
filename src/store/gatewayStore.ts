@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import pkg from "../../package.json";
 
 export type GatewayConnectionStatus = "offline" | "connecting" | "connected" | "error";
 
@@ -39,7 +40,6 @@ const BACKOFF_BASE_MS = 500;
 const BACKOFF_MAX_MS = 10_000;
 const BACKOFF_MAX_ATTEMPTS = 10;
 const CLIENT_ID = "gateway-client";
-const CLIENT_VERSION = "1.0.0";
 
 function generateId(): string {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -135,7 +135,7 @@ function openConnection(port: number, setStatus: (s: GatewayConnectionStatus) =>
                     client: {
                         id: CLIENT_ID,
                         displayName: "SwiftClaw Dashboard",
-                        version: CLIENT_VERSION,
+                        version: pkg.version,
                         platform: navigator.platform,
                         mode: "ui",
                         instanceId: generateId(),
