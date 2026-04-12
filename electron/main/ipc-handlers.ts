@@ -8,6 +8,8 @@ import { getOpenClawConfigPath, resolveOpenClawBinary } from './openclaw-helpers
 
 let gatewayRunProc: ChildProcess | null = null;
 
+const devLog = (...args: unknown[]) => { if (!app.isPackaged) console.log(...args); };
+
 function startGatewayDaemon(): void {
     const binary = resolveOpenClawBinary();
 
@@ -27,7 +29,7 @@ function startGatewayDaemon(): void {
 
     startProc.on('close', (code) => {
         if (code === 0) {
-            console.log('[gateway] service started');
+            devLog('[gateway] service started');
         } else {
             console.warn(`[gateway] service start failed (code ${code}), running in foreground`);
             runGatewayForeground(binary);
@@ -48,7 +50,7 @@ function runGatewayForeground(binary: string): void {
     });
 
     gatewayRunProc.on('close', (code) => {
-        console.log(`[gateway] run exited with code ${code}`);
+        devLog(`[gateway] run exited with code ${code}`);
         gatewayRunProc = null;
     });
 
@@ -78,9 +80,9 @@ export function setupIpcHandlers() {
     // spawnSync ensures the command completes before Electron exits.
     app.on('will-quit', () => {
         const binary = resolveOpenClawBinary();
-        console.log('[gateway] stopping on app quit...');
+        devLog('[gateway] stopping on app quit...');
         spawnSync(binary, ['gateway', 'stop'], { stdio: 'ignore' });
-        console.log('[gateway] stopped');
+        devLog('[gateway] stopped');
     });
 
     const service = new OpenClawService();
@@ -104,13 +106,13 @@ export function setupIpcHandlers() {
     ipcMain.handle(IPC_EVENTS.GATEWAY_GET_PORT, () => {
         const configPath = getOpenClawConfigPath();
         if (!fs.existsSync(configPath)) {
-            console.log('[gateway] config not found, using default port 18789');
+            devLog('[gateway] config not found, using default port 18789');
             return 18789;
         }
         try {
             const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
             const port = (config as Record<string, Record<string, unknown>>)?.gateway?.port ?? 18789;
-            console.log(`[gateway] port resolved: ${port}`);
+            devLog(`[gateway] port resolved: ${port}`);
             return port;
         } catch {
             console.warn('[gateway] failed to parse config, using default port 18789');
@@ -121,20 +123,20 @@ export function setupIpcHandlers() {
     ipcMain.handle(IPC_EVENTS.GATEWAY_GET_AUTH, (): { token?: string; password?: string } => {
         const configPath = getOpenClawConfigPath();
         if (!fs.existsSync(configPath)) {
-            console.log('[gateway] config not found, connecting without auth');
+            devLog('[gateway] config not found, connecting without auth');
             return {};
         }
         try {
             const config = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
             const auth = ((config.gateway as Record<string, unknown>)?.auth) as Record<string, unknown> | undefined;
             if (!auth) {
-                console.log('[gateway] no auth config found, connecting without auth');
+                devLog('[gateway] no auth config found, connecting without auth');
                 return {};
             }
             const token = resolveSecret(auth.token);
             const password = resolveSecret(auth.password);
-            if (token) console.log('[gateway] auth: token found');
-            else if (password) console.log('[gateway] auth: password found');
+            if (token) devLog('[gateway] auth: token found');
+            else if (password) devLog('[gateway] auth: password found');
             else console.warn('[gateway] auth config present but no token or password resolved');
             return { token, password };
         } catch {

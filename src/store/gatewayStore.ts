@@ -45,6 +45,8 @@ function generateId(): string {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+const devLog = (...args: unknown[]) => { if (process.env.NODE_ENV === 'development') console.log(...args); };
+
 let ws: WebSocket | null = null;
 let currentPort: number | null = null;
 let currentAuth: GatewayAuth = {};
@@ -94,13 +96,13 @@ function openConnection(port: number, setStatus: (s: GatewayConnectionStatus) =>
     setStatus("connecting");
     currentPort = port;
 
-    console.log(`[gateway] connecting to ws://localhost:${port} (attempt ${reconnectAttempt + 1})`);
+    devLog(`[gateway] connecting to ws://localhost:${port} (attempt ${reconnectAttempt + 1})`);
 
     const socket = new WebSocket(`ws://localhost:${port}`);
     ws = socket;
 
     socket.onopen = () => {
-        console.log("[gateway] websocket open — waiting for connect.challenge");
+        devLog("[gateway] websocket open — waiting for connect.challenge");
     };
 
     socket.onmessage = (event: MessageEvent) => {
@@ -113,7 +115,7 @@ function openConnection(port: number, setStatus: (s: GatewayConnectionStatus) =>
 
         // Server sends connect.challenge first — respond with our connect request
         if (frame.type === "event" && frame.event === "connect.challenge") {
-            console.log("[gateway] challenge received — sending connect request");
+            devLog("[gateway] challenge received — sending connect request");
             const authField = auth.token
                 ? { token: auth.token }
                 : auth.password
@@ -147,7 +149,7 @@ function openConnection(port: number, setStatus: (s: GatewayConnectionStatus) =>
         if (frame.type === "res") {
             if (frame.id === "connect-handshake") {
                 if (frame.ok === true) {
-                    console.log("[gateway] handshake accepted — connected");
+                    devLog("[gateway] handshake accepted — connected");
                     reconnectAttempt = 0;
                     setStatus("connected");
                 } else {
@@ -181,11 +183,11 @@ function openConnection(port: number, setStatus: (s: GatewayConnectionStatus) =>
             reconnectAttempt < BACKOFF_MAX_ATTEMPTS;
         if (willReconnect) {
             const delay = Math.min(BACKOFF_BASE_MS * 2 ** reconnectAttempt, BACKOFF_MAX_MS);
-            console.log(`[gateway] disconnected — retrying in ${delay}ms (attempt ${reconnectAttempt + 1}/${BACKOFF_MAX_ATTEMPTS})`);
+            devLog(`[gateway] disconnected — retrying in ${delay}ms (attempt ${reconnectAttempt + 1}/${BACKOFF_MAX_ATTEMPTS})`);
             setStatus("connecting");
             scheduleReconnect(currentPort!, setStatus);
         } else if (isIntentionallyClosed) {
-            console.log("[gateway] disconnected intentionally");
+            devLog("[gateway] disconnected intentionally");
             setStatus("offline");
         } else {
             console.warn(`[gateway] max reconnect attempts reached — giving up`);
