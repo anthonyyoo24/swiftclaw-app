@@ -80,7 +80,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-wider">Agent Thread</p>
 
-                {messages?.length === 0 && (
+                {(!messages || messages.length === 0) && (
                     <div className="flex flex-col items-center justify-center py-8 text-center">
                         <Icon icon="lucide:message-square" className="text-2xl text-neutral-700 mb-2" />
                         <p className="text-xs text-neutral-600">No messages yet.</p>
