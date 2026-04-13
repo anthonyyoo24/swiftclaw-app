@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
@@ -11,15 +12,26 @@ interface TaskDetailPanelProps {
 }
 
 export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
+    const [isExiting, setIsExiting] = useState(false);
     const task = useQuery(api.tasks.getById, { id: taskId });
     const messages = useQuery(api.taskMessages.listByTask, { taskId });
     const removeTask = useMutation(api.tasks.remove);
 
+    function handleClose() {
+        setIsExiting(true);
+    }
+
+    const panelClass = `absolute inset-y-0 right-0 w-72 border-l border-white/5 flex flex-col bg-card z-10 ${
+        isExiting
+            ? "animate-out slide-out-to-right duration-200 ease-in fill-mode-forwards"
+            : "animate-in slide-in-from-right duration-200 ease-out"
+    }`;
+
     if (task === undefined) {
         return (
-            <div className="w-72 shrink-0 border-l border-white/5 flex flex-col h-full bg-white/[0.02] animate-pulse">
-                <div className="p-4 border-b border-white/5 h-14 bg-white/5" />
-                <div className="p-4 space-y-3">
+            <div className={panelClass} onAnimationEnd={isExiting ? onClose : undefined}>
+                <div className="p-4 border-b border-white/5 h-14 bg-white/5 animate-pulse" />
+                <div className="p-4 space-y-3 animate-pulse">
                     <div className="h-4 rounded bg-white/5 w-3/4" />
                     <div className="h-3 rounded bg-white/5 w-full" />
                     <div className="h-3 rounded bg-white/5 w-2/3" />
@@ -41,20 +53,20 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
 
     function handleCancel() {
         removeTask({ id: taskId });
-        onClose();
+        handleClose();
     }
 
     return (
-        <div className="w-72 shrink-0 border-l border-white/5 flex flex-col h-full bg-white/[0.02]">
+        <div className={panelClass} onAnimationEnd={isExiting ? onClose : undefined}>
             {/* Header */}
             <div className="px-4 h-14 border-b border-white/5 flex items-center justify-between shrink-0">
                 <span className="text-xs font-semibold text-white tracking-tight">Task Detail</span>
                 <button
                     type="button"
-                    onClick={onClose}
-                    className="text-neutral-500 hover:text-white transition-colors p-1 rounded"
+                    onClick={handleClose}
+                    className="text-neutral-500 hover:text-white transition-colors p-1 rounded cursor-pointer"
                 >
-                    <Icon icon="lucide:x" className="text-sm" />
+                    <Icon icon="lucide:x" className="text-lg" />
                 </button>
             </div>
 
@@ -74,7 +86,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
                     <button
                         type="button"
                         onClick={handleCancel}
-                        className="mt-1 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-colors border border-red-500/20"
+                        className="mt-1 flex items-center gap-1.5 px-2.5 py-1 rounded-lg cursor-pointer bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-colors border border-red-500/20"
                     >
                         <Icon icon="lucide:x-circle" className="text-sm" />
                         Cancel Task

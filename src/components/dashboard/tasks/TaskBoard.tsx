@@ -30,7 +30,7 @@ export function TaskBoard() {
     }, [agents]);
 
     return (
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden relative">
             <div className="flex-1 overflow-x-auto overflow-y-hidden p-[10.7px]">
                 <div className="flex gap-[10.7px] h-full min-w-max md:w-full pb-2">
                     {COLUMN_CONFIG.map((col) => {
