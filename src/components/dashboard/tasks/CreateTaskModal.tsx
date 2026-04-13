@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { Icon } from "@iconify/react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 import { toast } from "sonner";
+import { CustomDropdown, type DropdownOption } from "@/components/ui/CustomDropdown";
 import {
     Dialog,
     DialogContent,
@@ -21,10 +23,25 @@ interface CreateTaskModalProps {
 export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
+    const [selectedAgentId, setSelectedAgentId] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
     const createTask = useMutation(api.tasks.create);
+    const agents = useQuery(api.agents.get, {}) ?? [];
     const canCreate = title.trim().length > 0;
+
+    const agentOptions: DropdownOption[] = [
+        {
+            id: "",
+            label: "Unassigned",
+            icon: <Icon icon="lucide:user-x" className="text-sm text-neutral-500" />,
+        },
+        ...agents.map((a) => ({
+            id: a._id,
+            label: a.name,
+            icon: <Icon icon="lucide:bot" className="text-sm text-blue-400" />,
+        })),
+    ];
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -35,10 +52,11 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
                 title: title.trim(),
                 description: description.trim(),
                 status: "inbox",
-                assigneeIds: [],
+                assigneeIds: selectedAgentId ? [selectedAgentId as Id<"agents">] : [],
             });
             setTitle("");
             setDescription("");
+            setSelectedAgentId("");
             onClose();
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to create task");
@@ -76,6 +94,22 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
                 {/* ── Body ── */}
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 flex flex-col gap-5 overflow-y-auto max-h-[65vh] no-scrollbar">
+                        {/* Assign to */}
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-semibold text-white tracking-tight">
+                                Assign to
+                                <span className="ml-1.5 text-xs font-normal text-neutral-500">
+                                    optional
+                                </span>
+                            </label>
+                            <CustomDropdown
+                                options={agentOptions}
+                                value={selectedAgentId}
+                                onChange={setSelectedAgentId}
+                                placeholder="Unassigned"
+                            />
+                        </div>
+
                         {/* Title */}
                         <div className="flex flex-col gap-2">
                             <label

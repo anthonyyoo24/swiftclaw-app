@@ -22,6 +22,7 @@ export function GatewaySyncManager() {
     const disconnect = useGatewayStore((s) => s.disconnect);
     const listSessions = useGatewayStore((s) => s.listSessions);
     const syncAgent = useMutation(api.agents.syncAgent);
+    const setAllIdle = useMutation(api.agents.setAllIdle);
     const hasSynced = useRef(false);
 
     // Connect on mount, disconnect on unmount.
@@ -81,6 +82,7 @@ export function GatewaySyncManager() {
                             name: s.name,
                             role: s.role,
                             sessionKey: s.sessionKey,
+                            status: "active",
                         })
                     )
                 );
@@ -89,6 +91,13 @@ export function GatewaySyncManager() {
             }
         })();
     }, [status, listSessions, syncAgent]);
+
+    // Mark all agents idle when the gateway disconnects
+    useEffect(() => {
+        if (status === "offline" || status === "error") {
+            void setAllIdle({});
+        }
+    }, [status, setAllIdle]);
 
     return null;
 }

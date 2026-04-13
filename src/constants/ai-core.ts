@@ -22,3 +22,19 @@ export const SOUL_TEMPLATE_FILES: Record<string, string> = {
     kevin: 'kevin_developer.md',
     zoe:   'zoe_designer.md',
 };
+
+/**
+ * Maps agent template IDs to their display name and role.
+ * Roles are derived from the soul template filenames (e.g. sarah_coordinator → Coordinator).
+ */
+export const AGENT_ROLES: Record<string, { displayName: string; role: string }> = {
+    maya:  { displayName: "Maya",  role: "Support" },
+    jack:  { displayName: "Jack",  role: "Sales" },
+    lily:  { displayName: "Lily",  role: "Content" },
+    max:   { displayName: "Max",   role: "Research" },
+    sarah: { displayName: "Sarah", role: "Coordinator" },
+    emma:  { displayName: "Emma",  role: "Admin" },
+    chris: { displayName: "Chris", role: "QA" },
+    kevin: { displayName: "Kevin", role: "Developer" },
+    zoe:   { displayName: "Zoe",   role: "Designer" },
+};
