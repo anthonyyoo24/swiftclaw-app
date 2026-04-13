@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Icon } from "@iconify/react";
+import { AGENT_ROLES } from "@/constants/ai-core";
 
 const statusColors = {
     active: "bg-emerald-500",
@@ -79,7 +80,7 @@ export function AgentStatus({ roleEmojis }: { roleEmojis: Record<string, string>
                             role={agent.role}
                             status={agent.status}
                             currentTask={agent.currentTaskId ? "Working on task..." : "Idle"}
-                            avatar={agent.avatar}
+                            avatar={AGENT_ROLES[agent.name.toLowerCase()]?.avatar}
                             roleEmojis={roleEmojis}
                         />
                     ))

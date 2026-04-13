@@ -1,6 +1,7 @@
 "use client";
 
 import { AgentTemplateId } from "../schema";
+import { AGENT_ROLES } from "@/constants/ai-core";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { StepHeader } from "@/components/onboarding/shared/StepHeader";
@@ -24,7 +25,7 @@ export const TEMPLATES: Template[] = [
         description: "Handles customer issues with patience and care. Warm, reassuring, and talks to you like a friend.",
         emoji: "🎧",
         color: "from-blue-500/20 to-cyan-500/20",
-        avatar: "/avatars/maya-customer-support.png",
+        avatar: AGENT_ROLES.maya.avatar,
     },
     {
         id: "jack",
@@ -33,7 +34,7 @@ export const TEMPLATES: Template[] = [
         description: "Qualifies leads and books meetings so you can focus on closing. Bold, playful, and never runs out of energy.",
         emoji: "💼",
         color: "from-indigo-500/20 to-blue-500/20",
-        avatar: "/avatars/jack-sales-rep.png",
+        avatar: AGENT_ROLES.jack.avatar,
     },
     {
         id: "lily",
@@ -42,7 +43,7 @@ export const TEMPLATES: Template[] = [
         description: "Writes blogs, social posts, and marketing content. Creative, witty, and speaks in stories.",
         emoji: "✍️",
         color: "from-purple-500/20 to-fuchsia-500/20",
-        avatar: "/avatars/lily-content-writer.png",
+        avatar: AGENT_ROLES.lily.avatar,
     },
     {
         id: "max",
@@ -51,7 +52,7 @@ export const TEMPLATES: Template[] = [
         description: "Researches competitors, trends, and insights. Calm, curious, and has dry one-liners ready.",
         emoji: "🔍",
         color: "from-emerald-500/20 to-teal-500/20",
-        avatar: "/avatars/max-research-analyst.png",
+        avatar: AGENT_ROLES.max.avatar,
     },
     {
         id: "sarah",
@@ -60,7 +61,7 @@ export const TEMPLATES: Template[] = [
         description: "Prioritizes what to build and keeps the team aligned. Decisive, practical, and makes scope creep jokes.",
         emoji: "📊",
         color: "from-rose-500/20 to-orange-500/20",
-        avatar: "/avatars/sarah-product-manager.png",
+        avatar: AGENT_ROLES.sarah.avatar,
     },
     {
         id: "emma",
@@ -69,7 +70,7 @@ export const TEMPLATES: Template[] = [
         description: "Handles all administrative and manual tasks. Calm, reliable, and always knows what you need before you ask.",
         emoji: "📋",
         color: "from-amber-500/20 to-yellow-500/20",
-        avatar: "/avatars/emma-admin-assistant.png",
+        avatar: AGENT_ROLES.emma.avatar,
     },
     {
         id: "chris",
@@ -78,7 +79,7 @@ export const TEMPLATES: Template[] = [
         description: "Tests your app so you don't have to. Detail-obsessed, deadpan humor, and finds bugs you didn't know existed.",
         emoji: "🪲",
         color: "from-green-500/20 to-emerald-500/20",
-        avatar: "/avatars/chris-qa-engineer.png",
+        avatar: AGENT_ROLES.chris.avatar,
     },
     {
         id: "kevin",
@@ -87,7 +88,7 @@ export const TEMPLATES: Template[] = [
         description: "Writes code and ships features. Chill, pragmatic, and keeps it real.",
         emoji: "💻",
         color: "from-slate-500/20 to-gray-500/20",
-        avatar: "/avatars/kevin-software-engineer.png",
+        avatar: AGENT_ROLES.kevin.avatar,
     },
     {
         id: "zoe",
@@ -96,7 +97,7 @@ export const TEMPLATES: Template[] = [
         description: "Designs interfaces users actually want to use. Creative, visual humor, and describes things in metaphors.",
         emoji: "✨",
         color: "from-pink-500/20 to-rose-500/20",
-        avatar: "/avatars/zoe-designer.png",
+        avatar: AGENT_ROLES.zoe.avatar,
     },
 ];
 

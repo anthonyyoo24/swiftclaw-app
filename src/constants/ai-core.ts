@@ -27,14 +27,14 @@ export const SOUL_TEMPLATE_FILES: Record<string, string> = {
  * Maps agent template IDs to their display name and role.
  * Roles are derived from the soul template filenames (e.g. sarah_coordinator → Coordinator).
  */
-export const AGENT_ROLES: Record<string, { displayName: string; role: string }> = {
-    maya:  { displayName: "Maya",  role: "Support" },
-    jack:  { displayName: "Jack",  role: "Sales" },
-    lily:  { displayName: "Lily",  role: "Content" },
-    max:   { displayName: "Max",   role: "Research" },
-    sarah: { displayName: "Sarah", role: "Coordinator" },
-    emma:  { displayName: "Emma",  role: "Admin" },
-    chris: { displayName: "Chris", role: "QA" },
-    kevin: { displayName: "Kevin", role: "Developer" },
-    zoe:   { displayName: "Zoe",   role: "Designer" },
+export const AGENT_ROLES: Record<string, { displayName: string; role: string; avatar?: string }> = {
+    maya:  { displayName: "Maya",  role: "Support",     avatar: "/avatars/maya-customer-support.png" },
+    jack:  { displayName: "Jack",  role: "Sales",       avatar: "/avatars/jack-sales-rep.png" },
+    lily:  { displayName: "Lily",  role: "Content",     avatar: "/avatars/lily-content-writer.png" },
+    max:   { displayName: "Max",   role: "Research",    avatar: "/avatars/max-research-analyst.png" },
+    sarah: { displayName: "Sarah", role: "Coordinator", avatar: "/avatars/sarah-product-manager.png" },
+    emma:  { displayName: "Emma",  role: "Admin",       avatar: "/avatars/emma-admin-assistant.png" },
+    chris: { displayName: "Chris", role: "QA",          avatar: "/avatars/chris-qa-engineer.png" },
+    kevin: { displayName: "Kevin", role: "Developer",   avatar: "/avatars/kevin-software-engineer.png" },
+    zoe:   { displayName: "Zoe",   role: "Designer",    avatar: "/avatars/zoe-designer.png" },
 };
