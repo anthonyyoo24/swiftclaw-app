@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Icon } from "@iconify/react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { toast } from "sonner";
 import { CustomDropdown, type DropdownOption } from "@/components/ui/CustomDropdown";
+import { AGENT_ROLES } from "@/constants/ai-core";
 import {
     Dialog,
     DialogContent,
@@ -36,11 +38,20 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
             label: "Unassigned",
             icon: <Icon icon="lucide:user-x" className="text-sm text-neutral-500" />,
         },
-        ...agents.map((a) => ({
-            id: a._id,
-            label: a.name,
-            icon: <Icon icon="lucide:bot" className="text-sm text-blue-400" />,
-        })),
+        ...agents.map((a) => {
+            const avatarSrc = AGENT_ROLES[a.name.toLowerCase()]?.avatar;
+            return {
+                id: a._id,
+                label: a.name,
+                icon: avatarSrc ? (
+                    <div className="relative w-5 h-5 shrink-0">
+                        <Image src={avatarSrc} alt={a.name} fill className="object-cover rounded-full" />
+                    </div>
+                ) : (
+                    <Icon icon="lucide:bot" className="text-sm text-blue-400" />
+                ),
+            };
+        }),
     ];
 
     async function handleSubmit(e: React.FormEvent) {
