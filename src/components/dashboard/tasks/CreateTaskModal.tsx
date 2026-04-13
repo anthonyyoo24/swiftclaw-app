@@ -107,6 +107,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
                                 value={selectedAgentId}
                                 onChange={setSelectedAgentId}
                                 placeholder="Unassigned"
+                                maxItems={5}
                             />
                         </div>
 
