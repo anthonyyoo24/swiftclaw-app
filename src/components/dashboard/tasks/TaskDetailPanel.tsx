@@ -3,18 +3,17 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
+import { Doc } from "@convex/_generated/dataModel";
 import { Icon } from "@iconify/react";
 
 interface TaskDetailPanelProps {
-    taskId: Id<"tasks">;
+    task: Doc<"tasks">;
     onClose: () => void;
 }
 
-export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
+export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
     const [isExiting, setIsExiting] = useState(false);
-    const task = useQuery(api.tasks.getById, { id: taskId });
-    const messages = useQuery(api.taskMessages.listByTask, { taskId });
+    const messages = useQuery(api.taskMessages.listByTask, { taskId: task._id });
     const removeTask = useMutation(api.tasks.remove);
 
     function handleClose() {
@@ -27,23 +26,6 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
             : "animate-in slide-in-from-right duration-200 ease-out"
     }`;
 
-    if (task === undefined) {
-        return (
-            <div className={panelClass} onAnimationEnd={isExiting ? onClose : undefined}>
-                <div className="p-4 border-b border-white/5 h-14 bg-white/5 animate-pulse" />
-                <div className="p-4 space-y-3 animate-pulse">
-                    <div className="h-4 rounded bg-white/5 w-3/4" />
-                    <div className="h-3 rounded bg-white/5 w-full" />
-                    <div className="h-3 rounded bg-white/5 w-2/3" />
-                </div>
-            </div>
-        );
-    }
-
-    if (task === null) {
-        return null;
-    }
-
     const isDone = task.status === "done";
     const date = new Date(task.createdAt).toLocaleDateString("en-US", {
         month: "short",
@@ -52,7 +34,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
     });
 
     function handleCancel() {
-        removeTask({ id: taskId });
+        removeTask({ id: task._id });
         handleClose();
     }
 
@@ -97,14 +79,6 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
             {/* Agent thread */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-wider">Agent Thread</p>
-
-                {messages === undefined && (
-                    <div className="space-y-2">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-12 rounded-lg bg-white/5 animate-pulse" />
-                        ))}
-                    </div>
-                )}
 
                 {messages?.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-8 text-center">

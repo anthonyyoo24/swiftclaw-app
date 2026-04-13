@@ -19,6 +19,7 @@ const COLUMN_CONFIG: { status: "inbox" | "assigned" | "in_progress" | "review" |
 export function TaskBoard() {
     const [selectedTaskId, setSelectedTaskId] = useState<Id<"tasks"> | null>(null);
     const tasks = useQuery(api.tasks.list, {});
+    const selectedTask = tasks?.find((t) => t._id === selectedTaskId) ?? null;
     const agents = useQuery(api.agents.get, {});
     const agentMap = useMemo(() => {
         if (!agents) return {};
@@ -56,9 +57,9 @@ export function TaskBoard() {
                     })}
                 </div>
             </div>
-            {selectedTaskId && (
+            {selectedTask && (
                 <TaskDetailPanel
-                    taskId={selectedTaskId}
+                    task={selectedTask}
                     onClose={() => setSelectedTaskId(null)}
                 />
             )}
