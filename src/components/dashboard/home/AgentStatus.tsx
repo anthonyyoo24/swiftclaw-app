@@ -32,7 +32,7 @@ function AgentCard({ name, role, status, currentTask, avatar, roleEmojis }: Agen
     return (
         <div className={`p-3 rounded-xl border transition-all ${isActive ? "bg-white/5 border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]" : "hover:bg-white/5 border-transparent"}`}>
             <div className="flex items-center gap-3 mb-3">
-                <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 border border-white/10 shrink-0 overflow-hidden">
+                <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 border border-white/10 shrink-0">
                     {avatar ? (
                         <Image src={avatar} alt={name} fill className="object-cover rounded-xl" />
                     ) : (
