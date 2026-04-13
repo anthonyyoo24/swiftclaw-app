@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
+import { Id, Doc } from "@convex/_generated/dataModel";
 import { TaskColumn } from "./TaskColumn";
 import { TaskCard } from "./TaskCard";
 import { TaskDetailPanel } from "./TaskDetailPanel";
@@ -19,6 +19,15 @@ const COLUMN_CONFIG: { status: "inbox" | "assigned" | "in_progress" | "review" |
 export function TaskBoard() {
     const [selectedTaskId, setSelectedTaskId] = useState<Id<"tasks"> | null>(null);
     const tasks = useQuery(api.tasks.list, {});
+    const agents = useQuery(api.agents.get, {});
+    const agentMap = useMemo(() => {
+        if (!agents) return {};
+        const map: Record<string, Doc<"agents">> = {};
+        for (const agent of agents) {
+            map[agent._id] = agent;
+        }
+        return map;
+    }, [agents]);
 
     return (
         <div className="flex flex-1 overflow-hidden">
@@ -37,6 +46,7 @@ export function TaskBoard() {
                                     <TaskCard
                                         key={task._id}
                                         task={task}
+                                        agentMap={agentMap}
                                         isSelected={selectedTaskId === task._id}
                                         onClick={() => setSelectedTaskId(task._id)}
                                     />

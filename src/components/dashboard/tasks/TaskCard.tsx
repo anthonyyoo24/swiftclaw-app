@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { Icon } from "@iconify/react";
 import { useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Doc } from "@convex/_generated/dataModel";
+import { AGENT_ROLES } from "@/constants/ai-core";
 
 type TagColor = "red" | "blue" | "purple" | "orange" | "emerald" | "neutral";
 
@@ -26,11 +28,12 @@ const STATUS_TAG: Record<Doc<"tasks">["status"], { label: string; color: TagColo
 
 interface TaskCardProps {
     task: Doc<"tasks">;
+    agentMap?: Record<string, Doc<"agents">>;
     onClick: () => void;
     isSelected?: boolean;
 }
 
-export function TaskCard({ task, onClick, isSelected = false }: TaskCardProps) {
+export function TaskCard({ task, agentMap = {}, onClick, isSelected = false }: TaskCardProps) {
     const removeTask = useMutation(api.tasks.remove);
     const { label, color } = STATUS_TAG[task.status];
     const styles = colorStyles[color];
@@ -45,6 +48,11 @@ export function TaskCard({ task, onClick, isSelected = false }: TaskCardProps) {
         e.stopPropagation();
         removeTask({ id: task._id });
     }
+
+    const assignees = (task.assigneeIds || [])
+        .map((id) => agentMap[id])
+        .filter(Boolean) as Doc<"agents">[];
+    const visibleAssignees = assignees.slice(0, 2);
 
     return (
         <div
@@ -73,9 +81,33 @@ export function TaskCard({ task, onClick, isSelected = false }: TaskCardProps) {
                     <Icon icon="lucide:calendar" className="text-[10px]" />
                     <span className="text-[11px] font-medium">{date}</span>
                 </div>
-                <div className={`flex items-center justify-center w-6 h-6 rounded-full border ${colorStyles.neutral.iconBg}`}>
-                    <Icon icon="lucide:bot" className="text-[10px]" />
-                </div>
+                {visibleAssignees.length === 0 ? (
+                    <div className={`flex items-center justify-center w-6 h-6 rounded-full border ${colorStyles.neutral.iconBg}`}>
+                        <Icon icon="lucide:bot" className="text-[10px]" />
+                    </div>
+                ) : (
+                    <div className="flex items-center">
+                        {visibleAssignees.map((agent, i) => {
+                            const normalizedName = agent.name?.toLowerCase() || "";
+                            const avatarSrc = agent.avatar ?? AGENT_ROLES[normalizedName]?.avatar;
+                            const initial = agent.name ? agent.name.charAt(0).toUpperCase() : "🤖";
+                            
+                            return (
+                                <div
+                                    key={agent._id}
+                                    className="relative w-6 h-6 rounded-full border border-[#09090b] bg-white/10 text-white overflow-hidden flex items-center justify-center shrink-0"
+                                    style={{ marginLeft: i > 0 ? "-6px" : undefined }}
+                                >
+                                    {avatarSrc ? (
+                                        <Image src={avatarSrc} alt={agent.name || "Agent"} fill className="object-cover" />
+                                    ) : (
+                                        <span className="text-[10px] font-medium">{initial}</span>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );
