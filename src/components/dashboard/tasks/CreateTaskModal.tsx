@@ -62,7 +62,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
             await createTask({
                 title: title.trim(),
                 description: description.trim(),
-                status: "inbox",
+                status: selectedAgentId ? "assigned" : "inbox",
                 assigneeIds: selectedAgentId ? [selectedAgentId as Id<"agents">] : [],
             });
             setTitle("");
