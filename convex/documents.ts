@@ -41,6 +41,41 @@ export const create = mutation({
   },
 });
 
+// Agent-callable document creation — no user auth required.
+// Looks up the agent by name to resolve createdById.
+// Called from HEARTBEAT.md: npx convex run documents:createByAgent '{...}'
+export const createByAgent = mutation({
+  args: {
+    title: v.string(),
+    content: v.string(),
+    type: v.union(
+      v.literal("deliverable"),
+      v.literal("research"),
+      v.literal("protocol"),
+      v.literal("general")
+    ),
+    taskId: v.optional(v.id("tasks")),
+    agentName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const agent = await ctx.db
+      .query("agents")
+      .withIndex("by_name", (q) => q.eq("name", args.agentName))
+      .unique();
+    if (!agent) throw new Error(`Agent not found: ${args.agentName}`);
+    const now = Date.now();
+    return await ctx.db.insert("documents", {
+      title: args.title,
+      content: args.content,
+      type: args.type,
+      taskId: args.taskId,
+      createdById: agent._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
 export const update = mutation({
   args: {
     id: v.id("documents"),

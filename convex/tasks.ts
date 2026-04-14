@@ -70,6 +70,46 @@ export const remove = mutation({
   },
 });
 
+// Returns the oldest assigned task for a given agent name, or null if none.
+// Used by agent heartbeats — no user auth required.
+export const getAssigned = query({
+  args: { agentName: v.string() },
+  handler: async (ctx, args) => {
+    const agent = await ctx.db
+      .query("agents")
+      .withIndex("by_name", (q) => q.eq("name", args.agentName))
+      .unique();
+    if (!agent) return null;
+
+    const assignedTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_status", (q) => q.eq("status", "assigned"))
+      .order("asc")
+      .take(100);
+
+    return assignedTasks.find((t) => t.assigneeIds.includes(agent._id)) ?? null;
+  },
+});
+
+// Agent-callable status update — no user auth required.
+// Agents are trusted callers; auth is enforced at the OpenClaw session level.
+export const update = mutation({
+  args: {
+    id: v.id("tasks"),
+    status: v.union(
+      v.literal("inbox"),
+      v.literal("assigned"),
+      v.literal("in_progress"),
+      v.literal("review"),
+      v.literal("done")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...fields } = args;
+    await ctx.db.patch(id, { ...fields, updatedAt: Date.now() });
+  },
+});
+
 export const assign = mutation({
   args: {
     id: v.id("tasks"),

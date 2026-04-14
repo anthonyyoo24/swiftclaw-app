@@ -34,7 +34,7 @@ export default defineSchema({
     createdById: v.optional(v.id("agents")),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }),
+  }).index("by_status", ["status"]),
 
   taskMessages: defineTable({
     taskId: v.id("tasks"),
