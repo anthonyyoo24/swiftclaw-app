@@ -102,3 +102,118 @@ describe("tasks:getAssigned", () => {
     expect(result!._id).toBe(firstTaskId);
   });
 });
+
+describe("tasks:list", () => {
+  it("returns an empty array when no tasks exist", async () => {
+    const t = convexTest(schema, modules);
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks).toHaveLength(0);
+  });
+
+  it("returns all tasks that have been inserted", async () => {
+    const t = convexTest(schema, modules);
+    await seedTask(t, { status: "inbox", assigneeIds: [], title: "Task A" });
+    await seedTask(t, { status: "inbox", assigneeIds: [], title: "Task B" });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks).toHaveLength(2);
+  });
+
+  it("respects the limit argument", async () => {
+    const t = convexTest(schema, modules);
+    await seedTask(t, { status: "inbox", assigneeIds: [], title: "T1" });
+    await seedTask(t, { status: "inbox", assigneeIds: [], title: "T2" });
+    await seedTask(t, { status: "inbox", assigneeIds: [], title: "T3" });
+    const tasks = await t.query(api.tasks.list, { limit: 2 });
+    expect(tasks).toHaveLength(2);
+  });
+});
+
+describe("tasks:remove", () => {
+  it("deletes a task so it no longer appears in list", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [], title: "To Delete" });
+    await t.mutation(api.tasks.remove, { id });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks).toHaveLength(0);
+  });
+
+  it("only removes the targeted task", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [], title: "Remove Me" });
+    await seedTask(t, { status: "inbox", assigneeIds: [], title: "Keep Me" });
+    await t.mutation(api.tasks.remove, { id });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].title).toBe("Keep Me");
+  });
+});
+
+describe("tasks:update", () => {
+  it("patches the task status", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [], title: "Update Me" });
+    await t.mutation(api.tasks.update, { id, status: "in_progress" });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks[0].status).toBe("in_progress");
+  });
+
+  it("updates updatedAt when status changes", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [], title: "Timestamp Check" });
+    const before = (await t.query(api.tasks.list, {}))[0].updatedAt;
+    await t.mutation(api.tasks.update, { id, status: "review" });
+    const after = (await t.query(api.tasks.list, {}))[0].updatedAt;
+    expect(after).toBeGreaterThanOrEqual(before);
+  });
+});
+
+describe("tasks:create", () => {
+  it("throws when called without authentication", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.mutation(api.tasks.create, {
+        title: "No Auth Task",
+        description: "",
+        status: "inbox",
+        assigneeIds: [],
+      })
+    ).rejects.toThrow("Not authenticated");
+  });
+
+  it("creates a task and it appears in list when authenticated", async () => {
+    const t = convexTest(schema, modules);
+    await t.withIdentity({ name: "Test User" }).mutation(api.tasks.create, {
+      title: "Auth Task",
+      description: "Some work",
+      status: "inbox",
+      assigneeIds: [],
+    });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].title).toBe("Auth Task");
+    expect(tasks[0].status).toBe("inbox");
+  });
+});
+
+describe("tasks:assign", () => {
+  it("throws when called without authentication", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [] });
+    const agentId = await seedAgent(t, "Atlas");
+    await expect(
+      t.mutation(api.tasks.assign, { id, assigneeIds: [agentId] })
+    ).rejects.toThrow("Not authenticated");
+  });
+
+  it("patches assigneeIds on the task when authenticated", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [], title: "Assign Me" });
+    const agentId = await seedAgent(t, "Atlas");
+    await t.withIdentity({ name: "Test User" }).mutation(api.tasks.assign, {
+      id,
+      assigneeIds: [agentId],
+    });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks[0].assigneeIds).toContain(agentId);
+  });
+});

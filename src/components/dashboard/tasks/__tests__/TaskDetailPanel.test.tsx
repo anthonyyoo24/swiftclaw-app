@@ -3,29 +3,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TaskDetailPanel } from '../TaskDetailPanel';
+import { Doc } from "@convex/_generated/dataModel";
 
-let mockTaskQueryResponse: any;
-let mockMessagesQueryResponse: any[] | undefined;
+let mockMessagesQueryResponse: any[] | null | undefined;
 const mockRemoveTask = vi.fn();
 
 vi.mock("convex/react", () => ({
-    useQuery: (queryName: string) => {
-        if (queryName === "api.tasks.getById") return mockTaskQueryResponse;
-        if (queryName === "api.taskMessages.listByTask") return mockMessagesQueryResponse;
-        return undefined;
-    },
+    useQuery: () => mockMessagesQueryResponse,
     useMutation: () => mockRemoveTask,
 }));
 
 vi.mock("@convex/_generated/api", () => ({
     api: {
-        tasks: {
-            getById: "api.tasks.getById",
-            remove: "api.tasks.remove",
-        },
-        taskMessages: {
-            listByTask: "api.taskMessages.listByTask",
-        }
+        tasks: { remove: "api.tasks.remove" },
+        taskMessages: { listByTask: "api.taskMessages.listByTask" },
     }
 }));
 
@@ -33,61 +24,102 @@ vi.mock("@iconify/react", () => ({
     Icon: (props: any) => <span data-testid="icon" {...props} />
 }));
 
+const mockTask: Doc<"tasks"> = {
+    _id: "test_task_id" as any,
+    _creationTime: Date.now(),
+    title: "Test Task",
+    description: "A test description",
+    status: "inbox",
+    assigneeIds: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+};
+
 describe('TaskDetailPanel', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockTaskQueryResponse = undefined;
         mockMessagesQueryResponse = [];
     });
 
-    const defaultProps = {
-        taskId: "test_task_id" as any,
-        onClose: vi.fn(),
-    };
-
-    it('renders a loading skeleton when task is undefined', () => {
-        mockTaskQueryResponse = undefined;
-        const { container } = render(<TaskDetailPanel {...defaultProps} />);
-        expect(container.querySelector('.animate-pulse')).toBeInTheDocument();
+    it('renders task title and description', () => {
+        render(<TaskDetailPanel task={mockTask} onClose={vi.fn()} />);
+        expect(screen.getByText("Test Task")).toBeInTheDocument();
+        expect(screen.getByText("A test description")).toBeInTheDocument();
     });
 
-    it('renders null if task is null', () => {
-        mockTaskQueryResponse = null;
-        const { container } = render(<TaskDetailPanel {...defaultProps} />);
-        expect(container).toBeEmptyDOMElement();
+    it('shows empty state when messages is undefined (loading)', () => {
+        mockMessagesQueryResponse = undefined;
+        render(<TaskDetailPanel task={mockTask} onClose={vi.fn()} />);
+        expect(screen.getByText("No messages yet.")).toBeInTheDocument();
     });
 
-    it('renders task details when loaded', () => {
-        mockTaskQueryResponse = {
-            _id: "test_task_id",
-            title: "Loaded Task",
-            description: "Some valid description",
-            status: "inbox",
-            createdAt: Date.now(),
-        };
-        render(<TaskDetailPanel {...defaultProps} />);
-        
-        expect(screen.getByText("Loaded Task")).toBeInTheDocument();
-        expect(screen.getByText("Some valid description")).toBeInTheDocument();
+    it('shows empty state when messages is null', () => {
+        mockMessagesQueryResponse = null;
+        render(<TaskDetailPanel task={mockTask} onClose={vi.fn()} />);
+        expect(screen.getByText("No messages yet.")).toBeInTheDocument();
     });
 
-    it('calls remove mutation and closes when cancel button is clicked', async () => {
-        mockTaskQueryResponse = {
-            _id: "test_task_id",
-            title: "Loaded Task",
-            status: "inbox",
-            createdAt: Date.now(),
-        };
-        const onClose = vi.fn();
+    it('shows empty state when messages is an empty array', () => {
+        mockMessagesQueryResponse = [];
+        render(<TaskDetailPanel task={mockTask} onClose={vi.fn()} />);
+        expect(screen.getByText("No messages yet.")).toBeInTheDocument();
+    });
+
+    it('renders messages when present', () => {
+        mockMessagesQueryResponse = [
+            {
+                _id: "msg_1" as any,
+                content: "Agent started working",
+                createdAt: Date.now(),
+            }
+        ];
+        render(<TaskDetailPanel task={mockTask} onClose={vi.fn()} />);
+        expect(screen.getByText("Agent started working")).toBeInTheDocument();
+    });
+
+    it('applies exit animation class when X button is clicked', async () => {
         const user = userEvent.setup();
-        
-        render(<TaskDetailPanel taskId={"test_task_id" as any} onClose={onClose} />);
-        
-        // Wait, screen might not find it directly if it's named 'Cancel Task'.
+        const { container } = render(<TaskDetailPanel task={mockTask} onClose={vi.fn()} />);
+
+        const panel = container.firstChild as HTMLElement;
+        expect(panel.className).toContain('slide-in-from-right');
+
+        // The X close button is the first button in the panel (before Cancel Task)
+        const closeButton = screen.getAllByRole("button")[0];
+        await user.click(closeButton);
+
+        expect(panel.className).toContain('slide-out-to-right');
+    });
+
+    it('calls remove mutation and triggers close animation when Cancel Task is clicked', async () => {
+        const user = userEvent.setup();
+        const { container } = render(<TaskDetailPanel task={mockTask} onClose={vi.fn()} />);
+
         const cancelBtn = screen.getByRole("button", { name: /Cancel Task/i });
         await user.click(cancelBtn);
 
         expect(mockRemoveTask).toHaveBeenCalledWith({ id: "test_task_id" });
-        expect(onClose).toHaveBeenCalled();
+        const panel = container.firstChild as HTMLElement;
+        expect(panel.className).toContain('slide-out-to-right');
+    });
+
+    it('hides Cancel Task button when task status is done', () => {
+        const doneTask: Doc<"tasks"> = { ...mockTask, status: "done" };
+        render(<TaskDetailPanel task={doneTask} onClose={vi.fn()} />);
+        expect(screen.queryByRole("button", { name: /Cancel Task/i })).not.toBeInTheDocument();
+    });
+
+    it('does not call onClose immediately when X is clicked — waits for exit animation', async () => {
+        const onClose = vi.fn();
+        const user = userEvent.setup();
+        render(<TaskDetailPanel task={mockTask} onClose={onClose} />);
+
+        const closeButton = screen.getAllByRole("button")[0];
+        await user.click(closeButton);
+
+        // onClose is wired to onAnimationEnd, so it must NOT be called
+        // until the CSS exit animation completes (happens in the browser,
+        // not in jsdom — this asserts the panel doesn't close eagerly)
+        expect(onClose).not.toHaveBeenCalled();
     });
 });
