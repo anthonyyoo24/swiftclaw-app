@@ -168,38 +168,10 @@ describe("tasks:update", () => {
 });
 
 describe("tasks:create", () => {
-  it("throws when called without authentication", async () => {
-    const t = convexTest(schema, modules);
-    await expect(
-      t.mutation(api.tasks.create, {
-        title: "No Auth Task",
-        description: "",
-        status: "inbox",
-        assigneeIds: [],
-      })
-    ).rejects.toThrow("Not authenticated");
-  });
-
-  it("creates a task and it appears in list when authenticated", async () => {
-    const t = convexTest(schema, modules);
-    await t.withIdentity({ name: "Test User" }).mutation(api.tasks.create, {
-      title: "Auth Task",
-      description: "Some work",
-      status: "inbox",
-      assigneeIds: [],
-    });
-    const tasks = await t.query(api.tasks.list, {});
-    expect(tasks).toHaveLength(1);
-    expect(tasks[0].title).toBe("Auth Task");
-    expect(tasks[0].status).toBe("inbox");
-  });
-});
-
-describe("tasks:createByAgent", () => {
   it("creates a task with status assigned and correct assignee", async () => {
     const t = convexTest(schema, modules);
     const agentId = await seedAgent(t, "kevin");
-    await t.mutation(api.tasks.createByAgent, {
+    await t.mutation(api.tasks.create, {
       title: "Build feature",
       description: "Implement the login flow",
       assigneeNames: ["kevin"],
@@ -214,7 +186,7 @@ describe("tasks:createByAgent", () => {
   it("throws when an assignee name does not exist", async () => {
     const t = convexTest(schema, modules);
     await expect(
-      t.mutation(api.tasks.createByAgent, {
+      t.mutation(api.tasks.create, {
         title: "Bad task",
         description: "",
         assigneeNames: ["nonexistent"],
@@ -226,7 +198,7 @@ describe("tasks:createByAgent", () => {
     const t = convexTest(schema, modules);
     const kevinId = await seedAgent(t, "kevin");
     const chrisId = await seedAgent(t, "chris");
-    await t.mutation(api.tasks.createByAgent, {
+    await t.mutation(api.tasks.create, {
       title: "Review and ship",
       description: "Kevin builds, Chris reviews",
       assigneeNames: ["kevin", "chris"],
@@ -240,7 +212,7 @@ describe("tasks:createByAgent", () => {
     const t = convexTest(schema, modules);
     const sarahId = await seedAgent(t, "sarah");
     const kevinId = await seedAgent(t, "kevin");
-    await t.mutation(api.tasks.createByAgent, {
+    await t.mutation(api.tasks.create, {
       title: "Delegated task",
       description: "From Sarah",
       assigneeNames: ["kevin"],
@@ -255,7 +227,7 @@ describe("tasks:createByAgent", () => {
     const t = convexTest(schema, modules);
     await seedAgent(t, "kevin");
     await expect(
-      t.mutation(api.tasks.createByAgent, {
+      t.mutation(api.tasks.create, {
         title: "Bad creator",
         description: "",
         assigneeNames: ["kevin"],
@@ -267,7 +239,7 @@ describe("tasks:createByAgent", () => {
   it("works without createdByName", async () => {
     const t = convexTest(schema, modules);
     await seedAgent(t, "kevin");
-    await t.mutation(api.tasks.createByAgent, {
+    await t.mutation(api.tasks.create, {
       title: "Anonymous task",
       description: "",
       assigneeNames: ["kevin"],

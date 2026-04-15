@@ -52,13 +52,13 @@ describe("documents", () => {
         it("returns all inserted documents", async () => {
             const agentId = await insertAgent();
 
-            await t.mutation(api.documents.createByAgent, {
+            await t.mutation(api.documents.create, {
                 title: "Doc A",
                 content: "Content A",
                 type: "deliverable",
                 agentName: "maya",
             });
-            await t.mutation(api.documents.createByAgent, {
+            await t.mutation(api.documents.create, {
                 title: "Doc B",
                 content: "Content B",
                 type: "research",
@@ -76,7 +76,7 @@ describe("documents", () => {
         it("respects the limit arg", async () => {
             await insertAgent();
             for (let i = 0; i < 5; i++) {
-                await t.mutation(api.documents.createByAgent, {
+                await t.mutation(api.documents.create, {
                     title: `Doc ${i}`,
                     content: "x",
                     type: "general",
@@ -94,7 +94,7 @@ describe("documents", () => {
     describe("getById", () => {
         it("returns null for a deleted (nonexistent) ID", async () => {
             await insertAgent();
-            const id = await t.mutation(api.documents.createByAgent, {
+            const id = await t.mutation(api.documents.create, {
                 title: "Temp",
                 content: "x",
                 type: "general",
@@ -108,7 +108,7 @@ describe("documents", () => {
 
         it("returns the document when it exists", async () => {
             await insertAgent();
-            const id = await t.mutation(api.documents.createByAgent, {
+            const id = await t.mutation(api.documents.create, {
                 title: "My Doc",
                 content: "# Hello",
                 type: "protocol",
@@ -136,21 +136,21 @@ describe("documents", () => {
             const taskId = await insertTask();
             const otherTaskId = await insertTask();
 
-            await t.mutation(api.documents.createByAgent, {
+            await t.mutation(api.documents.create, {
                 title: "Linked Doc",
                 content: "linked",
                 type: "deliverable",
                 taskId,
                 agentName: "maya",
             });
-            await t.mutation(api.documents.createByAgent, {
+            await t.mutation(api.documents.create, {
                 title: "Other Task Doc",
                 content: "other",
                 type: "deliverable",
                 taskId: otherTaskId,
                 agentName: "maya",
             });
-            await t.mutation(api.documents.createByAgent, {
+            await t.mutation(api.documents.create, {
                 title: "Unlinked Doc",
                 content: "no task",
                 type: "general",
@@ -166,14 +166,14 @@ describe("documents", () => {
             await insertAgent();
             const taskId = await insertTask();
 
-            await t.mutation(api.documents.createByAgent, {
+            await t.mutation(api.documents.create, {
                 title: "Doc 1",
                 content: "c1",
                 type: "deliverable",
                 taskId,
                 agentName: "maya",
             });
-            await t.mutation(api.documents.createByAgent, {
+            await t.mutation(api.documents.create, {
                 title: "Doc 2",
                 content: "c2",
                 type: "research",
@@ -186,13 +186,13 @@ describe("documents", () => {
         });
     });
 
-    // ── createByAgent ─────────────────────────────────────────────────────
+    // ── create ────────────────────────────────────────────────────────────
 
-    describe("createByAgent", () => {
+    describe("create", () => {
         it("creates a document and returns its ID", async () => {
             const agentId = await insertAgent();
 
-            const id = await t.mutation(api.documents.createByAgent, {
+            const id = await t.mutation(api.documents.create, {
                 title: "New Deliverable",
                 content: "## Summary\nDone.",
                 type: "deliverable",
@@ -209,7 +209,7 @@ describe("documents", () => {
             await insertAgent();
             const before = Date.now();
 
-            const id = await t.mutation(api.documents.createByAgent, {
+            const id = await t.mutation(api.documents.create, {
                 title: "Timed Doc",
                 content: "x",
                 type: "general",
@@ -225,7 +225,7 @@ describe("documents", () => {
             await insertAgent();
             const taskId = await insertTask();
 
-            const id = await t.mutation(api.documents.createByAgent, {
+            const id = await t.mutation(api.documents.create, {
                 title: "Task Doc",
                 content: "linked",
                 type: "deliverable",
@@ -239,7 +239,7 @@ describe("documents", () => {
 
         it("throws when the agent name does not exist", async () => {
             await expect(
-                t.mutation(api.documents.createByAgent, {
+                t.mutation(api.documents.create, {
                     title: "Ghost Doc",
                     content: "x",
                     type: "general",
@@ -249,36 +249,4 @@ describe("documents", () => {
         });
     });
 
-    // ── create (auth-gated) ───────────────────────────────────────────────
-
-    describe("create", () => {
-        it("creates a document when the user is authenticated", async () => {
-            const agentId = await insertAgent();
-            const tAuth = t.withIdentity({ name: "test-user" });
-
-            const id = await tAuth.mutation(api.documents.create, {
-                title: "Auth Doc",
-                content: "secure content",
-                type: "research",
-                createdById: agentId,
-            });
-
-            const doc = await t.query(api.documents.getById, { id });
-            expect(doc?.title).toBe("Auth Doc");
-            expect(doc?.createdById).toBe(agentId);
-        });
-
-        it("throws when the user is not authenticated", async () => {
-            const agentId = await insertAgent();
-
-            await expect(
-                t.mutation(api.documents.create, {
-                    title: "Unauth Doc",
-                    content: "x",
-                    type: "general",
-                    createdById: agentId,
-                })
-            ).rejects.toThrow("Not authenticated");
-        });
-    });
 });
