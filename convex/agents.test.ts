@@ -7,31 +7,34 @@ import schema from "./schema";
 const modules = import.meta.glob("./**/*.ts");
 
 describe("syncAgent", () => {
-  it("inserts a new agent when none exists with that name", async () => {
+  it("returns null and does not insert when no agent exists with that name", async () => {
     const t = convexTest(schema, modules);
 
-    const id = await t.mutation(api.agents.syncAgent, {
+    const result = await t.mutation(api.agents.syncAgent, {
       name: "Atlas",
       role: "agent",
       sessionKey: "main:session-1",
     });
 
+    expect(result).toBeNull();
     const agents = await t.query(api.agents.get, {});
-    expect(agents).toHaveLength(1);
-    expect(agents[0]._id).toBe(id);
-    expect(agents[0].name).toBe("Atlas");
-    expect(agents[0].sessionKey).toBe("main:session-1");
-    expect(agents[0].role).toBe("agent");
-    expect(agents[0].status).toBe("active");
+    expect(agents).toHaveLength(0);
   });
 
   it("patches sessionKey, role, and status when a name match is found", async () => {
     const t = convexTest(schema, modules);
 
-    await t.mutation(api.agents.syncAgent, {
-      name: "Atlas",
-      role: "agent",
-      sessionKey: "session-old",
+    // Seed agent directly — syncAgent is a pure update, seeding is owned by registerAgents
+    const now = Date.now();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("agents", {
+        name: "Atlas",
+        role: "agent",
+        sessionKey: "session-old",
+        status: "idle" as const,
+        createdAt: now,
+        updatedAt: now,
+      });
     });
 
     const before = await t.query(api.agents.get, {});

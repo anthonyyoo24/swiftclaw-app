@@ -3,12 +3,14 @@ import type { IpcMainEvent } from 'electron';
 import type { DeploymentPayload } from '../../../src/types/ai';
 
 // ── Hoist mocks so factory closures can reference them ───────────────────────
-const { mockDeploy, mockAuthenticate, mockCancel, mockExistsSync, mockReadFileSync } = vi.hoisted(() => ({
+const { mockDeploy, mockAuthenticate, mockCancel, mockExistsSync, mockReadFileSync, mockSpawn, mockSpawnSync } = vi.hoisted(() => ({
     mockDeploy: vi.fn(),
     mockAuthenticate: vi.fn(),
     mockCancel: vi.fn(),
     mockExistsSync: vi.fn<(path: string) => boolean>(),
     mockReadFileSync: vi.fn<(path: string, encoding: string) => string>(),
+    mockSpawn: vi.fn(() => ({ unref: vi.fn(), on: vi.fn() })),
+    mockSpawnSync: vi.fn(() => ({ status: 0 })),
 }));
 
 // ── Capture ipcMain.on and ipcMain.handle registrations ──────────────────────
@@ -16,6 +18,11 @@ const ipcHandlers: Record<string, (...args: unknown[]) => unknown> = {};
 const ipcInvokeHandlers: Record<string, (...args: unknown[]) => unknown> = {};
 
 vi.mock('electron', () => ({
+    app: {
+        isPackaged: false,
+        getAppPath: vi.fn(() => '/'),
+        on: vi.fn(),
+    },
     ipcMain: {
         on: vi.fn((channel: string, handler: (...args: unknown[]) => unknown) => {
             ipcHandlers[channel] = handler;
@@ -33,6 +40,11 @@ vi.mock('fs', () => ({
     },
     existsSync: mockExistsSync,
     readFileSync: mockReadFileSync,
+}));
+
+vi.mock('child_process', () => ({
+    spawn: mockSpawn,
+    spawnSync: mockSpawnSync,
 }));
 
 // ── Mock OpenClawService as a proper constructor ──────────────────────────────
@@ -74,6 +86,8 @@ describe('setupIpcHandlers', () => {
         mockCancel.mockReset();
         mockExistsSync.mockReset();
         mockReadFileSync.mockReset();
+        mockSpawn.mockReset().mockReturnValue({ unref: vi.fn(), on: vi.fn() });
+        mockSpawnSync.mockReset().mockReturnValue({ status: 0 });
         setupIpcHandlers();
     });
 
