@@ -77,6 +77,7 @@ const VALID_PAYLOAD: DeploymentPayload = {
     businessDescription: 'A test business',
     goals: 'Build amazing software',
     workflows: ['write-code', 'review-prs'],
+    convexUrl: 'https://test-deployment.convex.cloud',
 };
 
 describe('setupIpcHandlers', () => {

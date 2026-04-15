@@ -92,6 +92,7 @@ const BASE_PAYLOAD: DeploymentPayload = {
     goals: 'Build amazing software',
     workflows: ['write-code', 'review-prs'],
     tools: ['github', 'slack'],
+    convexUrl: 'https://test-deployment.convex.cloud',
 };
 
 // ── Tests ────────────────────────────────────────────────────────────────────

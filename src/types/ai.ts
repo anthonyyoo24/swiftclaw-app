@@ -17,6 +17,7 @@ export interface DeploymentPayload {
     goals: string;
     workflows: string[];
     tools?: string[];
+    convexUrl: string;
 }
 
 export interface OAuthProviderEntry {

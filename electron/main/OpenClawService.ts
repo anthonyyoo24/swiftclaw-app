@@ -53,7 +53,7 @@ ${workflowList}
 
 
 function generateHeartbeatMd(agentId: string): string {
-    return `# Heartbeat Checklist\n\nWhen you wake up, strictly follow this procedure in order:\n\n1. Check for assigned tasks:\n   \`npx convex run tasks:getAssigned '{"agentName": "${agentId}"}'\`\n\n2. If a task exists, mark it in_progress:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "in_progress"}'\`\n\n3. Use your tools to complete the work.\n\n4. Publish results:\n   \`npx convex run documents:create '{"taskId": "<taskId>", "title": "<title>", "content": "<full markdown>", "type": "deliverable"}'\`\n\n5. Mark the task done:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "done"}'\`\n\n6. If no tasks exist, reply HEARTBEAT_OK and stand down.\n`;
+    return `# Heartbeat Checklist\n\nWhen you wake up, strictly follow this procedure in order:\n\n1. Check for assigned tasks:\n   \`npx convex run tasks:getAssigned '{"agentName": "${agentId}"}'\`\n\n2. If a task exists, mark it in_progress:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "in_progress"}'\`\n\n3. Use your tools to complete the work.\n\n4. Publish results:\n   \`npx convex run documents:createByAgent '{"taskId": "<taskId>", "title": "<title>", "content": "<full markdown>", "type": "deliverable", "agentName": "${agentId}"}'\`\n\n5. Mark the task done:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "done"}'\`\n\n6. If no tasks exist, reply HEARTBEAT_OK and stand down.\n`;
 }
 
 
@@ -701,6 +701,22 @@ exit [lindex $result 3]
                     'utf-8'
                 )
             ));
+
+            // Write .env.local to each agent workspace so `npx convex run`
+            // commands in HEARTBEAT.md can resolve the deployment. The Convex
+            // CLI resolves via CONVEX_DEPLOYMENT (not CONVEX_URL). Read it from
+            // the main process env (injected by Electron-Vite from .env.local),
+            // falling back to the payload URL so the write is never silently skipped.
+            const convexDeployment = process.env.CONVEX_DEPLOYMENT || payload.convexUrl;
+            if (convexDeployment) {
+                await Promise.all(payload.agentTemplateIds.map(agentId =>
+                    fs.promises.writeFile(
+                        path.join(getOpenClawWorkspacePath(agentId), '.env.local'),
+                        `CONVEX_DEPLOYMENT=${convexDeployment}\n`,
+                        'utf-8'
+                    )
+                ));
+            }
 
             // Register staggered heartbeat crons (non-fatal if any fail)
             await this.setupCronJobs(event, payload.agentTemplateIds, stepCounter + 1, cliEnv);

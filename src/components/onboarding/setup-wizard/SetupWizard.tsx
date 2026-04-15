@@ -171,7 +171,10 @@ export function SetupWizard() {
             }
 
             // Happy path: valid data — proceed to IPC
-            window.electron.ipcRenderer.sendDeploymentStart(result.data);
+            window.electron.ipcRenderer.sendDeploymentStart({
+                ...result.data,
+                convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL || '',
+            });
 
             const originalCleanup = cleanupIpc;
             cleanupIpc = () => {
