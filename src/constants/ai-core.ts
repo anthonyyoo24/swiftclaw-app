@@ -24,6 +24,21 @@ export const SOUL_TEMPLATE_FILES: Record<string, string> = {
 };
 
 /**
+ * Staggered cron schedules for the 8 specialist agents (Sarah is excluded — she runs persistently).
+ * Each agent fires every 15 minutes, offset by ~2 minutes to avoid simultaneous wakeups.
+ */
+export const AGENT_CRON_SCHEDULE: Record<string, string> = {
+    maya:  '0,15,30,45 * * * *',
+    jack:  '2,17,32,47 * * * *',
+    lily:  '4,19,34,49 * * * *',
+    max:   '6,21,36,51 * * * *',
+    emma:  '8,23,38,53 * * * *',
+    chris: '10,25,40,55 * * * *',
+    kevin: '12,27,42,57 * * * *',
+    zoe:   '14,29,44,59 * * * *',
+};
+
+/**
  * Maps agent template IDs to their display name and role.
  * Roles are derived from the soul template filenames (e.g. sarah_coordinator → Coordinator).
  */

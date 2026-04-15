@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { DeploymentPayload } from '../../src/types/ai';
-import { OAUTH_PROVIDER_MAP, SOUL_TEMPLATE_FILES } from '../../src/constants/ai-core';
+import { OAUTH_PROVIDER_MAP, SOUL_TEMPLATE_FILES, AGENT_CRON_SCHEDULE } from '../../src/constants/ai-core';
 import { IPC_EVENTS } from '../../src/constants/ipc';
 import {
     getOpenClawConfigPath,
@@ -52,6 +52,11 @@ ${workflowList}
 }
 
 
+function generateHeartbeatMd(agentId: string): string {
+    return `# Heartbeat Checklist\n\nWhen you wake up, strictly follow this procedure in order:\n\n1. Check for assigned tasks:\n   \`npx convex run tasks:getAssigned '{"agentName": "${agentId}"}'\`\n\n2. If a task exists, mark it in_progress:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "in_progress"}'\`\n\n3. Use your tools to complete the work.\n\n4. Publish results:\n   \`npx convex run documents:create '{"taskId": "<taskId>", "title": "<title>", "content": "<full markdown>", "type": "deliverable"}'\`\n\n5. Mark the task done:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "done"}'\`\n\n6. If no tasks exist, reply HEARTBEAT_OK and stand down.\n`;
+}
+
+
 /** Flags whose immediately following argument contains a secret value. */
 const SECRET_FLAGS = /^--(?:[\w-]*api[_-]?key|secret|token|password|auth[_-]?token)$/i;
 
@@ -82,6 +87,42 @@ export class OpenClawService {
 
     private emitProgress(event: IpcMainEvent, step: number, label: string) {
         event.reply(IPC_EVENTS.DEPLOYMENT_PROGRESS, { step, label });
+    }
+
+    private async setupAgentCron(agentId: string, cliEnv: NodeJS.ProcessEnv): Promise<void> {
+        const cronExpr = AGENT_CRON_SCHEDULE[agentId];
+        if (!cronExpr) {
+            console.warn(`[OpenClawService] No cron schedule for agent: ${agentId} — skipping.`);
+            return;
+        }
+        await this.runLocalOpenClawCommand([
+            'cron', 'add',
+            '--name',    `${agentId}-heartbeat`,
+            '--cron',    cronExpr,
+            '--agent',   agentId,
+            '--session', 'isolated',
+            '--light-context',
+            '--message', 'Execute your HEARTBEAT.md checklist.',
+        ], cliEnv);
+        console.log(`[OpenClawService] Cron registered for ${agentId}: ${cronExpr}`);
+    }
+
+    private async setupCronJobs(
+        event: IpcMainEvent,
+        agentIds: string[],
+        stepNumber: number,
+        cliEnv: NodeJS.ProcessEnv
+    ): Promise<void> {
+        this.emitProgress(event, stepNumber, 'Scheduling agent heartbeats...');
+        const results = await Promise.allSettled(
+            agentIds.map(agentId => this.setupAgentCron(agentId, cliEnv))
+        );
+        results.forEach((result, i) => {
+            if (result.status === 'rejected') {
+                const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
+                console.warn(`[OpenClawService] Cron setup failed for ${agentIds[i]} (non-fatal): ${msg}`);
+            }
+        });
     }
 
 
@@ -651,6 +692,18 @@ exit [lindex $result 3]
                 await fs.promises.copyFile(src, path.join(workspacePath, 'SOUL.md'));
                 await fs.promises.unlink(path.join(workspacePath, 'BOOTSTRAP.md')).catch(() => { /* may not exist */ });
             }));
+
+            // Write HEARTBEAT.md to each agent workspace
+            await Promise.all(payload.agentTemplateIds.map(agentId =>
+                fs.promises.writeFile(
+                    path.join(getOpenClawWorkspacePath(agentId), 'HEARTBEAT.md'),
+                    generateHeartbeatMd(agentId),
+                    'utf-8'
+                )
+            ));
+
+            // Register staggered heartbeat crons (non-fatal if any fail)
+            await this.setupCronJobs(event, payload.agentTemplateIds, stepCounter + 1, cliEnv);
 
             event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });
 
