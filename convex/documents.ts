@@ -76,6 +76,18 @@ export const createByAgent = mutation({
   },
 });
 
+export const listByTask = query({
+  args: { taskId: v.id("tasks"), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = Math.min(args.limit ?? 50, 200);
+    return await ctx.db
+      .query("documents")
+      .withIndex("by_taskId", (q) => q.eq("taskId", args.taskId))
+      .order("desc")
+      .take(limit);
+  },
+});
+
 export const update = mutation({
   args: {
     id: v.id("documents"),

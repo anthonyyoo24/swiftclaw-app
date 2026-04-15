@@ -87,5 +87,5 @@ export default defineSchema({
     createdById: v.id("agents"),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }),
+  }).index("by_taskId", ["taskId"]),
 });
