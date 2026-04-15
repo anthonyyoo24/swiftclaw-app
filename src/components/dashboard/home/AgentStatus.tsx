@@ -76,11 +76,11 @@ export function AgentStatus({ roleEmojis }: { roleEmojis: Record<string, string>
                     agents.map((agent) => (
                         <AgentCard
                             key={agent._id}
-                            name={agent.name}
+                            name={agent.name.charAt(0).toUpperCase() + agent.name.slice(1)}
                             role={agent.role}
                             status={agent.status}
                             currentTask={agent.currentTaskId ? "Working on task..." : "Idle"}
-                            avatar={AGENT_ROLES[agent.name.toLowerCase()]?.avatar}
+                            avatar={AGENT_ROLES[agent.name]?.avatar}
                             roleEmojis={roleEmojis}
                         />
                     ))

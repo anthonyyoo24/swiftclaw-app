@@ -200,7 +200,7 @@ export function SetupWizard() {
         if (!backendDone) return;
         const ids: string[] = methods.getValues("agentTemplateIds") ?? [];
         const agentsToRegister = ids.map((id) => ({
-            name: AGENT_ROLES[id]?.displayName ?? id,
+            name: id,
             role: AGENT_ROLES[id]?.role ?? "Agent",
         }));
         void registerAgents({ agents: agentsToRegister });

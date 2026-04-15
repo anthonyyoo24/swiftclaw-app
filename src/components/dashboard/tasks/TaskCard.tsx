@@ -88,8 +88,7 @@ export function TaskCard({ task, agentMap = {}, onClick, isSelected = false }: T
                 ) : (
                     <div className="flex items-center">
                         {visibleAssignees.map((agent, i) => {
-                            const normalizedName = agent.name?.toLowerCase() || "";
-                            const avatarSrc = agent.avatar ?? AGENT_ROLES[normalizedName]?.avatar;
+                            const avatarSrc = agent.avatar ?? AGENT_ROLES[agent.name]?.avatar;
                             const initial = agent.name ? agent.name.charAt(0).toUpperCase() : "🤖";
                             
                             return (

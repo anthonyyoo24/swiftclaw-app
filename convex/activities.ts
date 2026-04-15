@@ -9,7 +9,13 @@ export const list = query({
     return await Promise.all(
       activities.map(async (activity) => {
         const agent = await ctx.db.get(activity.agentId);
-        return { ...activity, agentName: agent?.name ?? "Unknown Agent" };
+        const name = agent?.name ?? "";
+        return {
+          ...activity,
+          agentName: name
+            ? name.charAt(0).toUpperCase() + name.slice(1)
+            : "Unknown Agent",
+        };
       })
     );
   },
