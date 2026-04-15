@@ -195,6 +195,88 @@ describe("tasks:create", () => {
   });
 });
 
+describe("tasks:createByAgent", () => {
+  it("creates a task with status assigned and correct assignee", async () => {
+    const t = convexTest(schema, modules);
+    const agentId = await seedAgent(t, "kevin");
+    await t.mutation(api.tasks.createByAgent, {
+      title: "Build feature",
+      description: "Implement the login flow",
+      assigneeNames: ["kevin"],
+    });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].title).toBe("Build feature");
+    expect(tasks[0].status).toBe("assigned");
+    expect(tasks[0].assigneeIds).toContain(agentId);
+  });
+
+  it("throws when an assignee name does not exist", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.mutation(api.tasks.createByAgent, {
+        title: "Bad task",
+        description: "",
+        assigneeNames: ["nonexistent"],
+      })
+    ).rejects.toThrow("Agent not found: nonexistent");
+  });
+
+  it("resolves multiple assignee names to their IDs", async () => {
+    const t = convexTest(schema, modules);
+    const kevinId = await seedAgent(t, "kevin");
+    const chrisId = await seedAgent(t, "chris");
+    await t.mutation(api.tasks.createByAgent, {
+      title: "Review and ship",
+      description: "Kevin builds, Chris reviews",
+      assigneeNames: ["kevin", "chris"],
+    });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks[0].assigneeIds).toContain(kevinId);
+    expect(tasks[0].assigneeIds).toContain(chrisId);
+  });
+
+  it("resolves createdByName to an agent ID when provided", async () => {
+    const t = convexTest(schema, modules);
+    const sarahId = await seedAgent(t, "sarah");
+    const kevinId = await seedAgent(t, "kevin");
+    await t.mutation(api.tasks.createByAgent, {
+      title: "Delegated task",
+      description: "From Sarah",
+      assigneeNames: ["kevin"],
+      createdByName: "sarah",
+    });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks[0].createdById).toBe(sarahId);
+    expect(tasks[0].assigneeIds).toContain(kevinId);
+  });
+
+  it("throws when createdByName does not exist", async () => {
+    const t = convexTest(schema, modules);
+    await seedAgent(t, "kevin");
+    await expect(
+      t.mutation(api.tasks.createByAgent, {
+        title: "Bad creator",
+        description: "",
+        assigneeNames: ["kevin"],
+        createdByName: "ghost",
+      })
+    ).rejects.toThrow("Agent not found: ghost");
+  });
+
+  it("works without createdByName", async () => {
+    const t = convexTest(schema, modules);
+    await seedAgent(t, "kevin");
+    await t.mutation(api.tasks.createByAgent, {
+      title: "Anonymous task",
+      description: "",
+      assigneeNames: ["kevin"],
+    });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks[0].createdById).toBeUndefined();
+  });
+});
+
 describe("tasks:assign", () => {
   it("throws when called without authentication", async () => {
     const t = convexTest(schema, modules);

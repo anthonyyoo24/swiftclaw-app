@@ -70,6 +70,42 @@ export const remove = mutation({
   },
 });
 
+// Agent-callable task creation — no user auth required.
+// Accepts assigneeNames (e.g. ["kevin"]) and resolves them to IDs internally,
+// matching the pattern used in documents:createByAgent.
+export const createByAgent = mutation({
+  args: {
+    title: v.string(),
+    description: v.string(),
+    assigneeNames: v.array(v.string()),
+    createdByName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const resolveId = async (name: string) => {
+      const agent = await ctx.db
+        .query("agents")
+        .withIndex("by_name", (q) => q.eq("name", name))
+        .unique();
+      if (!agent) throw new Error(`Agent not found: ${name}`);
+      return agent._id;
+    };
+    const assigneeIds = await Promise.all(args.assigneeNames.map(resolveId));
+    const createdById = args.createdByName
+      ? await resolveId(args.createdByName)
+      : undefined;
+    const now = Date.now();
+    return await ctx.db.insert("tasks", {
+      title: args.title,
+      description: args.description,
+      status: "assigned" as const,
+      assigneeIds,
+      createdById,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
 // Returns the oldest assigned task for a given agent name, or null if none.
 // Used by agent heartbeats — no user auth required.
 export const getAssigned = query({
