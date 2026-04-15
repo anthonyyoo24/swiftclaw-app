@@ -16,32 +16,6 @@ export const getById = query({
   },
 });
 
-export const create = mutation({
-  args: {
-    title: v.string(),
-    description: v.string(),
-    status: v.union(
-      v.literal("inbox"),
-      v.literal("assigned"),
-      v.literal("in_progress"),
-      v.literal("review"),
-      v.literal("done")
-    ),
-    assigneeIds: v.array(v.id("agents")),
-    createdById: v.optional(v.id("agents")),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const now = Date.now();
-    return await ctx.db.insert("tasks", {
-      ...args,
-      createdAt: now,
-      updatedAt: now,
-    });
-  },
-});
-
 export const updateStatus = mutation({
   args: {
     id: v.id("tasks"),
@@ -70,10 +44,9 @@ export const remove = mutation({
   },
 });
 
-// Agent-callable task creation — no user auth required.
-// Accepts assigneeNames (e.g. ["kevin"]) and resolves them to IDs internally,
-// matching the pattern used in documents:createByAgent.
-export const createByAgent = mutation({
+// No auth required — resolves assigneeNames/createdByName to IDs internally.
+// Derives status from whether assignees are provided.
+export const create = mutation({
   args: {
     title: v.string(),
     description: v.string(),

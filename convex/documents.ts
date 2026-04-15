@@ -16,35 +16,9 @@ export const getById = query({
   },
 });
 
+// No auth required — resolves agentName to createdById internally.
+// Called from HEARTBEAT.md: npx convex run documents:create '{...}'
 export const create = mutation({
-  args: {
-    title: v.string(),
-    content: v.string(),
-    type: v.union(
-      v.literal("deliverable"),
-      v.literal("research"),
-      v.literal("protocol"),
-      v.literal("general")
-    ),
-    taskId: v.optional(v.id("tasks")),
-    createdById: v.id("agents"),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const now = Date.now();
-    return await ctx.db.insert("documents", {
-      ...args,
-      createdAt: now,
-      updatedAt: now,
-    });
-  },
-});
-
-// Agent-callable document creation — no user auth required.
-// Looks up the agent by name to resolve createdById.
-// Called from HEARTBEAT.md: npx convex run documents:createByAgent '{...}'
-export const createByAgent = mutation({
   args: {
     title: v.string(),
     content: v.string(),

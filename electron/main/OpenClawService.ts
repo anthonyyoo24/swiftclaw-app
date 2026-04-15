@@ -53,7 +53,7 @@ ${workflowList}
 
 
 function generateHeartbeatMd(agentId: string): string {
-    return `# Heartbeat Checklist\n\nWhen you wake up, strictly follow this procedure in order:\n\n1. Check for assigned tasks:\n   \`npx convex run tasks:getAssigned '{"agentName": "${agentId}"}'\`\n\n2. If a task exists, mark it in_progress:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "in_progress"}'\`\n\n3. Use your tools to complete the work.\n\n4. Publish results:\n   \`npx convex run documents:createByAgent '{"taskId": "<taskId>", "title": "<title>", "content": "<full markdown>", "type": "deliverable", "agentName": "${agentId}"}'\`\n\n5. Mark the task done:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "done"}'\`\n\n6. If no tasks exist, reply HEARTBEAT_OK and stand down.\n`;
+    return `# Heartbeat Checklist\n\nWhen you wake up, strictly follow this procedure in order:\n\n1. Check for assigned tasks:\n   \`npx convex run tasks:getAssigned '{"agentName": "${agentId}"}'\`\n\n2. If a task exists, mark it in_progress:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "in_progress"}'\`\n\n3. Use your tools to complete the work.\n\n4. Publish results:\n   \`npx convex run documents:create '{"taskId": "<taskId>", "title": "<title>", "content": "<full markdown>", "type": "deliverable", "agentName": "${agentId}"}'\`\n\n5. Mark the task done:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "done"}'\`\n\n6. If no tasks exist, reply HEARTBEAT_OK and stand down.\n`;
 }
 
 

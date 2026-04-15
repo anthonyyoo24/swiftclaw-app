@@ -5,7 +5,6 @@ import Image from "next/image";
 import { Icon } from "@iconify/react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
 import { toast } from "sonner";
 import { CustomDropdown, type DropdownOption } from "@/components/ui/CustomDropdown";
 import { AGENT_ROLES } from "@/constants/ai-core";
@@ -41,7 +40,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
         ...agents.map((a) => {
             const avatarSrc = AGENT_ROLES[a.name]?.avatar;
             return {
-                id: a._id,
+                id: a.name,
                 label: a.name.charAt(0).toUpperCase() + a.name.slice(1),
                 icon: avatarSrc ? (
                     <div className="relative w-5 h-5 shrink-0">
@@ -62,8 +61,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
             await createTask({
                 title: title.trim(),
                 description: description.trim(),
-                status: selectedAgentId ? "assigned" : "inbox",
-                assigneeIds: selectedAgentId ? [selectedAgentId as Id<"agents">] : [],
+                assigneeNames: selectedAgentId ? [selectedAgentId] : [],
             });
             setTitle("");
             setDescription("");
