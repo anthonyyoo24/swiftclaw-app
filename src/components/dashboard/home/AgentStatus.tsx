@@ -101,6 +101,7 @@ export function AgentStatus({ roleEmojis }: { roleEmojis: Record<string, string>
     const updateStatus = useMutation(api.agents.updateStatus);
 
     async function handleToggle(agentName: string, agentId: Id<"agents">, isPaused: boolean) {
+        if (!window.electron) return;
         if (isPaused) {
             const result = await window.electron.ipcRenderer.resumeAgent(agentName);
             if (result.success) {
