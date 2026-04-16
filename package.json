@@ -37,6 +37,9 @@
   "dependencies": {
     "@auth/core": "^0.37.4",
     "@convex-dev/auth": "^0.0.91",
+    "@grammyjs/runner": "^2.0.3",
+    "@grammyjs/transformer-throttler": "^1.2.1",
+    "@grammyjs/types": "^3.25.0",
     "@hookform/resolvers": "^5.2.2",
     "@iconify/react": "^6.0.2",
     "@lobehub/icons": "^5.0.1",
