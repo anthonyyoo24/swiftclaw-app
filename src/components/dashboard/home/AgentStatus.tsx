@@ -71,7 +71,7 @@ function AgentCard({ name, agentName, agentId, role, status, currentTask, avatar
                 {hasCronSchedule && (
                     <button
                         onClick={() => setDialogOpen(true)}
-                        className={`shrink-0 p-1 rounded-md transition-colors ${isPaused ? "text-emerald-500 hover:text-emerald-400" : "text-neutral-500 hover:text-red-400"}`}
+                        className={`shrink-0 p-1 rounded-md cursor-pointer transition-colors ${isPaused ? "text-emerald-500 hover:text-emerald-400" : "text-neutral-500 hover:text-red-400"}`}
                         title={isPaused ? "Resume agent" : "Pause agent"}
                     >
                         <Icon icon={isPaused ? "lucide:play" : "lucide:power"} className="text-[14px]" />
