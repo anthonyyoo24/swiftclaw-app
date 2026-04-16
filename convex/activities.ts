@@ -37,8 +37,6 @@ export const create = mutation({
     relatedDocumentId: v.optional(v.id("documents")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
     return await ctx.db.insert("activities", {
       ...args,
       createdAt: Date.now(),
