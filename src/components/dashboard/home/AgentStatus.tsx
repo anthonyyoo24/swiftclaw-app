@@ -8,15 +8,6 @@ import { Id } from "@convex/_generated/dataModel";
 import { Icon } from "@iconify/react";
 import { toast } from "sonner";
 import { AGENT_ROLES, AGENT_CRON_SCHEDULE } from "@/constants/ai-core";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose,
-} from "@/components/ui/Dialog";
 
 const statusColors = {
     active: "bg-emerald-500",
@@ -36,11 +27,11 @@ interface AgentCardProps {
     currentTask: string;
     avatar?: string;
     roleEmojis: Record<string, string>;
-    onToggle: (agentName: string, agentId: Id<"agents">, isPaused: boolean) => void;
+    onToggle: (agentName: string, agentId: Id<"agents">, isPaused: boolean) => Promise<void>;
 }
 
 function AgentCard({ name, agentName, agentId, role, status, currentTask, avatar, roleEmojis, onToggle }: AgentCardProps) {
-    const [dialogOpen, setDialogOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const isBlocked = status === "blocked";
     const isIdle = status === "idle";
     const isActive = status === "active";
@@ -48,9 +39,13 @@ function AgentCard({ name, agentName, agentId, role, status, currentTask, avatar
     const emoji = roleEmojis[role] ?? "🤖";
     const hasCronSchedule = Boolean(AGENT_CRON_SCHEDULE[agentName]);
 
-    function handleConfirm() {
-        setDialogOpen(false);
-        onToggle(agentName, agentId, isPaused);
+    async function handleToggleClick() {
+        setIsLoading(true);
+        try {
+            await onToggle(agentName, agentId, isPaused);
+        } finally {
+            setIsLoading(false);
+        }
     }
 
     return (
@@ -70,11 +65,15 @@ function AgentCard({ name, agentName, agentId, role, status, currentTask, avatar
                 </div>
                 {hasCronSchedule && (
                     <button
-                        onClick={() => setDialogOpen(true)}
-                        className={`shrink-0 p-1 rounded-md cursor-pointer transition-colors ${isPaused ? "text-emerald-500 hover:text-emerald-400" : "text-neutral-500 hover:text-red-400"}`}
+                        onClick={handleToggleClick}
+                        disabled={isLoading}
+                        className={`shrink-0 p-1 rounded-md cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isPaused ? "text-emerald-500 hover:text-emerald-400" : "text-neutral-500 hover:text-red-400"}`}
                         title={isPaused ? "Resume agent" : "Pause agent"}
                     >
-                        <Icon icon={isPaused ? "lucide:play" : "lucide:power"} className="text-[14px]" />
+                        <Icon
+                            icon={isLoading ? "lucide:loader-circle" : isPaused ? "lucide:play" : "lucide:power"}
+                            className={`text-[14px] ${isLoading ? "animate-spin" : ""}`}
+                        />
                     </button>
                 )}
             </div>
@@ -93,32 +92,6 @@ function AgentCard({ name, agentName, agentId, role, status, currentTask, avatar
                     <p className="text-xs text-neutral-200 truncate">{currentTask}</p>
                 )}
             </div>
-
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent showCloseButton={false} className="max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle>{isPaused ? `Resume ${name}?` : `Pause ${name}?`}</DialogTitle>
-                        <DialogDescription>
-                            {isPaused
-                                ? `Re-adds ${name}'s scheduled heartbeat so they start processing tasks again.`
-                                : `Stops ${name}'s scheduled heartbeat. They won't wake up or process tasks until resumed.`}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <button className="text-sm text-neutral-400 hover:text-white px-3 py-1.5 rounded-md transition-colors">
-                                Cancel
-                            </button>
-                        </DialogClose>
-                        <button
-                            onClick={handleConfirm}
-                            className={`text-sm font-medium px-3 py-1.5 rounded-md transition-colors ${isPaused ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-red-600 hover:bg-red-500 text-white"}`}
-                        >
-                            {isPaused ? "Resume Agent" : "Pause Agent"}
-                        </button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }
