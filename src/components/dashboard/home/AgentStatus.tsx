@@ -16,7 +16,16 @@ const statusColors = {
     paused: "bg-yellow-500",
 } as const;
 
+const pillStyles: Record<AgentStatusType, { base: string; active: string }> = {
+    active:  { base: "border-emerald-500/30 text-emerald-400/60 hover:border-emerald-500/60 hover:text-emerald-400", active: "bg-emerald-500/15 border-emerald-500/60 text-emerald-400" },
+    idle:    { base: "border-neutral-500/30 text-neutral-500/60 hover:border-neutral-500/60 hover:text-neutral-400", active: "bg-white/10 border-white/40 text-white" },
+    paused:  { base: "border-yellow-500/30 text-yellow-500/60 hover:border-yellow-500/60 hover:text-yellow-400",   active: "bg-yellow-500/15 border-yellow-500/60 text-yellow-400" },
+    blocked: { base: "border-red-500/30 text-red-400/60 hover:border-red-500/60 hover:text-red-400",               active: "bg-red-500/15 border-red-500/60 text-red-400" },
+};
+
 type AgentStatusType = keyof typeof statusColors;
+
+const ALL_STATUSES: AgentStatusType[] = ["active", "idle", "paused", "blocked"];
 
 interface AgentCardProps {
     name: string;
@@ -99,6 +108,29 @@ function AgentCard({ name, agentName, agentId, role, status, currentTask, avatar
 export function AgentStatus({ roleEmojis }: { roleEmojis: Record<string, string> }) {
     const agents = useQuery(api.agents.get, {});
     const updateStatus = useMutation(api.agents.updateStatus);
+    const [activeFilters, setActiveFilters] = useState<Set<AgentStatusType>>(new Set());
+
+    function toggleFilter(status: AgentStatusType) {
+        setActiveFilters((prev) => {
+            const next = new Set(prev);
+            if (next.has(status)) {
+                next.delete(status);
+            } else {
+                next.add(status);
+            }
+            return next;
+        });
+    }
+
+    const visibleAgents = agents?.filter((a) =>
+        activeFilters.size === 0 || activeFilters.has(a.status as AgentStatusType)
+    );
+
+    const statusCounts = agents?.reduce<Partial<Record<AgentStatusType, number>>>((acc, a) => {
+        const s = a.status as AgentStatusType;
+        acc[s] = (acc[s] ?? 0) + 1;
+        return acc;
+    }, {}) ?? {};
 
     async function handleToggle(agentName: string, agentId: Id<"agents">, isPaused: boolean) {
         if (!window.electron) return;
@@ -124,9 +156,27 @@ export function AgentStatus({ roleEmojis }: { roleEmojis: Record<string, string>
                 <h2 className="text-sm font-semibold text-white tracking-tight">Agent Status</h2>
             </div>
 
+            {agents && agents.length > 0 && (
+                <div className="px-3 pt-3 pb-1 flex flex-wrap gap-1.5">
+                    {ALL_STATUSES.filter((s) => (statusCounts[s] ?? 0) > 0).map((status) => {
+                        const isActive = activeFilters.has(status);
+                        const styles = pillStyles[status];
+                        return (
+                            <button
+                                key={status}
+                                onClick={() => toggleFilter(status)}
+                                className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${isActive ? styles.active : styles.base}`}
+                            >
+                                {status} ({statusCounts[status]})
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                {agents?.length ? (
-                    agents.map((agent) => (
+                {visibleAgents?.length ? (
+                    visibleAgents.map((agent) => (
                         <AgentCard
                             key={agent._id}
                             name={agent.name.charAt(0).toUpperCase() + agent.name.slice(1)}
@@ -143,7 +193,7 @@ export function AgentStatus({ roleEmojis }: { roleEmojis: Record<string, string>
                 ) : (
                     <div className="flex flex-col items-center justify-center h-32 gap-2 text-neutral-500">
                         <Icon icon="lucide:bot" className="text-2xl" />
-                        <p className="text-sm">No agents deployed</p>
+                        <p className="text-sm">{agents?.length ? "No agents match filter" : "No agents deployed"}</p>
                     </div>
                 )}
             </div>
