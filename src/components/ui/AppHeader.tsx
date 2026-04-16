@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@iconify/react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { GatewayStatus, GatewayStatusType } from "./GatewayStatus";
 import { dispatchOnboardingStatusChanged } from "@/hooks/useOnboardingStatus";
@@ -48,16 +49,35 @@ export function AppHeader({
     const resolvedGatewayStatus: GatewayStatusType =
         gatewayStatus ?? CONNECTION_STATUS_MAP[storeConnectionStatus] ?? "error";
 
-    const handleResetOnboarding = () => {
+    const [confirming, setConfirming] = useState(false);
+    const cancelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+        };
+    }, []);
+
+    const handleResetClick = () => {
+        setConfirming(true);
+        cancelTimerRef.current = setTimeout(() => setConfirming(false), 4000);
+    };
+
+    const handleConfirmYes = () => {
+        if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+        setConfirming(false);
         if (onReset) {
             onReset();
             return;
         }
-
-        // Default behavior: Clear the onboarding cookie and hard redirect
         document.cookie = "onboardingComplete=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
         dispatchOnboardingStatusChanged();
         window.location.href = "/onboarding";
+    };
+
+    const handleConfirmNo = () => {
+        if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+        setConfirming(false);
     };
 
     return (
@@ -80,9 +100,9 @@ export function AppHeader({
             </div>
 
             <div className="flex items-center gap-4">
-                {showReset && (
+                {showReset && !confirming && (
                     <button
-                        onClick={handleResetOnboarding}
+                        onClick={handleResetClick}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/10 active:bg-white/15 transition-all duration-200 group no-drag cursor-pointer border border-transparent hover:border-white/10"
                         title="Reset Onboarding Flow"
                     >
@@ -92,6 +112,23 @@ export function AppHeader({
                         />
                         Reset
                     </button>
+                )}
+                {showReset && confirming && (
+                    <div className="flex items-center gap-1 no-drag">
+                        <span className="text-xs font-medium text-neutral-400 px-1">Sure?</span>
+                        <button
+                            onClick={handleConfirmYes}
+                            className="px-2.5 py-1.5 rounded-md text-xs font-medium text-red-400 hover:text-white hover:bg-red-500/20 active:bg-red-500/30 transition-all duration-150 cursor-pointer border border-red-500/20 hover:border-red-500/40"
+                        >
+                            Yes
+                        </button>
+                        <button
+                            onClick={handleConfirmNo}
+                            className="px-2.5 py-1.5 rounded-md text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/10 active:bg-white/15 transition-all duration-150 cursor-pointer border border-transparent hover:border-white/10"
+                        >
+                            No
+                        </button>
+                    </div>
                 )}
 
                 {showReset && showGatewayStatus && (
