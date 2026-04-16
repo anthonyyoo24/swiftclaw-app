@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 export interface DropdownOption {
     id: string;
     label: string;
+    sublabel?: string;
     icon?: React.ReactNode;
 }
 
@@ -146,6 +147,9 @@ export function CustomDropdown({ options, value, onChange, label, placeholder = 
                                         </div>
                                     )}
                                     <span>{option.label}</span>
+                                    {option.sublabel && (
+                                        <span className="text-xs text-neutral-500">{option.sublabel}</span>
+                                    )}
                                 </div>
                                 {option.id === value && (
                                     <Icon icon="solar:check-read-linear" className="text-lg text-blue-400" />

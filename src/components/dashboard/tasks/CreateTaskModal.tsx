@@ -38,10 +38,12 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
             icon: <Icon icon="lucide:user-x" className="text-sm text-neutral-500" />,
         },
         ...agents.map((a) => {
-            const avatarSrc = AGENT_ROLES[a.name]?.avatar;
+            const agentRole = AGENT_ROLES[a.name];
+            const avatarSrc = agentRole?.avatar;
             return {
                 id: a.name,
                 label: a.name.charAt(0).toUpperCase() + a.name.slice(1),
+                sublabel: agentRole?.role,
                 icon: avatarSrc ? (
                     <div className="relative w-5 h-5 shrink-0">
                         <Image src={avatarSrc} alt={a.name} fill className="object-cover rounded-full" />
