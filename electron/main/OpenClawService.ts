@@ -127,6 +127,83 @@ export class OpenClawService {
 
 
     /**
+     * Removes the heartbeat cron job for the given agent, effectively pausing it.
+     * Non-fatal — if the cron job is already gone, the agent was already stopped.
+     *
+     * `cron remove` requires the UUID, not the job name, so we first call
+     * `cron list --json` to resolve the name → id mapping.
+     */
+    async pauseAgent(agentName: string): Promise<{ success: boolean; error?: string }> {
+        const cliEnv = this.buildCliEnv();
+        const jobName = `${agentName}-heartbeat`;
+        try {
+            const { stdout } = await this.runLocalOpenClawCommand(['cron', 'list', '--json'], cliEnv);
+            // Strip ANSI codes and skip any header text before the JSON object starts.
+            const cleaned = stripAnsi(stdout).trim();
+            const jsonStart = cleaned.indexOf('{');
+            const parsed = JSON.parse(jsonStart >= 0 ? cleaned.slice(jsonStart) : cleaned) as { jobs?: Array<{ id: string; name: string }> };
+            const job = parsed.jobs?.find((j) => j.name === jobName);
+            if (!job) {
+                console.log(`[OpenClawService] pauseAgent: no cron job named "${jobName}" — already removed`);
+                return { success: true };
+            }
+            await this.runLocalOpenClawCommand(['cron', 'remove', job.id], cliEnv);
+            console.log(`[OpenClawService] Paused agent ${agentName} — removed cron job ${job.id}`);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.warn(`[OpenClawService] pauseAgent: failed (non-fatal): ${msg}`);
+        }
+        return { success: true };
+    }
+
+    /**
+     * Re-adds the heartbeat cron job for the given agent, resuming it.
+     * Fatal — if cron add fails, the caller should keep the agent marked as paused.
+     *
+     * Checks for an existing job by name first — cron.add has no duplicate-name
+     * guard and would silently create a second job, causing double-firing.
+     */
+    async resumeAgent(agentName: string): Promise<{ success: boolean; error?: string }> {
+        const cronExpr = AGENT_CRON_SCHEDULE[agentName];
+        if (!cronExpr) {
+            return { success: false, error: `No cron schedule defined for agent: ${agentName}` };
+        }
+        const jobName = `${agentName}-heartbeat`;
+        const cliEnv = this.buildCliEnv();
+        try {
+            const { stdout } = await this.runLocalOpenClawCommand(['cron', 'list', '--json'], cliEnv);
+            const cleaned = stripAnsi(stdout).trim();
+            const jsonStart = cleaned.indexOf('{');
+            const parsed = JSON.parse(jsonStart >= 0 ? cleaned.slice(jsonStart) : cleaned) as { jobs?: Array<{ id: string; name: string }> };
+            const existing = parsed.jobs?.find((j) => j.name === jobName);
+            if (existing) {
+                console.log(`[OpenClawService] resumeAgent: "${jobName}" already exists (id: ${existing.id}) — skipping add`);
+                return { success: true };
+            }
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.warn(`[OpenClawService] resumeAgent: cron list check failed — proceeding with add: ${msg}`);
+        }
+        try {
+            await this.runLocalOpenClawCommand([
+                'cron', 'add',
+                '--name',    jobName,
+                '--cron',    cronExpr,
+                '--agent',   agentName,
+                '--session', 'isolated',
+                '--light-context',
+                '--message', 'Execute your HEARTBEAT.md checklist.',
+            ], cliEnv);
+            console.log(`[OpenClawService] Resumed agent ${agentName} — cron re-added`);
+            return { success: true };
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[OpenClawService] resumeAgent: cron add failed: ${msg}`);
+            return { success: false, error: msg };
+        }
+    }
+
+    /**
      * Reads the correct AGENTS.md template for the given agent from resources/agent-templates/,
      * then appends a Selected Tools section if tools were provided.
      */

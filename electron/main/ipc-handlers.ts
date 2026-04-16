@@ -103,6 +103,14 @@ export function setupIpcHandlers() {
         await service.deploy(event, payload);
     });
 
+    ipcMain.handle(IPC_EVENTS.AGENT_PAUSE, (_event, { agentName }: { agentName: string }) => {
+        return service.pauseAgent(agentName);
+    });
+
+    ipcMain.handle(IPC_EVENTS.AGENT_RESUME, (_event, { agentName }: { agentName: string }) => {
+        return service.resumeAgent(agentName);
+    });
+
     ipcMain.handle(IPC_EVENTS.GATEWAY_GET_PORT, () => {
         const configPath = getOpenClawConfigPath();
         if (!fs.existsSync(configPath)) {

@@ -8,4 +8,6 @@ export const IPC_EVENTS = {
     DEPLOYMENT_ERROR: 'deployment:error',
     GATEWAY_GET_PORT: 'gateway:get-port',
     GATEWAY_GET_AUTH: 'gateway:get-auth',
+    AGENT_PAUSE: 'agent:pause',
+    AGENT_RESUME: 'agent:resume',
 } as const;

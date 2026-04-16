@@ -23,7 +23,8 @@ export const create = mutation({
     status: v.union(
       v.literal("idle"),
       v.literal("active"),
-      v.literal("blocked")
+      v.literal("blocked"),
+      v.literal("paused")
     ),
     sessionKey: v.string(),
     avatar: v.optional(v.string()),
@@ -48,7 +49,12 @@ export const syncAgent = mutation({
     role: v.string(),
     sessionKey: v.string(),
     status: v.optional(
-      v.union(v.literal("idle"), v.literal("active"), v.literal("blocked"))
+      v.union(
+        v.literal("idle"),
+        v.literal("active"),
+        v.literal("blocked"),
+        v.literal("paused")
+      )
     ),
   },
   handler: async (ctx, args) => {
@@ -59,10 +65,14 @@ export const syncAgent = mutation({
 
     if (!existing) return null;
 
+    // Preserve "paused" state — if no explicit status is provided and the agent
+    // is currently paused, don't flip it to "active" (e.g. from a stray cron run).
+    const status = args.status ?? (existing.status === "paused" ? "paused" : "active");
+
     await ctx.db.patch(existing._id, {
       sessionKey: args.sessionKey,
       role: args.role,
-      status: args.status ?? "active",
+      status,
       updatedAt: Date.now(),
     });
     return existing._id;
@@ -123,7 +133,8 @@ export const updateStatus = mutation({
     status: v.union(
       v.literal("idle"),
       v.literal("active"),
-      v.literal("blocked")
+      v.literal("blocked"),
+      v.literal("paused")
     ),
     currentTaskId: v.optional(v.id("tasks")),
   },

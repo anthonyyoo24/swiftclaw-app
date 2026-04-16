@@ -11,7 +11,8 @@ export default defineSchema({
     status: v.union(
       v.literal("idle"),
       v.literal("active"),
-      v.literal("blocked")
+      v.literal("blocked"),
+      v.literal("paused")
     ),
     currentTaskId: v.optional(v.id("tasks")),
     sessionKey: v.string(),
