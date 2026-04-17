@@ -176,20 +176,27 @@ export function AgentStatus({ roleEmojis }: { roleEmojis: Record<string, string>
 
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
                 {visibleAgents?.length ? (
-                    visibleAgents.map((agent) => (
+                    visibleAgents.map((agent) => {
+                        const dbStatus = agent.status as AgentStatusType;
+                        const effectiveStatus: AgentStatusType =
+                            agent.currentTaskId && dbStatus !== "paused" && dbStatus !== "blocked"
+                                ? "active"
+                                : dbStatus;
+                        return (
                         <AgentCard
                             key={agent._id}
                             name={agent.name.charAt(0).toUpperCase() + agent.name.slice(1)}
                             agentName={agent.name}
                             agentId={agent._id}
                             role={agent.role}
-                            status={agent.status}
+                            status={effectiveStatus}
                             currentTask={agent.currentTaskId ? "Working on task..." : "Idle"}
                             avatar={AGENT_ROLES[agent.name]?.avatar}
                             roleEmojis={roleEmojis}
                             onToggle={handleToggle}
                         />
-                    ))
+                        );
+                    })
                 ) : (
                     <div className="flex flex-col items-center justify-center h-32 gap-2 text-neutral-500">
                         <Icon icon="lucide:bot" className="text-2xl" />

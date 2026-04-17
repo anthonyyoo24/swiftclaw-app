@@ -144,6 +144,12 @@ export const update = mutation({
         .withIndex("by_name", (q) => q.eq("name", agentName))
         .unique();
       if (agent) {
+        // Keep currentTaskId in sync so the UI status dot updates in real time.
+        if (args.status === "in_progress") {
+          await ctx.db.patch(agent._id, { currentTaskId: id, updatedAt: Date.now() });
+        } else if (args.status === "done" || args.status === "assigned" || args.status === "inbox") {
+          await ctx.db.patch(agent._id, { currentTaskId: undefined, updatedAt: Date.now() });
+        }
         await ctx.db.insert("activities", {
           type: "task_status_changed",
           agentId: agent._id,
