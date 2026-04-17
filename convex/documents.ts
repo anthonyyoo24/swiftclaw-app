@@ -71,6 +71,13 @@ export const listByTask = query({
   },
 });
 
+export const remove = mutation({
+  args: { id: v.id("documents") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+  },
+});
+
 export const update = mutation({
   args: {
     id: v.id("documents"),

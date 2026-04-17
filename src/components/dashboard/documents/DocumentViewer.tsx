@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Icon } from "@iconify/react";
 import ReactMarkdown from "react-markdown";
@@ -7,6 +8,7 @@ import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { Doc, Id } from "@convex/_generated/dataModel";
 import { AGENT_ROLES } from "@/constants/ai-core";
+import { DeleteDocumentDialog } from "./DeleteDocumentDialog";
 
 type DocType = "deliverable" | "research" | "protocol" | "general";
 
@@ -107,9 +109,11 @@ const proseComponents: Components = {
 interface DocumentViewerProps {
     document: Doc<"documents">;
     agentMap: Record<Id<"agents">, Doc<"agents">>;
+    onDelete: () => void;
 }
 
-export function DocumentViewer({ document, agentMap }: DocumentViewerProps) {
+export function DocumentViewer({ document, agentMap, onDelete }: DocumentViewerProps) {
+    const [confirmOpen, setConfirmOpen] = useState(false);
     const badge = TYPE_BADGE[document.type];
     const agent = agentMap[document.createdById];
     const avatarSrc = agent ? AGENT_ROLES[agent.name]?.avatar : undefined;
@@ -127,9 +131,20 @@ export function DocumentViewer({ document, agentMap }: DocumentViewerProps) {
         <div className="flex-1 flex flex-col overflow-hidden">
             {/* Document header */}
             <div className="px-6 py-4 border-b border-white/5 shrink-0 space-y-2">
-                <h1 className="text-base font-semibold text-white leading-snug">
-                    {document.title}
-                </h1>
+                <div className="flex items-start justify-between gap-3">
+                    <h1 className="text-base font-semibold text-white leading-snug">
+                        {document.title}
+                    </h1>
+                    <button
+                        type="button"
+                        onClick={() => setConfirmOpen(true)}
+                        className="mt-0.5 flex items-center gap-1.5 px-2.5 py-1 rounded-lg cursor-pointer bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-colors border border-red-500/20 shrink-0"
+                        title="Delete document"
+                    >
+                        <Icon icon="lucide:trash-2" className="text-sm" />
+                        Delete
+                    </button>
+                </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                     {/* Type badge */}
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${badge.className}`}>
@@ -186,6 +201,13 @@ export function DocumentViewer({ document, agentMap }: DocumentViewerProps) {
                     {document.content}
                 </ReactMarkdown>
             </div>
+
+            <DeleteDocumentDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                documentTitle={document.title}
+                onConfirm={onDelete}
+            />
         </div>
     );
 }

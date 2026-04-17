@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Icon } from "@iconify/react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Doc, Id } from "@convex/_generated/dataModel";
 import { DocumentsList } from "./DocumentsList";
@@ -17,6 +17,7 @@ export function DocumentsPageClient() {
 
     const documents = useQuery(api.documents.list, {});
     const agents = useQuery(api.agents.get, {});
+    const removeDocument = useMutation(api.documents.remove);
 
     const agentMap = useMemo(() => {
         const map: Record<Id<"agents">, Doc<"agents">> = {} as Record<Id<"agents">, Doc<"agents">>;
@@ -46,6 +47,11 @@ export function DocumentsPageClient() {
         setSelectedId(id);
     }
 
+    function handleDelete(id: Id<"documents">) {
+        removeDocument({ id });
+        if (selectedId === id) setSelectedId(null);
+    }
+
     return (
         <>
             {/* Header */}
@@ -67,6 +73,7 @@ export function DocumentsPageClient() {
                     agentMap={agentMap}
                     selectedId={visibleSelectedDoc?._id ?? null}
                     onSelect={handleSelect}
+                    onDelete={handleDelete}
                     typeFilter={typeFilter}
                     onTypeFilterChange={(f) => {
                         setTypeFilter(f);
@@ -74,7 +81,7 @@ export function DocumentsPageClient() {
                 />
 
                 {visibleSelectedDoc ? (
-                    <DocumentViewer document={visibleSelectedDoc} agentMap={agentMap} />
+                    <DocumentViewer document={visibleSelectedDoc} agentMap={agentMap} onDelete={() => handleDelete(visibleSelectedDoc._id)} />
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
                         <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center">

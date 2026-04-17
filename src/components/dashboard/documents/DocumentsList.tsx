@@ -20,6 +20,7 @@ interface DocumentsListProps {
     agentMap: Record<Id<"agents">, Doc<"agents">>;
     selectedId: Id<"documents"> | null;
     onSelect: (id: Id<"documents">) => void;
+    onDelete: (id: Id<"documents">) => void;
     typeFilter: TypeFilter;
     onTypeFilterChange: (filter: TypeFilter) => void;
 }
@@ -29,6 +30,7 @@ export function DocumentsList({
     agentMap,
     selectedId,
     onSelect,
+    onDelete,
     typeFilter,
     onTypeFilterChange,
 }: DocumentsListProps) {
@@ -70,6 +72,7 @@ export function DocumentsList({
                             agentMap={agentMap}
                             isSelected={selectedId === doc._id}
                             onClick={() => onSelect(doc._id)}
+                            onDelete={() => onDelete(doc._id)}
                         />
                     ))
                 )}
