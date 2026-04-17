@@ -17,10 +17,10 @@ const statusColors = {
 } as const;
 
 const pillStyles: Record<AgentStatusType, { base: string; active: string }> = {
-    active:  { base: "border-emerald-500/30 text-emerald-400/60 hover:border-emerald-500/60 hover:text-emerald-400", active: "bg-emerald-500/15 border-emerald-500/60 text-emerald-400" },
-    idle:    { base: "border-neutral-500/30 text-neutral-500/60 hover:border-neutral-500/60 hover:text-neutral-400", active: "bg-white/10 border-white/40 text-white" },
-    paused:  { base: "border-yellow-500/30 text-yellow-500/60 hover:border-yellow-500/60 hover:text-yellow-400",   active: "bg-yellow-500/15 border-yellow-500/60 text-yellow-400" },
-    blocked: { base: "border-red-500/30 text-red-400/60 hover:border-red-500/60 hover:text-red-400",               active: "bg-red-500/15 border-red-500/60 text-red-400" },
+    active: { base: "border-emerald-500/30 text-emerald-400/60 hover:border-emerald-500/60 hover:text-emerald-400", active: "bg-emerald-500/15 border-emerald-500/60 text-emerald-400" },
+    idle: { base: "border-neutral-500/30 text-neutral-500/60 hover:border-neutral-500/60 hover:text-neutral-400", active: "bg-white/10 border-white/40 text-white" },
+    paused: { base: "border-yellow-500/30 text-yellow-500/60 hover:border-yellow-500/60 hover:text-yellow-400", active: "bg-yellow-500/15 border-yellow-500/60 text-yellow-400" },
+    blocked: { base: "border-red-500/30 text-red-400/60 hover:border-red-500/60 hover:text-red-400", active: "bg-red-500/15 border-red-500/60 text-red-400" },
 };
 
 type AgentStatusType = keyof typeof statusColors;
@@ -89,16 +89,18 @@ function AgentCard({ name, agentName, agentId, role, status, currentTask, avatar
             <div className={`rounded-lg p-2.5 border border-white/5 ${isActive ? "bg-black/50" : "bg-black/40"}`}>
                 <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1 font-semibold">Current Status</p>
                 {isBlocked ? (
-                    <p className="text-xs text-red-400 truncate flex items-center gap-1.5">
+                    <p className="text-xs text-red-400 truncate italic flex items-center gap-1.5">
                         <Icon icon="lucide:triangle-alert" className="text-[12px]" />
-                        {currentTask}
+                        Blocked
                     </p>
                 ) : isPaused ? (
                     <p className="text-xs text-yellow-600 italic truncate">Paused</p>
                 ) : isIdle ? (
                     <p className="text-xs text-neutral-500 italic truncate">{currentTask}</p>
                 ) : (
-                    <p className="text-xs text-neutral-200 truncate">{currentTask}</p>
+                    <p className="text-xs text-emerald-400 italic truncate flex items-center gap-1.5">
+                        Active
+                    </p>
                 )}
             </div>
         </div>
@@ -122,12 +124,17 @@ export function AgentStatus({ roleEmojis }: { roleEmojis: Record<string, string>
         });
     }
 
+    function getEffectiveStatus(a: { status: string; currentTaskId?: unknown }): AgentStatusType {
+        const s = a.status as AgentStatusType;
+        return a.currentTaskId && s !== "paused" && s !== "blocked" ? "active" : s;
+    }
+
     const visibleAgents = agents?.filter((a) =>
-        activeFilters.size === 0 || activeFilters.has(a.status as AgentStatusType)
+        activeFilters.size === 0 || activeFilters.has(getEffectiveStatus(a))
     );
 
     const statusCounts = agents?.reduce<Partial<Record<AgentStatusType, number>>>((acc, a) => {
-        const s = a.status as AgentStatusType;
+        const s = getEffectiveStatus(a);
         acc[s] = (acc[s] ?? 0) + 1;
         return acc;
     }, {}) ?? {};
@@ -177,24 +184,20 @@ export function AgentStatus({ roleEmojis }: { roleEmojis: Record<string, string>
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
                 {visibleAgents?.length ? (
                     visibleAgents.map((agent) => {
-                        const dbStatus = agent.status as AgentStatusType;
-                        const effectiveStatus: AgentStatusType =
-                            agent.currentTaskId && dbStatus !== "paused" && dbStatus !== "blocked"
-                                ? "active"
-                                : dbStatus;
+                        const effectiveStatus = getEffectiveStatus(agent);
                         return (
-                        <AgentCard
-                            key={agent._id}
-                            name={agent.name.charAt(0).toUpperCase() + agent.name.slice(1)}
-                            agentName={agent.name}
-                            agentId={agent._id}
-                            role={agent.role}
-                            status={effectiveStatus}
-                            currentTask={agent.currentTaskId ? "Working on task..." : "Idle"}
-                            avatar={AGENT_ROLES[agent.name]?.avatar}
-                            roleEmojis={roleEmojis}
-                            onToggle={handleToggle}
-                        />
+                            <AgentCard
+                                key={agent._id}
+                                name={agent.name.charAt(0).toUpperCase() + agent.name.slice(1)}
+                                agentName={agent.name}
+                                agentId={agent._id}
+                                role={agent.role}
+                                status={effectiveStatus}
+                                currentTask={agent.currentTaskId ? "Working on task..." : "Idle"}
+                                avatar={AGENT_ROLES[agent.name]?.avatar}
+                                roleEmojis={roleEmojis}
+                                onToggle={handleToggle}
+                            />
                         );
                     })
                 ) : (
