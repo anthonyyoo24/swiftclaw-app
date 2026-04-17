@@ -35,11 +35,12 @@ export function DeleteDocumentDialog({
                 </DialogHeader>
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button variant="outline" size="sm">Cancel</Button>
+                        <Button variant="outline" size="sm" className="cursor-pointer">Cancel</Button>
                     </DialogClose>
                     <Button
                         variant="destructive"
                         size="sm"
+                        className="cursor-pointer hover:brightness-125"
                         onClick={() => {
                             onConfirm();
                             onOpenChange(false);
