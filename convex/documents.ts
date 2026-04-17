@@ -38,7 +38,7 @@ export const create = mutation({
       .unique();
     if (!agent) throw new Error(`Agent not found: ${args.agentName}`);
     const now = Date.now();
-    return await ctx.db.insert("documents", {
+    const docId = await ctx.db.insert("documents", {
       title: args.title,
       content: args.content,
       type: args.type,
@@ -47,6 +47,15 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    await ctx.db.insert("activities", {
+      type: "document_created",
+      agentId: agent._id,
+      message: `"${args.title}" was published.`,
+      relatedTaskId: args.taskId,
+      relatedDocumentId: docId,
+      createdAt: now,
+    });
+    return docId;
   },
 });
 

@@ -67,15 +67,36 @@ export const create = mutation({
       ? await resolveId(args.createdByName)
       : undefined;
     const now = Date.now();
-    return await ctx.db.insert("tasks", {
+    const taskId = await ctx.db.insert("tasks", {
       title: args.title,
       description: args.description,
-      status: "assigned" as const,
+      status: assigneeIds.length > 0 ? "assigned" as const : "inbox" as const,
       assigneeIds,
       createdById,
       createdAt: now,
       updatedAt: now,
     });
+    if (assigneeIds.length > 0) {
+      await Promise.all(assigneeIds.map((agentId) =>
+        ctx.db.insert("activities", {
+          type: "task_assigned",
+          agentId,
+          message: `Task "${args.title}" was assigned.`,
+          relatedTaskId: taskId,
+          createdAt: now,
+        })
+      ));
+    }
+    if (createdById) {
+      await ctx.db.insert("activities", {
+        type: "task_created",
+        agentId: createdById,
+        message: `Task "${args.title}" was created.`,
+        relatedTaskId: taskId,
+        createdAt: now,
+      });
+    }
+    return taskId;
   },
 });
 
@@ -112,10 +133,26 @@ export const update = mutation({
       v.literal("review"),
       v.literal("done")
     ),
+    agentName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, ...fields } = args;
+    const { id, agentName, ...fields } = args;
     await ctx.db.patch(id, { ...fields, updatedAt: Date.now() });
+    if (agentName) {
+      const agent = await ctx.db
+        .query("agents")
+        .withIndex("by_name", (q) => q.eq("name", agentName))
+        .unique();
+      if (agent) {
+        await ctx.db.insert("activities", {
+          type: "task_status_changed",
+          agentId: agent._id,
+          message: `Task status changed to "${args.status}".`,
+          relatedTaskId: id,
+          createdAt: Date.now(),
+        });
+      }
+    }
   },
 });
 
