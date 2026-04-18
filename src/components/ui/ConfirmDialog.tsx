@@ -11,27 +11,29 @@ import {
 } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 
-interface DeleteDocumentDialogProps {
+interface ConfirmDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    documentTitle: string;
+    title: string;
+    description: string;
+    confirmLabel?: string;
     onConfirm: () => void;
 }
 
-export function DeleteDocumentDialog({
+export function ConfirmDialog({
     open,
     onOpenChange,
-    documentTitle,
+    title,
+    description,
+    confirmLabel = "Delete",
     onConfirm,
-}: DeleteDocumentDialogProps) {
+}: ConfirmDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent showCloseButton={false} className="max-w-sm">
                 <DialogHeader>
-                    <DialogTitle>Delete document?</DialogTitle>
-                    <DialogDescription>
-                        &ldquo;{documentTitle}&rdquo; will be permanently deleted. This action cannot be undone.
-                    </DialogDescription>
+                    <DialogTitle>{title}</DialogTitle>
+                    <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
                     <DialogClose asChild>
@@ -46,7 +48,7 @@ export function DeleteDocumentDialog({
                             onOpenChange(false);
                         }}
                     >
-                        Delete
+                        {confirmLabel}
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -8,7 +8,7 @@ import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { Doc, Id } from "@convex/_generated/dataModel";
 import { AGENT_ROLES } from "@/constants/ai-core";
-import { DeleteDocumentDialog } from "./DeleteDocumentDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type DocType = "deliverable" | "research" | "protocol" | "general";
 
@@ -202,10 +202,11 @@ export function DocumentViewer({ document, agentMap, onDelete }: DocumentViewerP
                 </ReactMarkdown>
             </div>
 
-            <DeleteDocumentDialog
+            <ConfirmDialog
                 open={confirmOpen}
                 onOpenChange={setConfirmOpen}
-                documentTitle={document.title}
+                title="Delete document?"
+                description={`"${document.title}" will be permanently deleted. This action cannot be undone.`}
                 onConfirm={onDelete}
             />
         </div>
