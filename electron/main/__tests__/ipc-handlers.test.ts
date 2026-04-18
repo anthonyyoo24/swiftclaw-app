@@ -3,10 +3,12 @@ import type { IpcMainEvent } from 'electron';
 import type { DeploymentPayload } from '../../../src/types/ai';
 
 // ── Hoist mocks so factory closures can reference them ───────────────────────
-const { mockDeploy, mockAuthenticate, mockCancel, mockExistsSync, mockReadFileSync, mockSpawn, mockSpawnSync } = vi.hoisted(() => ({
+const { mockDeploy, mockAuthenticate, mockCancel, mockPauseAgent, mockResumeAgent, mockExistsSync, mockReadFileSync, mockSpawn, mockSpawnSync } = vi.hoisted(() => ({
     mockDeploy: vi.fn(),
     mockAuthenticate: vi.fn(),
     mockCancel: vi.fn(),
+    mockPauseAgent: vi.fn(),
+    mockResumeAgent: vi.fn(),
     mockExistsSync: vi.fn<(path: string) => boolean>(),
     mockReadFileSync: vi.fn<(path: string, encoding: string) => string>(),
     mockSpawn: vi.fn(() => ({ unref: vi.fn(), on: vi.fn() })),
@@ -53,6 +55,8 @@ vi.mock('../OpenClawService', () => ({
         this.deploy = mockDeploy;
         this.authenticate = mockAuthenticate;
         this.cancel = mockCancel;
+        this.pauseAgent = mockPauseAgent;
+        this.resumeAgent = mockResumeAgent;
     }),
 }));
 
@@ -85,6 +89,8 @@ describe('setupIpcHandlers', () => {
         mockDeploy.mockReset();
         mockAuthenticate.mockReset();
         mockCancel.mockReset();
+        mockPauseAgent.mockReset();
+        mockResumeAgent.mockReset();
         mockExistsSync.mockReset();
         mockReadFileSync.mockReset();
         mockSpawn.mockReset().mockReturnValue({ unref: vi.fn(), on: vi.fn() });
@@ -197,6 +203,36 @@ describe('setupIpcHandlers', () => {
             mockReadFileSync.mockReturnValue('not-valid-json{{');
             const result = ipcInvokeHandlers['gateway:get-port']();
             expect(result).toBe(18789);
+        });
+    });
+
+    describe('agent:pause handler', () => {
+        it('registers a handler for agent:pause', () => {
+            expect(ipcInvokeHandlers['agent:pause']).toBeDefined();
+        });
+
+        it('calls service.pauseAgent with the agentName when agent:pause fires', async () => {
+            mockPauseAgent.mockResolvedValue({ success: true });
+
+            await ipcInvokeHandlers['agent:pause'](undefined, { agentName: 'maya' });
+
+            expect(mockPauseAgent).toHaveBeenCalledOnce();
+            expect(mockPauseAgent).toHaveBeenCalledWith('maya');
+        });
+    });
+
+    describe('agent:resume handler', () => {
+        it('registers a handler for agent:resume', () => {
+            expect(ipcInvokeHandlers['agent:resume']).toBeDefined();
+        });
+
+        it('calls service.resumeAgent with the agentName when agent:resume fires', async () => {
+            mockResumeAgent.mockResolvedValue({ success: true });
+
+            await ipcInvokeHandlers['agent:resume'](undefined, { agentName: 'maya' });
+
+            expect(mockResumeAgent).toHaveBeenCalledOnce();
+            expect(mockResumeAgent).toHaveBeenCalledWith('maya');
         });
     });
 });

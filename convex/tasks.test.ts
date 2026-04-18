@@ -165,6 +165,53 @@ describe("tasks:update", () => {
     const after = (await t.query(api.tasks.list, {}))[0].updatedAt;
     expect(after).toBeGreaterThanOrEqual(before);
   });
+
+  it("sets agent currentTaskId when status becomes in_progress", async () => {
+    const t = convexTest(schema, modules);
+    const agentId = await seedAgent(t, "maya");
+    const id = await seedTask(t, { status: "assigned", assigneeIds: [agentId], title: "In Progress Task" });
+
+    await t.mutation(api.tasks.update, { id, status: "in_progress", agentName: "maya" });
+
+    const agent = await t.run((ctx) => ctx.db.get(agentId));
+    expect(agent?.currentTaskId).toBe(id);
+  });
+
+  it("clears agent currentTaskId when status becomes done", async () => {
+    const t = convexTest(schema, modules);
+    const agentId = await seedAgent(t, "maya");
+    const id = await seedTask(t, { status: "in_progress", assigneeIds: [agentId], title: "Done Task" });
+    // Seed currentTaskId directly
+    await t.run((ctx) => ctx.db.patch(agentId, { currentTaskId: id }));
+
+    await t.mutation(api.tasks.update, { id, status: "done", agentName: "maya" });
+
+    const agent = await t.run((ctx) => ctx.db.get(agentId));
+    expect(agent?.currentTaskId).toBeUndefined();
+  });
+
+  it("inserts a task_status_changed activity when agentName is provided", async () => {
+    const t = convexTest(schema, modules);
+    const agentId = await seedAgent(t, "maya");
+    const id = await seedTask(t, { status: "assigned", assigneeIds: [agentId], title: "Activity Task" });
+
+    await t.mutation(api.tasks.update, { id, status: "in_progress", agentName: "maya" });
+
+    const activities = await t.run((ctx) => ctx.db.query("activities").collect());
+    expect(activities).toHaveLength(1);
+    expect(activities[0].type).toBe("task_status_changed");
+    expect(activities[0].agentId).toBe(agentId);
+  });
+
+  it("does not insert an activity when agentName is omitted", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [], title: "No Activity Task" });
+
+    await t.mutation(api.tasks.update, { id, status: "in_progress" });
+
+    const activities = await t.run((ctx) => ctx.db.query("activities").collect());
+    expect(activities).toHaveLength(0);
+  });
 });
 
 describe("tasks:create", () => {
@@ -246,6 +293,52 @@ describe("tasks:create", () => {
     });
     const tasks = await t.query(api.tasks.list, {});
     expect(tasks[0].createdById).toBeUndefined();
+  });
+
+  it("inserts a task_assigned activity for each assignee", async () => {
+    const t = convexTest(schema, modules);
+    await seedAgent(t, "kevin");
+    await seedAgent(t, "chris");
+    await t.mutation(api.tasks.create, {
+      title: "Team task",
+      description: "",
+      assigneeNames: ["kevin", "chris"],
+    });
+
+    const activities = await t.run((ctx) => ctx.db.query("activities").collect());
+    const assigned = activities.filter((a) => a.type === "task_assigned");
+    expect(assigned).toHaveLength(2);
+  });
+
+  it("inserts a task_created activity when createdByName is provided", async () => {
+    const t = convexTest(schema, modules);
+    await seedAgent(t, "sarah");
+    await seedAgent(t, "kevin");
+    await t.mutation(api.tasks.create, {
+      title: "Delegated",
+      description: "",
+      assigneeNames: ["kevin"],
+      createdByName: "sarah",
+    });
+
+    const activities = await t.run((ctx) => ctx.db.query("activities").collect());
+    const created = activities.filter((a) => a.type === "task_created");
+    expect(created).toHaveLength(1);
+    expect(created[0].message).toContain("Delegated");
+  });
+
+  it("does not insert a task_created activity when createdByName is omitted", async () => {
+    const t = convexTest(schema, modules);
+    await seedAgent(t, "kevin");
+    await t.mutation(api.tasks.create, {
+      title: "No creator",
+      description: "",
+      assigneeNames: ["kevin"],
+    });
+
+    const activities = await t.run((ctx) => ctx.db.query("activities").collect());
+    const created = activities.filter((a) => a.type === "task_created");
+    expect(created).toHaveLength(0);
   });
 });
 

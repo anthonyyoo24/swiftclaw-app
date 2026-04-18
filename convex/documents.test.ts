@@ -247,6 +247,95 @@ describe("documents", () => {
                 })
             ).rejects.toThrow("Agent not found: nonexistent-agent");
         });
+
+        it("inserts a document_created activity after creation", async () => {
+            await insertAgent();
+
+            await t.mutation(api.documents.create, {
+                title: "Activity Doc",
+                content: "x",
+                type: "general",
+                agentName: "maya",
+            });
+
+            const activities = await t.run((ctx) =>
+                ctx.db.query("activities").collect()
+            );
+            expect(activities).toHaveLength(1);
+            expect(activities[0].type).toBe("document_created");
+        });
+
+        it("sets the activity message to the document title", async () => {
+            await insertAgent();
+
+            await t.mutation(api.documents.create, {
+                title: "My Report",
+                content: "x",
+                type: "deliverable",
+                agentName: "maya",
+            });
+
+            const activities = await t.run((ctx) =>
+                ctx.db.query("activities").collect()
+            );
+            expect(activities[0].message).toContain("My Report");
+        });
+    });
+
+    // ── remove ────────────────────────────────────────────────────────────
+
+    describe("remove", () => {
+        it("deletes a document so it no longer appears in list", async () => {
+            await insertAgent();
+            const id = await t.mutation(api.documents.create, {
+                title: "To Delete",
+                content: "x",
+                type: "general",
+                agentName: "maya",
+            });
+
+            await t.mutation(api.documents.remove, { id });
+
+            const docs = await t.query(api.documents.list, {});
+            expect(docs).toHaveLength(0);
+        });
+
+        it("returns null from getById after removal", async () => {
+            await insertAgent();
+            const id = await t.mutation(api.documents.create, {
+                title: "Gone",
+                content: "x",
+                type: "general",
+                agentName: "maya",
+            });
+
+            await t.mutation(api.documents.remove, { id });
+
+            const doc = await t.query(api.documents.getById, { id });
+            expect(doc).toBeNull();
+        });
+
+        it("only removes the targeted document", async () => {
+            await insertAgent();
+            const idToRemove = await t.mutation(api.documents.create, {
+                title: "Remove Me",
+                content: "x",
+                type: "general",
+                agentName: "maya",
+            });
+            await t.mutation(api.documents.create, {
+                title: "Keep Me",
+                content: "y",
+                type: "general",
+                agentName: "maya",
+            });
+
+            await t.mutation(api.documents.remove, { id: idToRemove });
+
+            const docs = await t.query(api.documents.list, {});
+            expect(docs).toHaveLength(1);
+            expect(docs[0].title).toBe("Keep Me");
+        });
     });
 
 });

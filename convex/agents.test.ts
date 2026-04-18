@@ -93,4 +93,125 @@ describe("syncAgent", () => {
     expect(patched).toBeDefined();
     expect(patched!.status).toBe("active");
   });
+
+  it("preserves paused status when no explicit status is provided", async () => {
+    const t = convexTest(schema, modules);
+
+    const now = Date.now();
+    const id = await t.run((ctx) =>
+      ctx.db.insert("agents", {
+        name: "Atlas",
+        role: "agent",
+        sessionKey: "old-key",
+        status: "paused" as const,
+        createdAt: now,
+        updatedAt: now,
+      })
+    );
+
+    await t.mutation(api.agents.syncAgent, {
+      name: "Atlas",
+      role: "agent",
+      sessionKey: "new-key",
+      // no status — agent is paused, should not be flipped to active
+    });
+
+    const agent = await t.run((ctx) => ctx.db.get(id));
+    expect(agent?.status).toBe("paused");
+  });
+
+  it("overrides paused status when an explicit status is given", async () => {
+    const t = convexTest(schema, modules);
+
+    const now = Date.now();
+    const id = await t.run((ctx) =>
+      ctx.db.insert("agents", {
+        name: "Atlas",
+        role: "agent",
+        sessionKey: "old-key",
+        status: "paused" as const,
+        createdAt: now,
+        updatedAt: now,
+      })
+    );
+
+    await t.mutation(api.agents.syncAgent, {
+      name: "Atlas",
+      role: "agent",
+      sessionKey: "new-key",
+      status: "active",
+    });
+
+    const agent = await t.run((ctx) => ctx.db.get(id));
+    expect(agent?.status).toBe("active");
+  });
+});
+
+// ── updateStatus ──────────────────────────────────────────────────────────────
+
+describe("agents:updateStatus", () => {
+  it("throws when called without authentication", async () => {
+    const t = convexTest(schema, modules);
+    const now = Date.now();
+    const id = await t.run((ctx) =>
+      ctx.db.insert("agents", {
+        name: "Atlas",
+        role: "agent",
+        sessionKey: "key",
+        status: "active" as const,
+        createdAt: now,
+        updatedAt: now,
+      })
+    );
+
+    await expect(
+      t.mutation(api.agents.updateStatus, { id, status: "paused" })
+    ).rejects.toThrow("Not authenticated");
+  });
+
+  it("patches the agent status when authenticated", async () => {
+    const t = convexTest(schema, modules);
+    const now = Date.now();
+    const id = await t.run((ctx) =>
+      ctx.db.insert("agents", {
+        name: "Atlas",
+        role: "agent",
+        sessionKey: "key",
+        status: "active" as const,
+        createdAt: now,
+        updatedAt: now,
+      })
+    );
+
+    await t.withIdentity({ name: "Test User" }).mutation(api.agents.updateStatus, {
+      id,
+      status: "paused",
+    });
+
+    const agent = await t.run((ctx) => ctx.db.get(id));
+    expect(agent?.status).toBe("paused");
+  });
+
+  it("can resume a paused agent back to idle", async () => {
+    const t = convexTest(schema, modules);
+    const now = Date.now();
+    const id = await t.run((ctx) =>
+      ctx.db.insert("agents", {
+        name: "Atlas",
+        role: "agent",
+        sessionKey: "key",
+        status: "paused" as const,
+        createdAt: now,
+        updatedAt: now,
+      })
+    );
+
+    await t.withIdentity({ name: "Test User" }).mutation(api.agents.updateStatus, {
+      id,
+      status: "idle",
+    });
+
+    const agent = await t.run((ctx) => ctx.db.get(id));
+    expect(agent?.status).toBe("idle");
+  });
 });
