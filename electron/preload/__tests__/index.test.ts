@@ -79,6 +79,8 @@ describe('preload contextBridge API', () => {
             'onDeploymentError',
             'onDeploymentProgress',
             'onDeploymentSuccess',
+            'pauseAgent',
+            'resumeAgent',
             'sendAuthOauthCancel',
             'sendAuthOauthStart',
             'sendDeploymentStart',
