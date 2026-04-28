@@ -203,6 +203,22 @@ export class OpenClawService {
         }
     }
 
+    async resetOpenClaw(): Promise<{ success: boolean; error?: string }> {
+        const cliEnv = this.buildCliEnv();
+        try {
+            await this.runLocalOpenClawCommand(
+                ['reset', '--scope', 'full', '--yes', '--non-interactive'],
+                cliEnv,
+            );
+            console.log('[OpenClawService] Full reset completed');
+            return { success: true };
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[OpenClawService] reset failed: ${msg}`);
+            return { success: false, error: msg };
+        }
+    }
+
     /**
      * Reads the correct AGENTS.md template for the given agent from resources/agent-templates/,
      * then appends a Selected Tools section if tools were provided.

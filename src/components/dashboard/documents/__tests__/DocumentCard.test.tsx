@@ -101,16 +101,16 @@ describe("DocumentCard", () => {
         const { container } = render(
             <DocumentCard document={baseDoc} agentMap={{}} isSelected={true} onClick={vi.fn()} onDelete={vi.fn()} />
         );
-        const button = container.querySelector("button");
-        expect(button?.className).toMatch(/border-blue-500/);
+        const card = container.querySelector('[role="button"]');
+        expect(card?.className).toMatch(/border-blue-500/);
     });
 
     it("does not apply the selected border class when isSelected is false", () => {
         const { container } = render(
             <DocumentCard document={baseDoc} agentMap={{}} isSelected={false} onClick={vi.fn()} onDelete={vi.fn()} />
         );
-        const button = container.querySelector("button");
-        expect(button?.className).not.toMatch(/border-blue-500/);
+        const card = container.querySelector('[role="button"]');
+        expect(card?.className).not.toMatch(/border-blue-500/);
     });
 
     it("calls onClick when the card is clicked", async () => {

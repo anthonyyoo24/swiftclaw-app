@@ -111,6 +111,10 @@ export function setupIpcHandlers() {
         return service.resumeAgent(agentName);
     });
 
+    ipcMain.handle(IPC_EVENTS.OPENCLAW_RESET, () => {
+        return service.resetOpenClaw();
+    });
+
     ipcMain.handle(IPC_EVENTS.GATEWAY_GET_PORT, () => {
         const configPath = getOpenClawConfigPath();
         if (!fs.existsSync(configPath)) {

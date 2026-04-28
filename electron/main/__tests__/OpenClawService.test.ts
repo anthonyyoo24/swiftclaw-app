@@ -946,3 +946,60 @@ describe('Stage 2 data handler suppression', () => {
         expect(stripAnsi(interspersed)).toBe(token);
     });
 });
+
+// ── OpenClawService.resetOpenClaw() ──────────────────────────────────────────
+
+describe('OpenClawService.resetOpenClaw()', () => {
+    let spawnMock: MockInstance;
+    let service: OpenClawService;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        spawnMock = vi.mocked(childProcess.spawn);
+        spawnMock.mockReset();
+        service = new OpenClawService();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('spawns openclaw reset with --scope full --yes --non-interactive', async () => {
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+
+        const promise = service.resetOpenClaw();
+        await vi.runAllTimersAsync();
+        await promise;
+
+        expect(spawnMock).toHaveBeenCalledOnce();
+        const [cmd, args] = spawnMock.mock.calls[0];
+        expect(cmd).toMatch(/openclaw/);
+        expect(cmd).not.toMatch(/^npx/);
+        expect(args).toContain('reset');
+        expect(args).toContain('--scope');
+        expect(args).toContain('full');
+        expect(args).toContain('--yes');
+        expect(args).toContain('--non-interactive');
+    });
+
+    it('returns { success: true } when the command exits with code 0', async () => {
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+
+        const promise = service.resetOpenClaw();
+        await vi.runAllTimersAsync();
+        const result = await promise;
+
+        expect(result).toEqual({ success: true });
+    });
+
+    it('returns { success: false, error } when the command exits with a non-zero code', async () => {
+        spawnMock.mockImplementation(() => makeFakeProcess(1));
+
+        const promise = service.resetOpenClaw();
+        await vi.runAllTimersAsync();
+        const result = await promise;
+
+        expect(result.success).toBe(false);
+        expect(result.error).toBeDefined();
+    });
+});

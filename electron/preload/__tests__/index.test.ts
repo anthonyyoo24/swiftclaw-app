@@ -9,6 +9,7 @@ const { mockIpcRenderer } = vi.hoisted(() => ({
         send: vi.fn(),
         on: vi.fn().mockReturnValue(vi.fn()),
         removeListener: vi.fn(),
+        invoke: vi.fn(),
     },
 }));
 
@@ -80,6 +81,7 @@ describe('preload contextBridge API', () => {
             'onDeploymentProgress',
             'onDeploymentSuccess',
             'pauseAgent',
+            'resetOpenClaw',
             'resumeAgent',
             'sendAuthOauthCancel',
             'sendAuthOauthStart',
@@ -200,6 +202,15 @@ describe('preload contextBridge API', () => {
             'deployment:error',
             expect.any(Function)
         );
+    });
+
+    // ── resetOpenClaw ────────────────────────────────────────────────────────
+
+    it('resetOpenClaw invokes openclaw:reset with no arguments', () => {
+        const ipc = exposedApi['electron'] as { ipcRenderer: Record<string, (...args: unknown[]) => unknown> };
+        mockIpcRenderer.invoke.mockResolvedValue({ success: true });
+        ipc.ipcRenderer.resetOpenClaw();
+        expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('openclaw:reset');
     });
 
     // ── Security: raw ipcRenderer must never be forwarded ───────────────────

@@ -10,4 +10,5 @@ export const IPC_EVENTS = {
     GATEWAY_GET_AUTH: 'gateway:get-auth',
     AGENT_PAUSE: 'agent:pause',
     AGENT_RESUME: 'agent:resume',
+    OPENCLAW_RESET: 'openclaw:reset',
 } as const;

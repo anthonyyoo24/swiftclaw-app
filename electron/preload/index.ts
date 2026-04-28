@@ -34,6 +34,7 @@ try {
             getGatewayAuth: (): Promise<{ token?: string; password?: string }> => ipcRenderer.invoke('gateway:get-auth'),
             pauseAgent: (agentName: string): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('agent:pause', { agentName }),
             resumeAgent: (agentName: string): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('agent:resume', { agentName }),
+            resetOpenClaw: (): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('openclaw:reset'),
         }
     })
 } catch (error) {

@@ -3,12 +3,13 @@ import type { IpcMainEvent } from 'electron';
 import type { DeploymentPayload } from '../../../src/types/ai';
 
 // ── Hoist mocks so factory closures can reference them ───────────────────────
-const { mockDeploy, mockAuthenticate, mockCancel, mockPauseAgent, mockResumeAgent, mockExistsSync, mockReadFileSync, mockSpawn, mockSpawnSync } = vi.hoisted(() => ({
+const { mockDeploy, mockAuthenticate, mockCancel, mockPauseAgent, mockResumeAgent, mockResetOpenClaw, mockExistsSync, mockReadFileSync, mockSpawn, mockSpawnSync } = vi.hoisted(() => ({
     mockDeploy: vi.fn(),
     mockAuthenticate: vi.fn(),
     mockCancel: vi.fn(),
     mockPauseAgent: vi.fn(),
     mockResumeAgent: vi.fn(),
+    mockResetOpenClaw: vi.fn(),
     mockExistsSync: vi.fn<(path: string) => boolean>(),
     mockReadFileSync: vi.fn<(path: string, encoding: string) => string>(),
     mockSpawn: vi.fn(() => ({ unref: vi.fn(), on: vi.fn() })),
@@ -57,6 +58,7 @@ vi.mock('../OpenClawService', () => ({
         this.cancel = mockCancel;
         this.pauseAgent = mockPauseAgent;
         this.resumeAgent = mockResumeAgent;
+        this.resetOpenClaw = mockResetOpenClaw;
     }),
 }));
 
@@ -91,6 +93,7 @@ describe('setupIpcHandlers', () => {
         mockCancel.mockReset();
         mockPauseAgent.mockReset();
         mockResumeAgent.mockReset();
+        mockResetOpenClaw.mockReset();
         mockExistsSync.mockReset();
         mockReadFileSync.mockReset();
         mockSpawn.mockReset().mockReturnValue({ unref: vi.fn(), on: vi.fn() });
@@ -233,6 +236,29 @@ describe('setupIpcHandlers', () => {
 
             expect(mockResumeAgent).toHaveBeenCalledOnce();
             expect(mockResumeAgent).toHaveBeenCalledWith('maya');
+        });
+    });
+
+    describe('openclaw:reset handler', () => {
+        it('registers a handler for openclaw:reset', () => {
+            expect(ipcInvokeHandlers['openclaw:reset']).toBeDefined();
+        });
+
+        it('calls service.resetOpenClaw and returns success when it resolves', async () => {
+            mockResetOpenClaw.mockResolvedValue({ success: true });
+
+            const result = await ipcInvokeHandlers['openclaw:reset']();
+
+            expect(mockResetOpenClaw).toHaveBeenCalledOnce();
+            expect(result).toEqual({ success: true });
+        });
+
+        it('returns the error from service.resetOpenClaw when it fails', async () => {
+            mockResetOpenClaw.mockResolvedValue({ success: false, error: 'binary not found' });
+
+            const result = await ipcInvokeHandlers['openclaw:reset']();
+
+            expect(result).toEqual({ success: false, error: 'binary not found' });
         });
     });
 });
