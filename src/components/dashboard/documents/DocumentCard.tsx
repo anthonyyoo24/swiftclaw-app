@@ -58,9 +58,11 @@ export function DocumentCard({ document, agentMap, isSelected, onClick, onDelete
 
     return (
         <>
-            <button
-                type="button"
+            <div
+                role="button"
+                tabIndex={0}
                 onClick={onClick}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
                 className={`w-full text-left p-3 rounded-xl border transition-colors cursor-pointer flex flex-col gap-2 ${
                     isSelected
                         ? "bg-blue-500/5 border-blue-500/40"
@@ -109,7 +111,7 @@ export function DocumentCard({ document, agentMap, isSelected, onClick, onDelete
                         </span>
                     </div>
                 </div>
-            </button>
+            </div>
 
             <ConfirmDialog
                 open={confirmOpen}
