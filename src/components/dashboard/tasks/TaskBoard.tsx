@@ -1,122 +1,68 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
+import { Id, Doc } from "@convex/_generated/dataModel";
 import { TaskColumn } from "./TaskColumn";
-import { TaskCard, type TaskCardProps } from "./TaskCard";
+import { TaskCard } from "./TaskCard";
+import { TaskDetailPanel } from "./TaskDetailPanel";
 
-interface ColumnData {
-    title: string;
-    isDimmed?: boolean;
-    cards: TaskCardProps[];
-}
-
-const COLUMNS: ColumnData[] = [
-    {
-        title: "Inbox",
-        cards: [
-            {
-                tagLabel: "Bug",
-                tagColor: "red",
-                title: "Fix login authentication bypass",
-                date: "Oct 14",
-                comments: 0,
-                assigneeIcon: "lucide:user",
-                assigneeColor: "neutral",
-                hasOptions: true,
-            },
-            {
-                tagLabel: "Feature",
-                tagColor: "blue",
-                title: "Add dark mode toggle",
-                date: "Oct 13",
-                comments: 3,
-                assigneeIcon: "lucide:user",
-                assigneeColor: "neutral",
-            },
-        ],
-    },
-    {
-        title: "Assigned",
-        cards: [
-            {
-                tagLabel: "Update",
-                tagColor: "purple",
-                title: "Update dependency packages",
-                date: "Oct 12",
-                assigneeIcon: "lucide:bot",
-                assigneeColor: "blue",
-            },
-        ],
-    },
-    {
-        title: "In Progress",
-        cards: [
-            {
-                tagLabel: "DevOps",
-                tagColor: "orange",
-                title: "Orchestrating deployment pipeline",
-                date: "Oct 11",
-                assigneeIcon: "lucide:bot",
-                assigneeColor: "blue",
-            },
-            {
-                tagLabel: "Feature",
-                tagColor: "blue",
-                title: "Implement Kanban board",
-                date: "Oct 10",
-                assigneeIcon: "lucide:code-2",
-                assigneeColor: "purple",
-            },
-        ],
-    },
-    {
-        title: "Review",
-        cards: [
-            {
-                tagLabel: "Copy",
-                tagColor: "emerald",
-                title: "Landing Page Copy v2",
-                date: "Oct 09",
-                assigneeIcon: "lucide:pen-tool",
-                assigneeColor: "orange",
-            },
-        ],
-    },
-    {
-        title: "Done",
-        isDimmed: true,
-        cards: [
-            {
-                tagLabel: "Setup",
-                tagColor: "neutral",
-                title: "Initial repository setup",
-                date: "Oct 05",
-                assigneeIcon: "lucide:bot",
-                assigneeColor: "blue",
-                isDone: true,
-            },
-        ],
-    },
+const COLUMN_CONFIG: { status: "inbox" | "assigned" | "in_progress" | "review" | "done"; title: string; isDimmed?: boolean }[] = [
+    { status: "inbox", title: "Inbox" },
+    { status: "assigned", title: "Assigned" },
+    { status: "in_progress", title: "In Progress" },
+    { status: "review", title: "Review" },
+    { status: "done", title: "Done", isDimmed: true },
 ];
 
-/**
- * TaskBoard component that renders a kanban-style board with task columns and cards.
- * Uses a data-driven approach to map over predefined column and task data.
- */
 export function TaskBoard() {
+    const [selectedTaskId, setSelectedTaskId] = useState<Id<"tasks"> | null>(null);
+    const tasks = useQuery(api.tasks.list, {});
+    const selectedTask = tasks?.find((t) => t._id === selectedTaskId) ?? null;
+    const agents = useQuery(api.agents.get, {});
+    const agentMap = useMemo(() => {
+        if (!agents) return {};
+        const map: Record<string, Doc<"agents">> = {};
+        for (const agent of agents) {
+            map[agent._id] = agent;
+        }
+        return map;
+    }, [agents]);
+
     return (
-        <div className="flex-1 overflow-x-auto overflow-y-hidden p-[10.7px]">
-            <div className="flex gap-[10.7px] h-full min-w-max md:w-full pb-2">
-                {COLUMNS.map((column) => (
-                    <TaskColumn
-                        key={column.title}
-                        title={column.title}
-                        count={column.cards.length}
-                        isDimmed={column.isDimmed}
-                    >
-                        {column.cards.map((card, index) => (
-                            <TaskCard key={`${column.title}-${index}`} {...card} />
-                        ))}
-                    </TaskColumn>
-                ))}
+        <div className="flex flex-1 overflow-hidden relative">
+            <div className="flex-1 overflow-x-auto overflow-y-hidden p-[10.7px]">
+                <div className="flex gap-[10.7px] h-full min-w-max md:w-full pb-2">
+                    {COLUMN_CONFIG.map((col) => {
+                        const colTasks = (tasks ?? []).filter((t) => t.status === col.status);
+                        return (
+                            <TaskColumn
+                                key={col.status}
+                                title={col.title}
+                                count={colTasks.length}
+                                isDimmed={col.isDimmed}
+                            >
+                                {colTasks.map((task) => (
+                                    <TaskCard
+                                        key={task._id}
+                                        task={task}
+                                        agentMap={agentMap}
+                                        isSelected={selectedTaskId === task._id}
+                                        onClick={() => setSelectedTaskId(task._id)}
+                                    />
+                                ))}
+                            </TaskColumn>
+                        );
+                    })}
+                </div>
             </div>
+            {selectedTask && (
+                <TaskDetailPanel
+                    task={selectedTask}
+                    onClose={() => setSelectedTaskId(null)}
+                />
+            )}
         </div>
     );
 }

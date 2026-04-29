@@ -1,0 +1,366 @@
+/// <reference types="vite/client" />
+import { convexTest } from "convex-test";
+import { describe, it, expect } from "vitest";
+import { api } from "./_generated/api";
+import schema from "./schema";
+
+const modules = import.meta.glob("./**/*.ts");
+
+// Helper: seed an agent directly (no auth required)
+async function seedAgent(t: ReturnType<typeof convexTest>, name: string) {
+  return t.run(async (ctx) => {
+    const now = Date.now();
+    return ctx.db.insert("agents", {
+      name,
+      role: "specialist",
+      status: "idle" as const,
+      sessionKey: `agent:${name.toLowerCase()}:main`,
+      createdAt: now,
+      updatedAt: now,
+    });
+  });
+}
+
+// Helper: seed a task directly
+async function seedTask(
+  t: ReturnType<typeof convexTest>,
+  opts: {
+    title?: string;
+    status: "inbox" | "assigned" | "in_progress" | "review" | "done";
+    assigneeIds: string[];
+  }
+) {
+  return t.run(async (ctx) => {
+    const now = Date.now();
+    return ctx.db.insert("tasks", {
+      title: opts.title ?? "Test task",
+      description: "Test description",
+      status: opts.status,
+      assigneeIds: opts.assigneeIds as never,
+      createdAt: now,
+      updatedAt: now,
+    });
+  });
+}
+
+describe("tasks:getAssigned", () => {
+  it("returns null when the agent name does not exist", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.query(api.tasks.getAssigned, { agentName: "maya" });
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the agent exists but has no tasks at all", async () => {
+    const t = convexTest(schema, modules);
+    await seedAgent(t, "maya");
+    const result = await t.query(api.tasks.getAssigned, { agentName: "maya" });
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the agent has tasks but none are assigned", async () => {
+    const t = convexTest(schema, modules);
+    const agentId = await seedAgent(t, "maya");
+    await seedTask(t, { status: "in_progress", assigneeIds: [agentId] });
+    await seedTask(t, { status: "done", assigneeIds: [agentId] });
+
+    const result = await t.query(api.tasks.getAssigned, { agentName: "maya" });
+    expect(result).toBeNull();
+  });
+
+  it("returns the assigned task when one exists for the agent", async () => {
+    const t = convexTest(schema, modules);
+    const agentId = await seedAgent(t, "maya");
+    const taskId = await seedTask(t, { title: "Write blog post", status: "assigned", assigneeIds: [agentId] });
+
+    const result = await t.query(api.tasks.getAssigned, { agentName: "maya" });
+    expect(result).not.toBeNull();
+    expect(result!._id).toBe(taskId);
+    expect(result!.title).toBe("Write blog post");
+    expect(result!.status).toBe("assigned");
+  });
+
+  it("returns only this agent's task, not another agent's assigned task", async () => {
+    const t = convexTest(schema, modules);
+    const mayaId = await seedAgent(t, "maya");
+    const jackId = await seedAgent(t, "Jack");
+    await seedTask(t, { title: "Jack's task", status: "assigned", assigneeIds: [jackId] });
+    const mayaTaskId = await seedTask(t, { title: "Maya's task", status: "assigned", assigneeIds: [mayaId] });
+
+    const result = await t.query(api.tasks.getAssigned, { agentName: "maya" });
+    expect(result).not.toBeNull();
+    expect(result!._id).toBe(mayaTaskId);
+    expect(result!.title).toBe("Maya's task");
+  });
+
+  it("returns the oldest assigned task first when the agent has multiple", async () => {
+    const t = convexTest(schema, modules);
+    const agentId = await seedAgent(t, "maya");
+    const firstTaskId = await seedTask(t, { title: "First task", status: "assigned", assigneeIds: [agentId] });
+    await seedTask(t, { title: "Second task", status: "assigned", assigneeIds: [agentId] });
+
+    const result = await t.query(api.tasks.getAssigned, { agentName: "maya" });
+    expect(result!._id).toBe(firstTaskId);
+  });
+});
+
+describe("tasks:list", () => {
+  it("returns an empty array when no tasks exist", async () => {
+    const t = convexTest(schema, modules);
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks).toHaveLength(0);
+  });
+
+  it("returns all tasks that have been inserted", async () => {
+    const t = convexTest(schema, modules);
+    await seedTask(t, { status: "inbox", assigneeIds: [], title: "Task A" });
+    await seedTask(t, { status: "inbox", assigneeIds: [], title: "Task B" });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks).toHaveLength(2);
+  });
+
+  it("respects the limit argument", async () => {
+    const t = convexTest(schema, modules);
+    await seedTask(t, { status: "inbox", assigneeIds: [], title: "T1" });
+    await seedTask(t, { status: "inbox", assigneeIds: [], title: "T2" });
+    await seedTask(t, { status: "inbox", assigneeIds: [], title: "T3" });
+    const tasks = await t.query(api.tasks.list, { limit: 2 });
+    expect(tasks).toHaveLength(2);
+  });
+});
+
+describe("tasks:remove", () => {
+  it("deletes a task so it no longer appears in list", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [], title: "To Delete" });
+    await t.mutation(api.tasks.remove, { id });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks).toHaveLength(0);
+  });
+
+  it("only removes the targeted task", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [], title: "Remove Me" });
+    await seedTask(t, { status: "inbox", assigneeIds: [], title: "Keep Me" });
+    await t.mutation(api.tasks.remove, { id });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].title).toBe("Keep Me");
+  });
+});
+
+describe("tasks:update", () => {
+  it("patches the task status", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [], title: "Update Me" });
+    await t.mutation(api.tasks.update, { id, status: "in_progress" });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks[0].status).toBe("in_progress");
+  });
+
+  it("updates updatedAt when status changes", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [], title: "Timestamp Check" });
+    const before = (await t.query(api.tasks.list, {}))[0].updatedAt;
+    await t.mutation(api.tasks.update, { id, status: "review" });
+    const after = (await t.query(api.tasks.list, {}))[0].updatedAt;
+    expect(after).toBeGreaterThanOrEqual(before);
+  });
+
+  it("sets agent currentTaskId when status becomes in_progress", async () => {
+    const t = convexTest(schema, modules);
+    const agentId = await seedAgent(t, "maya");
+    const id = await seedTask(t, { status: "assigned", assigneeIds: [agentId], title: "In Progress Task" });
+
+    await t.mutation(api.tasks.update, { id, status: "in_progress", agentName: "maya" });
+
+    const agent = await t.run((ctx) => ctx.db.get(agentId));
+    expect(agent?.currentTaskId).toBe(id);
+  });
+
+  it("clears agent currentTaskId when status becomes done", async () => {
+    const t = convexTest(schema, modules);
+    const agentId = await seedAgent(t, "maya");
+    const id = await seedTask(t, { status: "in_progress", assigneeIds: [agentId], title: "Done Task" });
+    // Seed currentTaskId directly
+    await t.run((ctx) => ctx.db.patch(agentId, { currentTaskId: id }));
+
+    await t.mutation(api.tasks.update, { id, status: "done", agentName: "maya" });
+
+    const agent = await t.run((ctx) => ctx.db.get(agentId));
+    expect(agent?.currentTaskId).toBeUndefined();
+  });
+
+  it("inserts a task_status_changed activity when agentName is provided", async () => {
+    const t = convexTest(schema, modules);
+    const agentId = await seedAgent(t, "maya");
+    const id = await seedTask(t, { status: "assigned", assigneeIds: [agentId], title: "Activity Task" });
+
+    await t.mutation(api.tasks.update, { id, status: "in_progress", agentName: "maya" });
+
+    const activities = await t.run((ctx) => ctx.db.query("activities").collect());
+    expect(activities).toHaveLength(1);
+    expect(activities[0].type).toBe("task_status_changed");
+    expect(activities[0].agentId).toBe(agentId);
+  });
+
+  it("does not insert an activity when agentName is omitted", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [], title: "No Activity Task" });
+
+    await t.mutation(api.tasks.update, { id, status: "in_progress" });
+
+    const activities = await t.run((ctx) => ctx.db.query("activities").collect());
+    expect(activities).toHaveLength(0);
+  });
+});
+
+describe("tasks:create", () => {
+  it("creates a task with status assigned and correct assignee", async () => {
+    const t = convexTest(schema, modules);
+    const agentId = await seedAgent(t, "kevin");
+    await t.mutation(api.tasks.create, {
+      title: "Build feature",
+      description: "Implement the login flow",
+      assigneeNames: ["kevin"],
+    });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].title).toBe("Build feature");
+    expect(tasks[0].status).toBe("assigned");
+    expect(tasks[0].assigneeIds).toContain(agentId);
+  });
+
+  it("throws when an assignee name does not exist", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.mutation(api.tasks.create, {
+        title: "Bad task",
+        description: "",
+        assigneeNames: ["nonexistent"],
+      })
+    ).rejects.toThrow("Agent not found: nonexistent");
+  });
+
+  it("resolves multiple assignee names to their IDs", async () => {
+    const t = convexTest(schema, modules);
+    const kevinId = await seedAgent(t, "kevin");
+    const chrisId = await seedAgent(t, "chris");
+    await t.mutation(api.tasks.create, {
+      title: "Review and ship",
+      description: "Kevin builds, Chris reviews",
+      assigneeNames: ["kevin", "chris"],
+    });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks[0].assigneeIds).toContain(kevinId);
+    expect(tasks[0].assigneeIds).toContain(chrisId);
+  });
+
+  it("resolves createdByName to an agent ID when provided", async () => {
+    const t = convexTest(schema, modules);
+    const sarahId = await seedAgent(t, "sarah");
+    const kevinId = await seedAgent(t, "kevin");
+    await t.mutation(api.tasks.create, {
+      title: "Delegated task",
+      description: "From Sarah",
+      assigneeNames: ["kevin"],
+      createdByName: "sarah",
+    });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks[0].createdById).toBe(sarahId);
+    expect(tasks[0].assigneeIds).toContain(kevinId);
+  });
+
+  it("throws when createdByName does not exist", async () => {
+    const t = convexTest(schema, modules);
+    await seedAgent(t, "kevin");
+    await expect(
+      t.mutation(api.tasks.create, {
+        title: "Bad creator",
+        description: "",
+        assigneeNames: ["kevin"],
+        createdByName: "ghost",
+      })
+    ).rejects.toThrow("Agent not found: ghost");
+  });
+
+  it("works without createdByName", async () => {
+    const t = convexTest(schema, modules);
+    await seedAgent(t, "kevin");
+    await t.mutation(api.tasks.create, {
+      title: "Anonymous task",
+      description: "",
+      assigneeNames: ["kevin"],
+    });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks[0].createdById).toBeUndefined();
+  });
+
+  it("inserts a task_assigned activity for each assignee", async () => {
+    const t = convexTest(schema, modules);
+    await seedAgent(t, "kevin");
+    await seedAgent(t, "chris");
+    await t.mutation(api.tasks.create, {
+      title: "Team task",
+      description: "",
+      assigneeNames: ["kevin", "chris"],
+    });
+
+    const activities = await t.run((ctx) => ctx.db.query("activities").collect());
+    const assigned = activities.filter((a) => a.type === "task_assigned");
+    expect(assigned).toHaveLength(2);
+  });
+
+  it("inserts a task_created activity when createdByName is provided", async () => {
+    const t = convexTest(schema, modules);
+    await seedAgent(t, "sarah");
+    await seedAgent(t, "kevin");
+    await t.mutation(api.tasks.create, {
+      title: "Delegated",
+      description: "",
+      assigneeNames: ["kevin"],
+      createdByName: "sarah",
+    });
+
+    const activities = await t.run((ctx) => ctx.db.query("activities").collect());
+    const created = activities.filter((a) => a.type === "task_created");
+    expect(created).toHaveLength(1);
+    expect(created[0].message).toContain("Delegated");
+  });
+
+  it("does not insert a task_created activity when createdByName is omitted", async () => {
+    const t = convexTest(schema, modules);
+    await seedAgent(t, "kevin");
+    await t.mutation(api.tasks.create, {
+      title: "No creator",
+      description: "",
+      assigneeNames: ["kevin"],
+    });
+
+    const activities = await t.run((ctx) => ctx.db.query("activities").collect());
+    const created = activities.filter((a) => a.type === "task_created");
+    expect(created).toHaveLength(0);
+  });
+});
+
+describe("tasks:assign", () => {
+  it("throws when called without authentication", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [] });
+    const agentId = await seedAgent(t, "Atlas");
+    await expect(
+      t.mutation(api.tasks.assign, { id, assigneeIds: [agentId] })
+    ).rejects.toThrow("Not authenticated");
+  });
+
+  it("patches assigneeIds on the task when authenticated", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedTask(t, { status: "inbox", assigneeIds: [], title: "Assign Me" });
+    const agentId = await seedAgent(t, "Atlas");
+    await t.withIdentity({ name: "Test User" }).mutation(api.tasks.assign, {
+      id,
+      assigneeIds: [agentId],
+    });
+    const tasks = await t.query(api.tasks.list, {});
+    expect(tasks[0].assigneeIds).toContain(agentId);
+  });
+});

@@ -15,6 +15,7 @@ const NAV_ITEMS: NavItem[] = [
     { label: "Home", icon: "solar:home-2-linear", href: "/" },
     { label: "Tasks", icon: "solar:checklist-linear", href: "/tasks" },
     // { label: "Scheduler", icon: "solar:calendar-mark-linear", href: "/scheduler" },
+    { label: "Documents", icon: "solar:document-text-linear", href: "/documents" },
     { label: "Skills", icon: "solar:magic-stick-3-linear", href: "/skills" },
 ];
 

@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { DeploymentPayload } from '../../src/types/ai';
-import { OAUTH_PROVIDER_MAP, SOUL_TEMPLATE_FILES } from '../../src/constants/ai-core';
+import { OAUTH_PROVIDER_MAP, SOUL_TEMPLATE_FILES, AGENT_CRON_SCHEDULE } from '../../src/constants/ai-core';
 import { IPC_EVENTS } from '../../src/constants/ipc';
 import {
     getOpenClawConfigPath,
@@ -52,6 +52,11 @@ ${workflowList}
 }
 
 
+function generateHeartbeatMd(agentId: string): string {
+    return `# Heartbeat Checklist\n\nWhen you wake up, strictly follow this procedure in order:\n\n1. Check for assigned tasks:\n   \`npx convex run tasks:getAssigned '{"agentName": "${agentId}"}'\`\n\n2. If a task exists, mark it in_progress:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "in_progress", "agentName": "${agentId}"}'\`\n\n3. Use your tools to complete the work.\n\n4. Publish results:\n   \`npx convex run documents:create '{"taskId": "<taskId>", "title": "<title>", "content": "<full markdown>", "type": "deliverable", "agentName": "${agentId}"}'\`\n\n5. Mark the task done:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "done", "agentName": "${agentId}"}'\`\n\n6. If no tasks exist, reply HEARTBEAT_OK and stand down.\n`;
+}
+
+
 /** Flags whose immediately following argument contains a secret value. */
 const SECRET_FLAGS = /^--(?:[\w-]*api[_-]?key|secret|token|password|auth[_-]?token)$/i;
 
@@ -84,6 +89,119 @@ export class OpenClawService {
         event.reply(IPC_EVENTS.DEPLOYMENT_PROGRESS, { step, label });
     }
 
+    private async setupAgentCron(agentId: string, cliEnv: NodeJS.ProcessEnv): Promise<void> {
+        const cronExpr = AGENT_CRON_SCHEDULE[agentId];
+        if (!cronExpr) {
+            console.warn(`[OpenClawService] No cron schedule for agent: ${agentId} — skipping.`);
+            return;
+        }
+        await this.runLocalOpenClawCommand([
+            'cron', 'add',
+            '--name',    `${agentId}-heartbeat`,
+            '--cron',    cronExpr,
+            '--agent',   agentId,
+            '--session', 'isolated',
+            '--light-context',
+            '--message', 'Execute your HEARTBEAT.md checklist.',
+        ], cliEnv);
+        console.log(`[OpenClawService] Cron registered for ${agentId}: ${cronExpr}`);
+    }
+
+    private async setupCronJobs(
+        event: IpcMainEvent,
+        agentIds: string[],
+        stepNumber: number,
+        cliEnv: NodeJS.ProcessEnv
+    ): Promise<void> {
+        this.emitProgress(event, stepNumber, 'Scheduling agent heartbeats...');
+        const results = await Promise.allSettled(
+            agentIds.map(agentId => this.setupAgentCron(agentId, cliEnv))
+        );
+        results.forEach((result, i) => {
+            if (result.status === 'rejected') {
+                const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
+                console.warn(`[OpenClawService] Cron setup failed for ${agentIds[i]} (non-fatal): ${msg}`);
+            }
+        });
+    }
+
+
+    /**
+     * Removes the heartbeat cron job for the given agent, effectively pausing it.
+     * Non-fatal — if the cron job is already gone, the agent was already stopped.
+     *
+     * `cron remove` requires the UUID, not the job name, so we first call
+     * `cron list --json` to resolve the name → id mapping.
+     */
+    async pauseAgent(agentName: string): Promise<{ success: boolean; error?: string }> {
+        const cliEnv = this.buildCliEnv();
+        const jobName = `${agentName}-heartbeat`;
+        try {
+            const { stdout } = await this.runLocalOpenClawCommand(['cron', 'list', '--json'], cliEnv);
+            // Strip ANSI codes and skip any header text before the JSON object starts.
+            const cleaned = stripAnsi(stdout).trim();
+            const jsonStart = cleaned.indexOf('{');
+            const parsed = JSON.parse(jsonStart >= 0 ? cleaned.slice(jsonStart) : cleaned) as { jobs?: Array<{ id: string; name: string }> };
+            const job = parsed.jobs?.find((j) => j.name === jobName);
+            if (!job) {
+                console.log(`[OpenClawService] pauseAgent: no cron job named "${jobName}" — already removed`);
+                return { success: true };
+            }
+            await this.runLocalOpenClawCommand(['cron', 'remove', job.id], cliEnv);
+            console.log(`[OpenClawService] Paused agent ${agentName} — removed cron job ${job.id}`);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.warn(`[OpenClawService] pauseAgent: failed (non-fatal): ${msg}`);
+        }
+        return { success: true };
+    }
+
+    /**
+     * Re-adds the heartbeat cron job for the given agent, resuming it.
+     * Fatal — if cron add fails, the caller should keep the agent marked as paused.
+     *
+     * Checks for an existing job by name first — cron.add has no duplicate-name
+     * guard and would silently create a second job, causing double-firing.
+     */
+    async resumeAgent(agentName: string): Promise<{ success: boolean; error?: string }> {
+        const cronExpr = AGENT_CRON_SCHEDULE[agentName];
+        if (!cronExpr) {
+            return { success: false, error: `No cron schedule defined for agent: ${agentName}` };
+        }
+        const jobName = `${agentName}-heartbeat`;
+        const cliEnv = this.buildCliEnv();
+        try {
+            const { stdout } = await this.runLocalOpenClawCommand(['cron', 'list', '--json'], cliEnv);
+            const cleaned = stripAnsi(stdout).trim();
+            const jsonStart = cleaned.indexOf('{');
+            const parsed = JSON.parse(jsonStart >= 0 ? cleaned.slice(jsonStart) : cleaned) as { jobs?: Array<{ id: string; name: string }> };
+            const existing = parsed.jobs?.find((j) => j.name === jobName);
+            if (existing) {
+                console.log(`[OpenClawService] resumeAgent: "${jobName}" already exists (id: ${existing.id}) — skipping add`);
+                return { success: true };
+            }
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.warn(`[OpenClawService] resumeAgent: cron list check failed — proceeding with add: ${msg}`);
+        }
+        try {
+            await this.runLocalOpenClawCommand([
+                'cron', 'add',
+                '--name',    jobName,
+                '--cron',    cronExpr,
+                '--agent',   agentName,
+                '--session', 'isolated',
+                '--light-context',
+                '--message', 'Execute your HEARTBEAT.md checklist.',
+            ], cliEnv);
+            console.log(`[OpenClawService] Resumed agent ${agentName} — cron re-added`);
+            return { success: true };
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[OpenClawService] resumeAgent: cron add failed: ${msg}`);
+            return { success: false, error: msg };
+        }
+    }
 
     /**
      * Reads the correct AGENTS.md template for the given agent from resources/agent-templates/,
@@ -651,6 +769,34 @@ exit [lindex $result 3]
                 await fs.promises.copyFile(src, path.join(workspacePath, 'SOUL.md'));
                 await fs.promises.unlink(path.join(workspacePath, 'BOOTSTRAP.md')).catch(() => { /* may not exist */ });
             }));
+
+            // Write HEARTBEAT.md to each agent workspace
+            await Promise.all(payload.agentTemplateIds.map(agentId =>
+                fs.promises.writeFile(
+                    path.join(getOpenClawWorkspacePath(agentId), 'HEARTBEAT.md'),
+                    generateHeartbeatMd(agentId),
+                    'utf-8'
+                )
+            ));
+
+            // Write .env.local to each agent workspace so `npx convex run`
+            // commands in HEARTBEAT.md can resolve the deployment. The Convex
+            // CLI resolves via CONVEX_DEPLOYMENT (not CONVEX_URL). Read it from
+            // the main process env (injected by Electron-Vite from .env.local),
+            // falling back to the payload URL so the write is never silently skipped.
+            const convexDeployment = process.env.CONVEX_DEPLOYMENT || payload.convexUrl;
+            if (convexDeployment) {
+                await Promise.all(payload.agentTemplateIds.map(agentId =>
+                    fs.promises.writeFile(
+                        path.join(getOpenClawWorkspacePath(agentId), '.env.local'),
+                        `CONVEX_DEPLOYMENT=${convexDeployment}\n`,
+                        'utf-8'
+                    )
+                ));
+            }
+
+            // Register staggered heartbeat crons (non-fatal if any fail)
+            await this.setupCronJobs(event, payload.agentTemplateIds, stepCounter + 1, cliEnv);
 
             event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });
 

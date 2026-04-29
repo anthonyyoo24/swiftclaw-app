@@ -2,8 +2,11 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useForm, FormProvider, useWatch } from "react-hook-form";
+import { useMutation } from "convex/react";
+import { api } from "@convex/_generated/api";
 import { WizardShell } from "@/components/ui/wizard/WizardShell";
 import { toast } from "sonner";
+import { AGENT_ROLES } from "@/constants/ai-core";
 
 import { STEP_SCHEMAS, onboardingSchema, type OnboardingFormValues, type AgentTemplateId, type StepId } from "./schema";
 
@@ -105,6 +108,8 @@ export function SetupWizard() {
     const [backendDone, setBackendDone] = useState(false);
     const [deployProgress, setDeployProgress] = useState<{ step: number; label: string }>({ step: 0, label: "Getting things ready..." });
 
+    const registerAgents = useMutation(api.agents.registerAgents);
+
     const methods = useForm<OnboardingFormValues>({
         mode: "onChange",
         defaultValues: {
@@ -166,7 +171,10 @@ export function SetupWizard() {
             }
 
             // Happy path: valid data — proceed to IPC
-            window.electron.ipcRenderer.sendDeploymentStart(result.data);
+            window.electron.ipcRenderer.sendDeploymentStart({
+                ...result.data,
+                convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL || '',
+            });
 
             const originalCleanup = cleanupIpc;
             cleanupIpc = () => {
@@ -189,6 +197,17 @@ export function SetupWizard() {
             if (cleanupIpc) cleanupIpc();
         };
     }, [deployState, methods]);
+
+    // Seed Convex with the deployed agents as soon as the backend confirms success.
+    useEffect(() => {
+        if (!backendDone) return;
+        const ids: string[] = methods.getValues("agentTemplateIds") ?? [];
+        const agentsToRegister = ids.map((id) => ({
+            name: id,
+            role: AGENT_ROLES[id]?.role ?? "Agent",
+        }));
+        void registerAgents({ agents: agentsToRegister });
+    }, [backendDone, methods, registerAgents]);
 
     const formValues = useWatch({ control: methods.control });
     const isBusiness = formValues.usageType === "business";

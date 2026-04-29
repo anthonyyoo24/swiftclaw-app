@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 export interface DropdownOption {
     id: string;
     label: string;
+    sublabel?: string;
     icon?: React.ReactNode;
 }
 
@@ -17,14 +18,19 @@ interface CustomDropdownProps {
     label?: string;
     placeholder?: string;
     size?: "default" | "lg";
+    maxItems?: number;
 }
 
-export function CustomDropdown({ options, value, onChange, label, placeholder = "Select an option", size = "default" }: CustomDropdownProps) {
+export function CustomDropdown({ options, value, onChange, label, placeholder = "Select an option", size = "default", maxItems }: CustomDropdownProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [shouldRender, setShouldRender] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const maxHeight = maxItems !== undefined
+        ? (size === "lg" ? 48 : 40) * maxItems + 2 * (maxItems - 1) + 12
+        : undefined;
 
     const selectedOption = options.find((opt) => opt.id === value);
     const displayLabel = selectedOption?.label ?? placeholder;
@@ -120,7 +126,7 @@ export function CustomDropdown({ options, value, onChange, label, placeholder = 
                     ? "animate-in fade-in zoom-in-95 duration-200"
                     : "animate-out fade-out zoom-out-95 duration-200 fill-mode-forwards"
                     }`}>
-                    <div className="p-1.5 space-y-0.5 max-h-64 overflow-y-auto">
+                    <div className="p-1.5 space-y-0.5 overflow-y-auto max-h-64" style={maxHeight !== undefined ? { maxHeight } : undefined}>
                         {options.map((option) => (
                             <button
                                 key={option.id}
@@ -141,6 +147,9 @@ export function CustomDropdown({ options, value, onChange, label, placeholder = 
                                         </div>
                                     )}
                                     <span>{option.label}</span>
+                                    {option.sublabel && (
+                                        <span className="text-xs text-neutral-500">{option.sublabel}</span>
+                                    )}
                                 </div>
                                 {option.id === value && (
                                     <Icon icon="solar:check-read-linear" className="text-lg text-blue-400" />

@@ -29,7 +29,11 @@ try {
                 const subscription = (_event: IpcRendererEvent, data: { step: number; label: string }) => callback(data);
                 ipcRenderer.on('deployment:progress', subscription);
                 return () => ipcRenderer.removeListener('deployment:progress', subscription);
-            }
+            },
+            getGatewayPort: (): Promise<number> => ipcRenderer.invoke('gateway:get-port'),
+            getGatewayAuth: (): Promise<{ token?: string; password?: string }> => ipcRenderer.invoke('gateway:get-auth'),
+            pauseAgent: (agentName: string): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('agent:pause', { agentName }),
+            resumeAgent: (agentName: string): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('agent:resume', { agentName }),
         }
     })
 } catch (error) {

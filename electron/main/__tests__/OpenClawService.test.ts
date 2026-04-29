@@ -92,6 +92,7 @@ const BASE_PAYLOAD: DeploymentPayload = {
     goals: 'Build amazing software',
     workflows: ['write-code', 'review-prs'],
     tools: ['github', 'slack'],
+    convexUrl: 'https://test-deployment.convex.cloud',
 };
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -119,8 +120,8 @@ describe('OpenClawService.deploy()', () => {
         await vi.runAllTimersAsync();
         await deployPromise;
 
-        // Five spawn calls: onboard + plugins disable + grammy install + channels add + agents add maya
-        expect(spawnMock).toHaveBeenCalledTimes(5);
+        // Six spawn calls: onboard + plugins disable + grammy install + channels add + agents add maya + cron add maya
+        expect(spawnMock).toHaveBeenCalledTimes(6);
         const [cmd, args] = spawnMock.mock.calls[0];
 
         // Uses local binary, not npx
@@ -310,14 +311,15 @@ describe('Phase 3 – channel configuration', () => {
             .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
             .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)); // cron add maya-heartbeat
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'telegram', channelToken: 'tg-secret' });
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(5);
+        expect(spawnMock).toHaveBeenCalledTimes(6);
         const [, args] = spawnMock.mock.calls[3];
         expect(args).toContain('channels');
         expect(args).toContain('add');
@@ -333,14 +335,15 @@ describe('Phase 3 – channel configuration', () => {
             .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
             .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)); // cron add maya-heartbeat
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'discord', channelToken: 'dc-secret' });
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(5);
+        expect(spawnMock).toHaveBeenCalledTimes(6);
         const [, args] = spawnMock.mock.calls[3];
         expect(args).toContain('--channel');
         expect(args).toContain('discord');
@@ -469,8 +472,8 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        // onboard(1) + plugins disable(1) + grammy install(1) + channels add(1) + agents add maya+jack(2) = 6
-        expect(spawnMock).toHaveBeenCalledTimes(6);
+        // onboard(1) + plugins disable(1) + grammy install(1) + channels add(1) + agents add maya+jack(2) + cron add maya+jack(2) = 8
+        expect(spawnMock).toHaveBeenCalledTimes(8);
     });
 
     it('writes USER.md directly into each agent workspace (no shared dir)', async () => {
@@ -732,8 +735,8 @@ describe('Step 1.5 — plugin dependency repair', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        // onboard + plugins disable + channels add + agents add = 4 (no grammy install spawn)
-        expect(spawnMock).toHaveBeenCalledTimes(4);
+        // onboard + plugins disable + channels add + agents add + cron add = 5 (no grammy install spawn)
+        expect(spawnMock).toHaveBeenCalledTimes(5);
         const cmdArgs = spawnMock.mock.calls.map(([, args]) => (args as string[]).join(' '));
         expect(cmdArgs.some(a => a.includes('grammy'))).toBe(false);
     });

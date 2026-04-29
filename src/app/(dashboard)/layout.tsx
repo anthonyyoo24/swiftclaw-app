@@ -1,14 +1,16 @@
 import { AuthGuard } from "@/components/guards/AuthGuard";
 import { AppHeader } from "@/components/ui/AppHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { GatewaySyncManager } from "@/components/dashboard/GatewaySyncManager";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <AuthGuard>
+            <GatewaySyncManager />
             <div className="bg-[#09090b] w-full flex flex-col h-screen text-white font-sans relative overflow-hidden antialiased">
-                <AppHeader 
-                    subtitle="Workspace" 
-                    className="pt-14 pb-5 drag" 
+                <AppHeader
+                    subtitle="Workspace"
+                    className="pt-14 pb-5 drag"
                 />
 
                 {/* Main Content Split */}

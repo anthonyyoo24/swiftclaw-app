@@ -15,6 +15,7 @@ export type GatewayStatusType = "online" | "offline" | "connecting" | "error";
 
 interface GatewayStatusProps {
     status: GatewayStatusType;
+    onRetry?: () => void;
     className?: string;
 }
 
@@ -26,25 +27,25 @@ const statusConfig: Record<GatewayStatusType, {
 }> = {
     online: {
         label: "Online",
-        color: "text-emerald-400 bg-emerald-400/5 hover:bg-emerald-400/10 border-emerald-400/20",
+        color: "text-emerald-400 bg-emerald-400/5 border-emerald-400/20",
         icon: "solar:check-circle-bold",
         dotColor: "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.4)]",
     },
     offline: {
         label: "Offline",
-        color: "text-neutral-500 bg-neutral-500/5 hover:bg-neutral-500/10 border-neutral-500/10",
+        color: "text-neutral-500 bg-neutral-500/5 border-neutral-500/10",
         icon: "solar:close-circle-bold",
         dotColor: "bg-neutral-500",
     },
     connecting: {
         label: "Connecting",
-        color: "text-amber-400 bg-amber-400/5 hover:bg-amber-400/10 border-amber-400/20",
+        color: "text-amber-400 bg-amber-400/5 border-amber-400/20",
         icon: "solar:refresh-bold",
         dotColor: "bg-amber-400 animate-pulse",
     },
     error: {
         label: "Error",
-        color: "text-rose-400 bg-rose-400/5 hover:bg-rose-400/10 border-rose-400/20",
+        color: "text-rose-400 bg-rose-400/5 border-rose-400/20",
         icon: "solar:danger-bold",
         dotColor: "bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.4)]",
     },
@@ -54,7 +55,7 @@ const statusConfig: Record<GatewayStatusType, {
  * Small pill-shaped status indicator for the OpenClaw Gateway.
  * Shows status icon, label, and a status dot.
  */
-export function GatewayStatus({ status, className }: GatewayStatusProps) {
+export function GatewayStatus({ status, onRetry, className }: GatewayStatusProps) {
     const config = statusConfig[status];
 
     return (
@@ -76,9 +77,22 @@ export function GatewayStatus({ status, className }: GatewayStatusProps) {
                 icon={config.icon}
                 className={cn(
                     "size-3 opacity-90 transition-transform duration-500",
-                    status === "connecting" ? "animate-spin" : "group-hover:scale-110"
+                    status === "connecting" ? "animate-spin" : ""
                 )}
             />
+
+            {status === "error" && onRetry && (
+                <>
+                    <div className="w-px h-3 bg-current opacity-20" />
+                    <button
+                        onClick={onRetry}
+                        className="opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+                        title="Retry connection"
+                    >
+                        <Icon icon="solar:restart-linear" className="size-3" />
+                    </button>
+                </>
+            )}
         </div>
     );
 }
