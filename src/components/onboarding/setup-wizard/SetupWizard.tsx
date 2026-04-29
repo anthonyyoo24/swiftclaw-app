@@ -29,7 +29,7 @@ import { GoalsStep } from "./steps/GoalsStep";
 import { WorkflowsStep } from "./steps/WorkflowsStep";
 import { ToolsStep } from "./steps/ToolsStep";
 import { CharacterSelectionView } from "./steps/CharacterSelectionView";
-import { dispatchOnboardingStatusChanged } from "@/hooks/useOnboardingStatus";
+import { clearOnboardingCompleteCookie } from "@/hooks/useOnboardingStatus";
 
 // ---------------------------------------------------------------------------
 // IPC payload types
@@ -100,12 +100,19 @@ function getOtherTemplates(): AgentTemplateId[] {
     return ["lily", "max", "sarah", "emma", "chris", "kevin", "zoe"];
 }
 
+function generateWorkspaceSecret(): string {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 export function SetupWizard() {
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [visitedIds, setVisitedIds] = useState<Set<StepId>>(new Set(["welcome"]));
     const [deployState, setDeployState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [deployError, setDeployError] = useState<string>("");
     const [backendDone, setBackendDone] = useState(false);
+    const [workspaceSecret, setWorkspaceSecret] = useState(generateWorkspaceSecret);
     const [deployProgress, setDeployProgress] = useState<{ step: number; label: string }>({ step: 0, label: "Getting things ready..." });
 
     const registerAgents = useMutation(api.agents.registerAgents);
@@ -174,6 +181,7 @@ export function SetupWizard() {
             window.electron.ipcRenderer.sendDeploymentStart({
                 ...result.data,
                 convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL || '',
+                workspaceSecret,
             });
 
             const originalCleanup = cleanupIpc;
@@ -196,7 +204,7 @@ export function SetupWizard() {
         return () => {
             if (cleanupIpc) cleanupIpc();
         };
-    }, [deployState, methods]);
+    }, [deployState, methods, workspaceSecret]);
 
     // Seed Convex with the deployed agents as soon as the backend confirms success.
     useEffect(() => {
@@ -206,8 +214,8 @@ export function SetupWizard() {
             name: id,
             role: AGENT_ROLES[id]?.role ?? "Agent",
         }));
-        void registerAgents({ agents: agentsToRegister });
-    }, [backendDone, methods, registerAgents]);
+        void registerAgents({ agents: agentsToRegister, workspaceSecret });
+    }, [backendDone, methods, registerAgents, workspaceSecret]);
 
     const formValues = useWatch({ control: methods.control });
     const isBusiness = formValues.usageType === "business";
@@ -237,7 +245,7 @@ export function SetupWizard() {
     const otherTemplates = useMemo(() => getOtherTemplates(), []);
 
     /**
-     * Derived validity — driven entirely by the step's own Zod schema via safeParse.
+     * Derived validity — driven by the step's Zod schema.
      */
     const isCurrentStepValid = useMemo((): boolean => {
         if (!currentStep) return false;
@@ -312,10 +320,7 @@ export function SetupWizard() {
     };
 
     const handleReset = () => {
-        // Clear onboarding cookie
-        const isSecure = typeof window !== "undefined" && window.isSecureContext;
-        document.cookie = `onboardingComplete=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax${isSecure ? "; Secure" : ""}`;
-        dispatchOnboardingStatusChanged();
+        clearOnboardingCompleteCookie();
 
         methods.reset();
         setCurrentStepIndex(0);
@@ -324,6 +329,7 @@ export function SetupWizard() {
         setDeployError("");
         setDeployProgress({ step: 0, label: "Getting things ready..." });
         setDeployState('idle');
+        setWorkspaceSecret(generateWorkspaceSecret());
     };
 
     const renderStep = () => {

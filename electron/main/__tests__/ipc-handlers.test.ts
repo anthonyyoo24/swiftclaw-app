@@ -84,6 +84,7 @@ const VALID_PAYLOAD: DeploymentPayload = {
     goals: 'Build amazing software',
     workflows: ['write-code', 'review-prs'],
     convexUrl: 'https://test-deployment.convex.cloud',
+    workspaceSecret: 'test-workspace-secret',
 };
 
 describe('setupIpcHandlers', () => {
@@ -259,6 +260,38 @@ describe('setupIpcHandlers', () => {
             const result = await ipcInvokeHandlers['openclaw:reset']();
 
             expect(result).toEqual({ success: false, error: 'binary not found' });
+        });
+    });
+
+    describe('openclaw:get-setup-status handler', () => {
+        it('registers a handler for openclaw:get-setup-status', () => {
+            expect(ipcInvokeHandlers['openclaw:get-setup-status']).toBeDefined();
+        });
+
+        it('reports OpenClaw configured when binary and config are present', () => {
+            mockExistsSync.mockImplementation((path) =>
+                path.endsWith('node_modules/.bin/openclaw') || path.endsWith('.openclaw/openclaw.json')
+            );
+
+            const result = ipcInvokeHandlers['openclaw:get-setup-status']();
+
+            expect(result).toEqual({
+                isInstalled: true,
+                isConfigured: true,
+                configPath: expect.stringContaining('.openclaw/openclaw.json'),
+            });
+        });
+
+        it('reports OpenClaw missing when the config is absent', () => {
+            mockExistsSync.mockImplementation((path) => path.endsWith('node_modules/.bin/openclaw'));
+
+            const result = ipcInvokeHandlers['openclaw:get-setup-status']();
+
+            expect(result).toEqual({
+                isInstalled: true,
+                isConfigured: false,
+                configPath: expect.stringContaining('.openclaw/openclaw.json'),
+            });
         });
     });
 });

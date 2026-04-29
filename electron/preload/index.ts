@@ -35,6 +35,7 @@ try {
             pauseAgent: (agentName: string): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('agent:pause', { agentName }),
             resumeAgent: (agentName: string): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('agent:resume', { agentName }),
             resetOpenClaw: (): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('openclaw:reset'),
+            getOpenClawSetupStatus: (): Promise<{ isInstalled: boolean; isConfigured: boolean; configPath: string }> => ipcRenderer.invoke('openclaw:get-setup-status'),
         }
     })
 } catch (error) {

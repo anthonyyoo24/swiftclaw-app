@@ -14,6 +14,7 @@ export interface ElectronAPI {
         pauseAgent: (agentName: string) => Promise<{ success: boolean; error?: string }>;
         resumeAgent: (agentName: string) => Promise<{ success: boolean; error?: string }>;
         resetOpenClaw: () => Promise<{ success: boolean; error?: string }>;
+        getOpenClawSetupStatus: () => Promise<{ isInstalled: boolean; isConfigured: boolean; configPath: string }>;
     };
 }
 

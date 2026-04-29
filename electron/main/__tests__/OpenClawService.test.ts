@@ -93,6 +93,7 @@ const BASE_PAYLOAD: DeploymentPayload = {
     workflows: ['write-code', 'review-prs'],
     tools: ['github', 'slack'],
     convexUrl: 'https://test-deployment.convex.cloud',
+    workspaceSecret: 'test-workspace-secret',
 };
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -641,6 +642,21 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         expect(unlinkCalls).toHaveLength(2);
         expect(unlinkCalls[0][0]).toContain('workspace-maya');
         expect(unlinkCalls[1][0]).toContain('workspace-jack');
+    });
+
+    it('writes HEARTBEAT.md commands with the workspace credential', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const heartbeatCall = (fsPromisesMock().writeFile.mock.calls as [string, string, string][])
+            .find(([filePath]) => filePath.includes('workspace-maya') && filePath.endsWith('HEARTBEAT.md'));
+        expect(heartbeatCall).toBeDefined();
+        expect(heartbeatCall![1]).toContain('workspaceSecret');
+        expect(heartbeatCall![1]).toContain(BASE_PAYLOAD.workspaceSecret);
+        expect(heartbeatCall![1]).toContain('tasks:getAssigned');
+        expect(heartbeatCall![1]).toContain('documents:create');
     });
 
     it('emits deployment:error and stops if agents add exits non-zero', async () => {

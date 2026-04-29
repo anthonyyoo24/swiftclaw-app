@@ -115,6 +115,16 @@ export function setupIpcHandlers() {
         return service.resetOpenClaw();
     });
 
+    ipcMain.handle(IPC_EVENTS.OPENCLAW_GET_SETUP_STATUS, () => {
+        const binaryPath = resolveOpenClawBinary();
+        const configPath = getOpenClawConfigPath();
+        return {
+            isInstalled: fs.existsSync(binaryPath),
+            isConfigured: fs.existsSync(configPath),
+            configPath,
+        };
+    });
+
     ipcMain.handle(IPC_EVENTS.GATEWAY_GET_PORT, () => {
         const configPath = getOpenClawConfigPath();
         if (!fs.existsSync(configPath)) {

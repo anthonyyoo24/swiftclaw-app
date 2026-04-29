@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { useCallback, useEffect, useState } from "react";
-import { dispatchOnboardingStatusChanged } from "@/hooks/useOnboardingStatus";
+import { setOnboardingCompleteCookie } from "@/hooks/useOnboardingStatus";
 
 export function DeploySuccessView() {
     const router = useRouter();
@@ -11,10 +11,7 @@ export function DeploySuccessView() {
 
     /** Mark onboarding as complete and navigate to dashboard */
     const navigateToDashboard = useCallback(() => {
-        const isSecure = typeof window !== "undefined" && window.isSecureContext;
-        const cookieSuffix = `; path=/; max-age=31536000; SameSite=Lax${isSecure ? "; Secure" : ""}`;
-        document.cookie = `onboardingComplete=true${cookieSuffix}`;
-        dispatchOnboardingStatusChanged();
+        setOnboardingCompleteCookie();
         router.push("/");
     }, [router]);
 

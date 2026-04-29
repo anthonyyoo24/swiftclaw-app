@@ -46,6 +46,7 @@ type ExposedIpc = {
     onDeploymentSuccess: (cb: () => void) => () => void;
     onDeploymentError: (cb: (data: unknown) => void) => () => void;
     onDeploymentProgress: (cb: (data: unknown) => void) => () => void;
+    getOpenClawSetupStatus: () => Promise<{ isInstalled: boolean; isConfigured: boolean; configPath: string }>;
 };
 
 function getIpc(): ExposedIpc {
@@ -76,6 +77,7 @@ describe('preload contextBridge API', () => {
         expect(keys).toEqual([
             'getGatewayAuth',
             'getGatewayPort',
+            'getOpenClawSetupStatus',
             'onAuthOauthComplete',
             'onDeploymentError',
             'onDeploymentProgress',
@@ -211,6 +213,13 @@ describe('preload contextBridge API', () => {
         mockIpcRenderer.invoke.mockResolvedValue({ success: true });
         ipc.ipcRenderer.resetOpenClaw();
         expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('openclaw:reset');
+    });
+
+    it('getOpenClawSetupStatus invokes openclaw:get-setup-status with no arguments', () => {
+        const ipc = getIpc();
+        mockIpcRenderer.invoke.mockResolvedValue({ isInstalled: true, isConfigured: true, configPath: '/tmp/openclaw.json' });
+        ipc.getOpenClawSetupStatus();
+        expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('openclaw:get-setup-status');
     });
 
     // ── Security: raw ipcRenderer must never be forwarded ───────────────────

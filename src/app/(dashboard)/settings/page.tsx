@@ -6,7 +6,7 @@ import { api } from "@convex/_generated/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { dispatchOnboardingStatusChanged } from "@/hooks/useOnboardingStatus";
+import { clearOnboardingCompleteCookie } from "@/hooks/useOnboardingStatus";
 
 export default function SettingsPage() {
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -20,10 +20,8 @@ export default function SettingsPage() {
             const result = await window.electron?.ipcRenderer.resetOpenClaw();
             if (!result?.success) {
                 toast.error(result?.error ?? "Reset failed. Please try again.");
-                return;
             }
-            document.cookie = "onboardingComplete=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
-            dispatchOnboardingStatusChanged();
+            clearOnboardingCompleteCookie();
             window.location.href = "/onboarding";
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Reset failed. Please try again.");

@@ -27,10 +27,11 @@ vi.mock("@/components/ui/ConfirmDialog", () => ({
     ConfirmDialog: (props: any) => mockConfirmDialog(props),
 }));
 
-const mockConfirmDialog = vi.fn(() => null);
+const mockConfirmDialog: (props: unknown) => null = vi.fn(() => null);
 
 const agentId = "agent_1" as Id<"agents">;
 const taskId = "task_1" as Id<"tasks">;
+const userId = "user_1" as Id<"users">;
 
 const baseAgent: Doc<"agents"> = {
     _id: agentId,
@@ -39,6 +40,7 @@ const baseAgent: Doc<"agents"> = {
     role: "Support",
     status: "idle",
     sessionKey: "key-1",
+    userId,
     createdAt: Date.now(),
     updatedAt: Date.now(),
 };
@@ -50,6 +52,7 @@ const baseDoc: Doc<"documents"> = {
     content: "## Overview\nThis is the content.",
     type: "research",
     createdById: agentId,
+    userId,
     createdAt: new Date("2025-04-15T10:00:00Z").getTime(),
     updatedAt: new Date("2025-04-15T10:00:00Z").getTime(),
 };

@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
+import { clearOnboardingCompleteCookie, useOnboardingStatus } from "@/hooks/useOnboardingStatus";
+import { useOpenClawSetupStatus } from "@/hooks/useOpenClawSetupStatus";
 
 /**
  * Reverse guard for /onboarding: if the user has already completed onboarding,
@@ -11,16 +12,26 @@ import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const status = useOnboardingStatus();
+    const setupStatus = useOpenClawSetupStatus(status === "complete");
 
     useEffect(() => {
-        if (status === "complete") {
+        if (setupStatus === "missing") {
+            clearOnboardingCompleteCookie();
+            return;
+        }
+
+        if (status === "complete" && setupStatus === "configured") {
             router.replace("/");
         }
-    }, [status, router]);
+    }, [status, setupStatus, router]);
 
     // If cookie is present (user already completed), stay null while redirecting.
     // If no cookie, wait for initial client-side check before rendering children.
-    if (status !== "incomplete") {
+    if (status === "loading" || setupStatus === "loading") {
+        return null;
+    }
+
+    if (status === "complete" && setupStatus === "configured") {
         return null;
     }
 

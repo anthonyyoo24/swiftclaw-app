@@ -16,6 +16,7 @@ vi.mock("@/constants/ai-core", () => ({
 }));
 
 const agentId = "agent_1" as Id<"agents">;
+const userId = "user_1" as Id<"users">;
 
 function makeDoc(overrides: Partial<Doc<"documents">> & { _id: Id<"documents"> }): Doc<"documents"> {
     return {
@@ -24,6 +25,7 @@ function makeDoc(overrides: Partial<Doc<"documents">> & { _id: Id<"documents"> }
         content: "content",
         type: "general",
         createdById: agentId,
+        userId,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         ...overrides,
@@ -38,6 +40,7 @@ const defaultProps = {
     agentMap: {},
     selectedId: null,
     onSelect: vi.fn(),
+    onDelete: vi.fn(),
     typeFilter: "all" as const,
     onTypeFilterChange: vi.fn(),
 };

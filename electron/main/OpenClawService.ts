@@ -52,8 +52,30 @@ ${workflowList}
 }
 
 
-function generateHeartbeatMd(agentId: string): string {
-    return `# Heartbeat Checklist\n\nWhen you wake up, strictly follow this procedure in order:\n\n1. Check for assigned tasks:\n   \`npx convex run tasks:getAssigned '{"agentName": "${agentId}"}'\`\n\n2. If a task exists, mark it in_progress:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "in_progress", "agentName": "${agentId}"}'\`\n\n3. Use your tools to complete the work.\n\n4. Publish results:\n   \`npx convex run documents:create '{"taskId": "<taskId>", "title": "<title>", "content": "<full markdown>", "type": "deliverable", "agentName": "${agentId}"}'\`\n\n5. Mark the task done:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "done", "agentName": "${agentId}"}'\`\n\n6. If no tasks exist, reply HEARTBEAT_OK and stand down.\n`;
+function generateHeartbeatMd(agentId: string, workspaceSecret: string): string {
+    const assignedArgs = JSON.stringify({ agentName: agentId, workspaceSecret });
+    const progressArgs = JSON.stringify({
+        id: '<taskId>',
+        status: 'in_progress',
+        agentName: agentId,
+        workspaceSecret,
+    });
+    const documentArgs = JSON.stringify({
+        taskId: '<taskId>',
+        title: '<title>',
+        content: '<full markdown>',
+        type: 'deliverable',
+        agentName: agentId,
+        workspaceSecret,
+    });
+    const doneArgs = JSON.stringify({
+        id: '<taskId>',
+        status: 'done',
+        agentName: agentId,
+        workspaceSecret,
+    });
+
+    return `# Heartbeat Checklist\n\nWhen you wake up, strictly follow this procedure in order:\n\n1. Check for assigned tasks:\n   \`npx convex run tasks:getAssigned '${assignedArgs}'\`\n\n2. If a task exists, mark it in_progress:\n   \`npx convex run tasks:update '${progressArgs}'\`\n\n3. Use your tools to complete the work.\n\n4. Publish results:\n   \`npx convex run documents:create '${documentArgs}'\`\n\n5. Mark the task done:\n   \`npx convex run tasks:update '${doneArgs}'\`\n\n6. If no tasks exist, reply HEARTBEAT_OK and stand down.\n`;
 }
 
 
@@ -639,6 +661,9 @@ exit [lindex $result 3]
         }
         this.resetState();
         try {
+            if (!payload.workspaceSecret) {
+                throw new Error("Workspace credential is missing. Please restart setup.");
+            }
             console.log('Orchestrating deployment for:', payload.agentTemplateIds);
             const cliEnv = this.buildCliEnv();
 
@@ -790,7 +815,7 @@ exit [lindex $result 3]
             await Promise.all(payload.agentTemplateIds.map(agentId =>
                 fs.promises.writeFile(
                     path.join(getOpenClawWorkspacePath(agentId), 'HEARTBEAT.md'),
-                    generateHeartbeatMd(agentId),
+                    generateHeartbeatMd(agentId, payload.workspaceSecret),
                     'utf-8'
                 )
             ));

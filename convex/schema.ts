@@ -5,7 +5,18 @@ import { authTables } from "@convex-dev/auth/server";
 export default defineSchema({
   ...authTables,
 
+  workspaces: defineTable({
+    userId: v.id("users"),
+    workspaceSecret: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_workspaceSecret", ["workspaceSecret"]),
+
   agents: defineTable({
+    userId: v.id("users"),
+    workspaceId: v.optional(v.id("workspaces")),
     name: v.string(),
     role: v.string(),
     status: v.union(
@@ -19,9 +30,14 @@ export default defineSchema({
     avatar: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_name", ["name"]),
+  })
+    .index("by_name", ["name"])
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_name", ["userId", "name"])
+    .index("by_workspaceId_and_name", ["workspaceId", "name"]),
 
   tasks: defineTable({
+    userId: v.id("users"),
     title: v.string(),
     description: v.string(),
     status: v.union(
@@ -35,17 +51,25 @@ export default defineSchema({
     createdById: v.optional(v.id("agents")),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_status", ["status"]),
+  })
+    .index("by_status", ["status"])
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_status", ["userId", "status"]),
 
   taskMessages: defineTable({
+    userId: v.id("users"),
     taskId: v.id("tasks"),
     fromAgentId: v.id("agents"),
     content: v.string(),
     attachments: v.optional(v.array(v.id("documents"))),
     createdAt: v.number(),
-  }).index("by_taskId", ["taskId"]),
+  })
+    .index("by_taskId", ["taskId"])
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_taskId", ["userId", "taskId"]),
 
   activities: defineTable({
+    userId: v.id("users"),
     type: v.union(
       v.literal("task_created"),
       v.literal("task_assigned"),
@@ -59,9 +83,13 @@ export default defineSchema({
     relatedTaskId: v.optional(v.id("tasks")),
     relatedDocumentId: v.optional(v.id("documents")),
     createdAt: v.number(),
-  }).index("by_agentId", ["agentId"]),
+  })
+    .index("by_agentId", ["agentId"])
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_agentId", ["userId", "agentId"]),
 
   notifications: defineTable({
+    userId: v.id("users"),
     forAgentId: v.id("agents"),
     fromAgentId: v.id("agents"),
     type: v.union(
@@ -73,9 +101,13 @@ export default defineSchema({
     taskId: v.optional(v.id("tasks")),
     delivered: v.boolean(),
     createdAt: v.number(),
-  }).index("by_forAgentId", ["forAgentId"]),
+  })
+    .index("by_forAgentId", ["forAgentId"])
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_forAgentId", ["userId", "forAgentId"]),
 
   documents: defineTable({
+    userId: v.id("users"),
     title: v.string(),
     content: v.string(),
     type: v.union(
@@ -88,5 +120,8 @@ export default defineSchema({
     createdById: v.id("agents"),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_taskId", ["taskId"]),
+  })
+    .index("by_taskId", ["taskId"])
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_taskId", ["userId", "taskId"]),
 });

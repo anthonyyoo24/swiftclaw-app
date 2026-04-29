@@ -18,6 +18,7 @@ export interface DeploymentPayload {
     workflows: string[];
     tools?: string[];
     convexUrl: string;
+    workspaceSecret: string;
 }
 
 export interface OAuthProviderEntry {
