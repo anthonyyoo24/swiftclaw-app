@@ -155,6 +155,7 @@ export function SetupWizard() {
 
             const errorCleanup = window.electron.ipcRenderer.onDeploymentError((data: unknown) => {
                 const typed = isDeploymentErrorPayload(data) ? data : {};
+                clearOnboardingCompleteCookie();
                 setDeployError(typed.message || "An unknown error occurred during deployment.");
                 setDeployState('error');
             });
@@ -290,6 +291,7 @@ export function SetupWizard() {
         }
 
         setBackendDone(false);
+        clearOnboardingCompleteCookie();
         setDeployError("");
         setDeployProgress({ step: 0, label: "Getting things ready..." });
         setDeployState('loading');

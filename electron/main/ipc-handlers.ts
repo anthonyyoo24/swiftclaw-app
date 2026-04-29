@@ -4,7 +4,7 @@ import fs from 'fs';
 import { OpenClawService } from './OpenClawService';
 import { IPC_EVENTS } from '../../src/constants/ipc';
 import { DeploymentPayload } from '../../src/types/ai';
-import { getOpenClawConfigPath, resolveOpenClawBinary } from './openclaw-helpers';
+import { getOpenClawConfigPath, isSwiftClawSetupComplete, resolveOpenClawBinary } from './openclaw-helpers';
 
 let gatewayRunProc: ChildProcess | null = null;
 
@@ -120,7 +120,7 @@ export function setupIpcHandlers() {
         const configPath = getOpenClawConfigPath();
         return {
             isInstalled: fs.existsSync(binaryPath),
-            isConfigured: fs.existsSync(configPath),
+            isConfigured: fs.existsSync(configPath) && isSwiftClawSetupComplete(),
             configPath,
         };
     });

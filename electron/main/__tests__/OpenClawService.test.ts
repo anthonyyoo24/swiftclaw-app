@@ -198,6 +198,26 @@ describe('OpenClawService.deploy()', () => {
         expect(spawnMock).not.toHaveBeenCalled();
     });
 
+    it('uses auth-choice skip during deploy after OAuth authentication', async () => {
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        const event = makeMockEvent();
+
+        const deployPromise = service.deploy(event, {
+            ...BASE_PAYLOAD,
+            aiAuthType: 'oauth',
+            isAiAuthenticated: true,
+            aiProvider: 'openai-codex',
+            aiApiKey: undefined,
+        });
+        await vi.runAllTimersAsync();
+        await deployPromise;
+
+        const [, onboardArgs] = spawnMock.mock.calls[0];
+        const authChoiceIndex = (onboardArgs as string[]).indexOf('--auth-choice');
+        expect((onboardArgs as string[])[authChoiceIndex + 1]).toBe('skip');
+        expect(onboardArgs).not.toContain('openai-codex');
+    });
+
     it('passes --workspace pointing to workspace-sarah to the onboard command', async () => {
         spawnMock.mockImplementation(() => makeFakeProcess(0));
         const event = makeMockEvent();

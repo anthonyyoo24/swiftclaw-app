@@ -13,6 +13,8 @@ import {
     resolveOpenClawBinary,
     getResourcesPath,
     updateOpenClawConfig,
+    markSwiftClawSetupComplete,
+    clearSwiftClawSetupComplete,
 } from './openclaw-helpers';
 
 
@@ -228,6 +230,7 @@ export class OpenClawService {
     async resetOpenClaw(): Promise<{ success: boolean; error?: string }> {
         const cliEnv = this.buildCliEnv();
         try {
+            clearSwiftClawSetupComplete();
             await this.runLocalOpenClawCommand(
                 ['reset', '--scope', 'full', '--yes', '--non-interactive'],
                 cliEnv,
@@ -661,6 +664,7 @@ exit [lindex $result 3]
         }
         this.resetState();
         try {
+            clearSwiftClawSetupComplete();
             if (!payload.workspaceSecret) {
                 throw new Error("Workspace credential is missing. Please restart setup.");
             }
@@ -678,12 +682,14 @@ exit [lindex $result 3]
                 if (!payload.isAiAuthenticated) {
                     throw new Error("OAuth authentication was not completed successfully.");
                 }
-                const entry = OAUTH_PROVIDER_MAP[payload.aiProvider];
-                const authChoice = entry?.provider || payload.aiProvider;
 
+                // OAuth providers are authenticated through the separate
+                // `models auth login` flow. Non-interactive onboard cannot run
+                // those browser-login provider plugins, so only bootstrap the
+                // workspace/daemon here and preserve the existing auth profile.
                 onboardArgs = [
                     ...baseArgs,
-                    '--auth-choice', authChoice,
+                    '--auth-choice', 'skip',
                     '--install-daemon', '--skip-channels', '--skip-skills', '--skip-health'
                 ];
             } else {
@@ -839,9 +845,11 @@ exit [lindex $result 3]
             // Register staggered heartbeat crons (non-fatal if any fail)
             await this.setupCronJobs(event, payload.agentTemplateIds, stepCounter + 1, cliEnv);
 
+            markSwiftClawSetupComplete();
             event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });
 
         } catch (error: unknown) {
+            clearSwiftClawSetupComplete();
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during deployment.';
             event.reply(IPC_EVENTS.DEPLOYMENT_ERROR, { message: errorMessage });
         }

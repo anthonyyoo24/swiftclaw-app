@@ -268,7 +268,23 @@ describe('setupIpcHandlers', () => {
             expect(ipcInvokeHandlers['openclaw:get-setup-status']).toBeDefined();
         });
 
-        it('reports OpenClaw configured when binary and config are present', () => {
+        it('reports OpenClaw configured when binary, config, and SwiftClaw completion marker are present', () => {
+            mockExistsSync.mockImplementation((path) =>
+                path.endsWith('node_modules/.bin/openclaw') ||
+                path.endsWith('.openclaw/openclaw.json') ||
+                path.endsWith('.openclaw/swiftclaw-setup-complete.json')
+            );
+
+            const result = ipcInvokeHandlers['openclaw:get-setup-status']();
+
+            expect(result).toEqual({
+                isInstalled: true,
+                isConfigured: true,
+                configPath: expect.stringContaining('.openclaw/openclaw.json'),
+            });
+        });
+
+        it('reports OpenClaw missing when config exists but SwiftClaw completion marker is absent', () => {
             mockExistsSync.mockImplementation((path) =>
                 path.endsWith('node_modules/.bin/openclaw') || path.endsWith('.openclaw/openclaw.json')
             );
@@ -277,7 +293,7 @@ describe('setupIpcHandlers', () => {
 
             expect(result).toEqual({
                 isInstalled: true,
-                isConfigured: true,
+                isConfigured: false,
                 configPath: expect.stringContaining('.openclaw/openclaw.json'),
             });
         });
