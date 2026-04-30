@@ -84,6 +84,7 @@ const BASE_PAYLOAD: DeploymentPayload = {
     aiApiKey: 'sk-test-1234567890abcdef',
     selectedChannel: 'telegram',
     channelToken: 'tg-token-xyz',
+    telegramOwnerUserId: '6700687035',
     agentTemplateIds: ['maya'],
     userName: 'Test User',
     timezone: 'America/New_York',
@@ -980,6 +981,123 @@ describe('Stage 2 data handler suppression', () => {
         expect(interspersed.includes(token)).toBe(false);
         // stripAnsi reconstructs the bare token correctly
         expect(stripAnsi(interspersed)).toBe(token);
+    });
+});
+
+// ── Telegram owner allowlist ──────────────────────────────────────────────────
+
+describe('Telegram owner allowlist — updateOpenClawConfig', () => {
+    let spawnMock: MockInstance;
+    let service: OpenClawService;
+    const fsMock = () => fs as unknown as MockedFs;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        spawnMock = vi.mocked(childProcess.spawn);
+        spawnMock.mockReset();
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        service = new OpenClawService();
+        fsMock().existsSync.mockReturnValue(false);
+        fsMock().writeFileSync.mockClear();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        fsMock().existsSync.mockReturnValue(false);
+    });
+
+    it('writes dmPolicy allowlist and allowFrom with owner ID for Telegram', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const configWriteCalls = (fsMock().writeFileSync.mock.calls as [string, string][])
+            .filter(([fp]) => fp.includes('openclaw.json'));
+        expect(configWriteCalls.length).toBeGreaterThanOrEqual(1);
+
+        const allowlistWrite = configWriteCalls.find(([, content]) => {
+            try {
+                const parsed = JSON.parse(content) as Record<string, unknown>;
+                const channels = parsed.channels as Record<string, unknown> | undefined;
+                const tg = channels?.telegram as Record<string, unknown> | undefined;
+                return tg?.dmPolicy === 'allowlist';
+            } catch { return false; }
+        });
+        expect(allowlistWrite).toBeDefined();
+
+        const [, content] = allowlistWrite!;
+        const parsed = JSON.parse(content) as Record<string, unknown>;
+        const tg = (parsed.channels as Record<string, unknown>).telegram as Record<string, unknown>;
+        expect(tg.dmPolicy).toBe('allowlist');
+        expect(tg.allowFrom).toContain('6700687035');
+    });
+
+    it('does not duplicate the owner ID when called twice', async () => {
+        fsMock().existsSync.mockImplementation((p: unknown) =>
+            typeof p === 'string' && p.includes('openclaw.json')
+        );
+        fsMock().readFileSync.mockImplementation((fp: unknown) => {
+            if (typeof fp === 'string' && fp.includes('openclaw.json')) {
+                return JSON.stringify({
+                    channels: { telegram: { dmPolicy: 'allowlist', allowFrom: ['6700687035'] } },
+                });
+            }
+            if (typeof fp === 'string' && fp.endsWith('sarah.md')) return 'You are Sarah.';
+            if (typeof fp === 'string' && fp.endsWith('default.md')) return 'You are an agent.';
+            return '{}';
+        });
+
+        const event = makeMockEvent();
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const configWriteCalls = (fsMock().writeFileSync.mock.calls as [string, string][])
+            .filter(([fp]) => fp.includes('openclaw.json'));
+        const allowlistWrite = configWriteCalls.find(([, content]) => {
+            try { return (JSON.parse(content) as Record<string, unknown>).channels !== undefined; }
+            catch { return false; }
+        });
+        expect(allowlistWrite).toBeDefined();
+        const [, content] = allowlistWrite!;
+        const tg = ((JSON.parse(content) as Record<string, unknown>).channels as Record<string, unknown>).telegram as Record<string, unknown>;
+        expect((tg.allowFrom as string[]).filter(id => id === '6700687035')).toHaveLength(1);
+    });
+
+    it('does not write Telegram allowlist for Discord deployments', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'discord', telegramOwnerUserId: undefined });
+        await vi.runAllTimersAsync();
+        await p;
+
+        const configWriteCalls = (fsMock().writeFileSync.mock.calls as [string, string][])
+            .filter(([fp]) => fp.includes('openclaw.json'));
+        const allowlistWrite = configWriteCalls.find(([, content]) => {
+            try {
+                const parsed = JSON.parse(content) as Record<string, unknown>;
+                const channels = parsed.channels as Record<string, unknown> | undefined;
+                return (channels?.telegram as Record<string, unknown> | undefined)?.dmPolicy === 'allowlist';
+            } catch { return false; }
+        });
+        expect(allowlistWrite).toBeUndefined();
+    });
+
+    it('does not write Telegram allowlist when telegramOwnerUserId is absent', async () => {
+        const event = makeMockEvent();
+        const p = service.deploy(event, { ...BASE_PAYLOAD, telegramOwnerUserId: undefined });
+        await vi.runAllTimersAsync();
+        await p;
+
+        const configWriteCalls = (fsMock().writeFileSync.mock.calls as [string, string][])
+            .filter(([fp]) => fp.includes('openclaw.json'));
+        const allowlistWrite = configWriteCalls.find(([, content]) => {
+            try {
+                const channels = (JSON.parse(content) as Record<string, unknown>).channels as Record<string, unknown> | undefined;
+                return (channels?.telegram as Record<string, unknown> | undefined)?.dmPolicy === 'allowlist';
+            } catch { return false; }
+        });
+        expect(allowlistWrite).toBeUndefined();
     });
 });
 

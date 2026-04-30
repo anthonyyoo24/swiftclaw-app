@@ -138,6 +138,7 @@ export function SetupWizard() {
             aiApiKey: "",
             selectedChannel: undefined,
             channelToken: "",
+            telegramOwnerUserId: "",
         },
     });
 
@@ -383,6 +384,7 @@ export function SetupWizard() {
                         aiModel={formValues.aiModel ?? ""}
                         selectedChannel={formValues.selectedChannel ?? ""}
                         agentTemplateIds={(formValues.agentTemplateIds as AgentTemplateId[]) ?? []}
+                        telegramOwnerUserId={formValues.telegramOwnerUserId}
                     />
                 );
             default:

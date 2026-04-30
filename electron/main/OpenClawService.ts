@@ -776,6 +776,25 @@ exit [lindex $result 3]
                 throw new Error(`Unsupported channel: ${payload.selectedChannel}`);
             }
 
+            // Step 2.5: Configure Telegram owner allowlist so the owner can message
+            // immediately after deployment without needing a manual pairing approval.
+            if (payload.selectedChannel === 'telegram' && payload.telegramOwnerUserId?.trim()) {
+                const ownerId = payload.telegramOwnerUserId.trim();
+                updateOpenClawConfig((config) => {
+                    const channels = (config.channels ?? {}) as Record<string, unknown>;
+                    const telegram = (channels.telegram ?? {}) as Record<string, unknown>;
+                    telegram.dmPolicy = 'allowlist';
+                    const existing = Array.isArray(telegram.allowFrom) ? (telegram.allowFrom as string[]) : [];
+                    if (!existing.includes(ownerId)) {
+                        existing.push(ownerId);
+                    }
+                    telegram.allowFrom = existing;
+                    channels.telegram = telegram;
+                    config.channels = channels;
+                });
+                console.log(`[OpenClawService] Configured Telegram allowlist for owner ID: ${ownerId}`);
+            }
+
             // Steps 3–N: Create agent workspaces (one step per agent)
             let stepCounter = 3;
             for (const agentId of payload.agentTemplateIds) {

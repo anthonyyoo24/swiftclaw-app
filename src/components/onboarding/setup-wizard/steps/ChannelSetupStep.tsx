@@ -37,9 +37,8 @@ export function ChannelSetupStep() {
 
     const handleChannelSelect = (id: string) => {
         setValue("selectedChannel", id as SupportedChannelId, { shouldValidate: true });
-        // Reset token whenever channel changes
         setValue("channelToken", "", { shouldValidate: true });
-        // Reset visibility for security
+        setValue("telegramOwnerUserId", "", { shouldValidate: true });
         setShowToken(false);
     };
 
@@ -103,6 +102,43 @@ export function ChannelSetupStep() {
                             <p className="text-xs text-neutral-500 leading-relaxed">
                                 Your tokens are securely encrypted. SwiftClaw uses this to
                                 authenticate with your selected platform.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {selectedChannel === "telegram" && (
+                    <div className="space-y-3 animate-in slide-in-from-top-2 duration-300 fade-in">
+                        <label htmlFor="telegram-owner-id" className="block text-sm font-medium text-neutral-300">
+                            Your Telegram User ID
+                            <span className="text-blue-500 pl-1">*</span>
+                        </label>
+                        <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-neutral-500 group-focus-within:text-blue-400 transition-colors">
+                                <Icon icon="solar:user-id-linear" className="text-lg" />
+                            </div>
+                            <Controller
+                                name="telegramOwnerUserId"
+                                control={control}
+                                render={({ field }) => (
+                                    <Input
+                                        {...field}
+                                        id="telegram-owner-id"
+                                        type="text"
+                                        inputMode="numeric"
+                                        autoComplete="off"
+                                        spellCheck={false}
+                                        placeholder="e.g. 6700687035"
+                                        variant="glass"
+                                        className="pl-11 py-3 shadow-sm"
+                                    />
+                                )}
+                            />
+                        </div>
+                        <div className="flex items-start gap-2.5 mt-2 px-1">
+                            <Icon icon="solar:info-circle-linear" className="text-neutral-500 mt-0.5 shrink-0 text-lg" />
+                            <p className="text-xs text-neutral-500 leading-relaxed">
+                                Message your bot once after creating it, then paste the numeric Telegram user ID shown in the bot&apos;s pairing message. You can also get this from @userinfobot.
                             </p>
                         </div>
                     </div>

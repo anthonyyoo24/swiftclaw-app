@@ -75,12 +75,27 @@ export const characterStepSchema = z.object({
         .min(1, "Select at least one agent"),
 });
 
-// Shared helper — called from both aiBrainStepSchema and onboardingSchema
+// Shared helpers — called from both step schemas and onboardingSchema
 // because .merge() does not carry superRefine refinements forward.
 interface AiAuthData {
     aiAuthType: "apiKey" | "oauth";
     isAiAuthenticated: boolean;
     aiApiKey?: string;
+}
+
+interface ChannelSetupData {
+    selectedChannel: "telegram" | "discord";
+    telegramOwnerUserId?: string;
+}
+
+function validateChannelSetup(data: ChannelSetupData, ctx: z.RefinementCtx): void {
+    if (data.selectedChannel === "telegram") {
+        if (!data.telegramOwnerUserId || data.telegramOwnerUserId.trim() === "") {
+            ctx.addIssue({ code: "custom", message: "Your Telegram User ID is required", path: ["telegramOwnerUserId"] });
+        } else if (!/^\d+$/.test(data.telegramOwnerUserId.trim())) {
+            ctx.addIssue({ code: "custom", message: "Telegram User ID must be numeric", path: ["telegramOwnerUserId"] });
+        }
+    }
 }
 
 function validateAiAuth(data: AiAuthData, ctx: z.RefinementCtx): void {
@@ -113,7 +128,8 @@ export const channelSetupStepSchema = z.object({
         error: "Please select a supported channel",
     }),
     channelToken: z.string().min(5, "Token must be at least 5 characters"),
-});
+    telegramOwnerUserId: z.string().optional(),
+}).superRefine((data, ctx) => validateChannelSetup(data, ctx));
 
 export const deployStepSchema = z.object({});
 
@@ -177,6 +193,7 @@ export const onboardingSchema = welcomeStepSchema
             });
         }
     })
-    .superRefine((data, ctx) => validateAiAuth(data, ctx));
+    .superRefine((data, ctx) => validateAiAuth(data, ctx))
+    .superRefine((data, ctx) => validateChannelSetup(data, ctx));
 
 export type OnboardingFormValues = z.infer<typeof onboardingSchema>;
