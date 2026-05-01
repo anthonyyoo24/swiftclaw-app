@@ -9,6 +9,17 @@ vi.mock('child_process', () => ({
     spawn: vi.fn(),
 }));
 
+// ── Mock dns so ChatGPT readiness checks don't touch the network ─────────────
+vi.mock('dns', () => {
+    const lookup = vi.fn((_hostname: string, callback: (err: NodeJS.ErrnoException | null) => void) => {
+        callback(null);
+    });
+    return {
+        default: { lookup },
+        lookup,
+    };
+});
+
 // ── Mock electron (only used for types at runtime) ───────────────────────────
 vi.mock('electron', () => ({
     ipcMain: { on: vi.fn() },
@@ -51,6 +62,19 @@ import { OpenClawService } from '../OpenClawService';
 type MockedFsPromises = Record<'writeFile' | 'copyFile' | 'unlink', MockInstance>;
 type MockedFs = Record<string, MockInstance> & { promises: MockedFsPromises };
 
+function restoreFsDefaults() {
+    vi.mocked(fs.existsSync).mockReset().mockReturnValue(false);
+    vi.mocked(fs.readFileSync).mockReset().mockImplementation((filePath: unknown) => {
+        if (typeof filePath === 'string' && filePath.endsWith('sarah.md')) {
+            return 'You are Sarah. Delegation coordinator.';
+        }
+        if (typeof filePath === 'string' && filePath.endsWith('default.md')) {
+            return 'You are an agent at the user\'s company.';
+        }
+        return '{}';
+    });
+}
+
 /**
  * Creates a fake ChildProcess EventEmitter that exits with the given code.
  * Uses a microtask (Promise.resolve) to emit close so listeners are attached first.
@@ -68,6 +92,21 @@ function makeFakeProcess(exitCode = 0) {
     // This ensures listeners are always attached before close fires, even when
     // the process is created before deploy() is called (mockReturnValueOnce).
     setTimeout(() => proc.emit('close', exitCode), 0);
+
+    return proc;
+}
+
+function makePersistentProcess(exitCode = 0) {
+    const proc = new EventEmitter() as ReturnType<typeof childProcess.spawn>;
+    const stdout = new EventEmitter();
+    const stderr = new EventEmitter();
+    (proc as unknown as Record<string, unknown>).stdout = stdout;
+    (proc as unknown as Record<string, unknown>).stderr = stderr;
+    (proc as unknown as Record<string, boolean>).killed = false;
+    (proc as unknown as Record<string, () => void>).kill = vi.fn(() => {
+        (proc as unknown as Record<string, boolean>).killed = true;
+        setTimeout(() => proc.emit('close', exitCode), 0);
+    });
 
     return proc;
 }
@@ -112,6 +151,7 @@ describe('OpenClawService.deploy()', () => {
 
     afterEach(() => {
         vi.useRealTimers();
+        restoreFsDefaults();
     });
 
     it('calls spawn with openclaw onboard and the correct base flags', async () => {
@@ -122,8 +162,8 @@ describe('OpenClawService.deploy()', () => {
         await vi.runAllTimersAsync();
         await deployPromise;
 
-        // Six spawn calls: onboard + plugins disable + grammy install + channels add + agents add maya + cron add maya
-        expect(spawnMock).toHaveBeenCalledTimes(6);
+        // onboard + grammy install + plugins disable + channels add + agents add maya + cron add maya + gateway restart
+        expect(spawnMock).toHaveBeenCalledTimes(7);
         const [cmd, args] = spawnMock.mock.calls[0];
 
         // Uses local binary, not npx
@@ -201,6 +241,28 @@ describe('OpenClawService.deploy()', () => {
 
     it('uses auth-choice skip during deploy after OAuth authentication', async () => {
         spawnMock.mockImplementation(() => makeFakeProcess(0));
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockImplementation((filePath: unknown) => {
+            if (typeof filePath === 'string' && filePath.endsWith('sarah.md')) {
+                return 'You are Sarah. Delegation coordinator.';
+            }
+            if (typeof filePath === 'string' && filePath.endsWith('default.md')) {
+                return 'You are an agent at the user\'s company.';
+            }
+            if (typeof filePath === 'string' && filePath.endsWith('openclaw.json')) {
+                return JSON.stringify({
+                    auth: {
+                        profiles: {
+                            'openai-codex:test@example.com': {
+                                provider: 'openai-codex',
+                                mode: 'oauth',
+                            },
+                        },
+                    },
+                });
+            }
+            return '{}';
+        });
         const event = makeMockEvent();
 
         const deployPromise = service.deploy(event, {
@@ -217,6 +279,10 @@ describe('OpenClawService.deploy()', () => {
         const authChoiceIndex = (onboardArgs as string[]).indexOf('--auth-choice');
         expect((onboardArgs as string[])[authChoiceIndex + 1]).toBe('skip');
         expect(onboardArgs).not.toContain('openai-codex');
+
+        const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
+        expect(replies.find(([channel]) => channel === 'deployment:error')).toBeUndefined();
+        expect(replies.find(([channel]) => channel === 'deployment:success')).toBeDefined();
     });
 
     it('passes --workspace pointing to workspace-sarah to the onboard command', async () => {
@@ -334,14 +400,15 @@ describe('Phase 3 – channel configuration', () => {
             .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
             .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
-            .mockReturnValueOnce(makeFakeProcess(0)); // cron add maya-heartbeat
+            .mockReturnValueOnce(makeFakeProcess(0)) // cron add maya-heartbeat
+            .mockReturnValueOnce(makeFakeProcess(0)); // gateway restart
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'telegram', channelToken: 'tg-secret' });
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(6);
+        expect(spawnMock).toHaveBeenCalledTimes(7);
         const [, args] = spawnMock.mock.calls[3];
         expect(args).toContain('channels');
         expect(args).toContain('add');
@@ -358,14 +425,15 @@ describe('Phase 3 – channel configuration', () => {
             .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
             .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
-            .mockReturnValueOnce(makeFakeProcess(0)); // cron add maya-heartbeat
+            .mockReturnValueOnce(makeFakeProcess(0)) // cron add maya-heartbeat
+            .mockReturnValueOnce(makeFakeProcess(0)); // gateway restart
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'discord', channelToken: 'dc-secret' });
         await vi.runAllTimersAsync();
         await p;
 
-        expect(spawnMock).toHaveBeenCalledTimes(6);
+        expect(spawnMock).toHaveBeenCalledTimes(7);
         const [, args] = spawnMock.mock.calls[3];
         expect(args).toContain('--channel');
         expect(args).toContain('discord');
@@ -389,7 +457,7 @@ describe('Phase 3 – channel configuration', () => {
         const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
         expect(replies.find(([ch]) => ch === 'deployment:error')).toBeDefined();
         expect(replies.find(([ch]) => ch === 'deployment:success')).toBeUndefined();
-        // Step 1.5 ran (onboard + plugins disable + grammy install); channels add was never reached
+        // onboard + grammy install + plugins disable; channels add was never reached
         expect(spawnMock).toHaveBeenCalledTimes(3);
     });
 
@@ -399,7 +467,9 @@ describe('Phase 3 – channel configuration', () => {
             .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
             .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // cron add maya
+            .mockReturnValueOnce(makeFakeProcess(0)); // gateway restart
         const event = makeMockEvent();
 
         const p = service.deploy(event, { ...BASE_PAYLOAD, selectedChannel: 'telegram' });
@@ -488,14 +558,14 @@ describe('Phase 4–6 — agent workspace initialization', () => {
         expect((jackArgs as string[]).join('/')).toContain('workspace-jack');
     });
 
-    it('total spawn count = 3 (onboard + plugins disable + grammy) + 1 (channels add) + N agents', async () => {
+    it('total spawn count = 1 (onboard) + 1 (grammy) + 1 (plugins disable) + 1 (channels add) + N agents + N crons + 1 (gateway)', async () => {
         const event = makeMockEvent();
         const p = service.deploy(event, TWO_AGENT_PAYLOAD);
         await vi.runAllTimersAsync();
         await p;
 
-        // onboard(1) + plugins disable(1) + grammy install(1) + channels add(1) + agents add maya+jack(2) + cron add maya+jack(2) = 8
-        expect(spawnMock).toHaveBeenCalledTimes(8);
+        // onboard(1) + grammy(1) + plugins disable(1) + channels add(1) + agents maya+jack(2) + cron maya+jack(2) + gateway(1) = 9
+        expect(spawnMock).toHaveBeenCalledTimes(9);
     });
 
     it('writes USER.md directly into each agent workspace (no shared dir)', async () => {
@@ -683,8 +753,8 @@ describe('Phase 4–6 — agent workspace initialization', () => {
     it('emits deployment:error and stops if agents add exits non-zero', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
-            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
             .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
+            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable amazon-bedrock
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
             .mockReturnValueOnce(makeFakeProcess(1)); // agents add maya fails
         const event = makeMockEvent();
@@ -704,9 +774,9 @@ describe('Phase 4–6 — agent workspace initialization', () => {
     });
 });
 
-// ── Step 1.5: Plugin dependency repair ───────────────────────────────────────
+// ── Step 1.5: Plugin bootstrap ────────────────────────────────────────────────
 
-describe('Step 1.5 — plugin dependency repair', () => {
+describe('Step 1.5 — plugin bootstrap', () => {
     let spawnMock: MockInstance;
     let service: OpenClawService;
     const fsMock = () => fs as unknown as MockedFs;
@@ -727,10 +797,12 @@ describe('Step 1.5 — plugin dependency repair', () => {
     it('continues deploy even if plugins disable amazon-bedrock exits non-zero', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
-            .mockReturnValueOnce(makeFakeProcess(1)) // plugins disable fails (non-fatal)
             .mockReturnValueOnce(makeFakeProcess(0)) // grammy install
+            .mockReturnValueOnce(makeFakeProcess(1)) // plugins disable fails (non-fatal)
             .mockReturnValueOnce(makeFakeProcess(0)) // channels add
-            .mockReturnValueOnce(makeFakeProcess(0)); // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // agents add maya
+            .mockReturnValueOnce(makeFakeProcess(0)) // cron add maya
+            .mockReturnValueOnce(makeFakeProcess(0)); // gateway restart
         const event = makeMockEvent();
 
         const p = service.deploy(event, BASE_PAYLOAD);
@@ -745,7 +817,6 @@ describe('Step 1.5 — plugin dependency repair', () => {
     it('emits deployment:error and stops if grammy install exits non-zero', async () => {
         spawnMock
             .mockReturnValueOnce(makeFakeProcess(0)) // onboard
-            .mockReturnValueOnce(makeFakeProcess(0)) // plugins disable
             .mockReturnValueOnce(makeFakeProcess(1)); // grammy install fails
         const event = makeMockEvent();
 
@@ -756,8 +827,8 @@ describe('Step 1.5 — plugin dependency repair', () => {
         const replies = (event.reply as ReturnType<typeof vi.fn>).mock.calls;
         expect(replies.find(([ch]) => ch === 'deployment:error')).toBeDefined();
         expect(replies.find(([ch]) => ch === 'deployment:success')).toBeUndefined();
-        // channels add and later steps should never be reached
-        expect(spawnMock).toHaveBeenCalledTimes(3);
+        // grammy install fails before plugin cleanup, channels, or agents run.
+        expect(spawnMock).toHaveBeenCalledTimes(2);
     });
 
     it('skips grammy install spawn when grammy directory already exists', async () => {
@@ -772,8 +843,8 @@ describe('Step 1.5 — plugin dependency repair', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        // onboard + plugins disable + channels add + agents add + cron add = 5 (no grammy install spawn)
-        expect(spawnMock).toHaveBeenCalledTimes(5);
+        // onboard + plugins disable + channels add + agents add + cron add + gateway restart = 6 (no grammy install spawn)
+        expect(spawnMock).toHaveBeenCalledTimes(6);
         const cmdArgs = spawnMock.mock.calls.map(([, args]) => (args as string[]).join(' '));
         expect(cmdArgs.some(a => a.includes('grammy'))).toBe(false);
     });
@@ -786,8 +857,8 @@ describe('Step 1.5 — plugin dependency repair', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        // grammy install is the 3rd spawn call (index 2): onboard[0], plugins disable[1], grammy[2]
-        const [cmd, args] = spawnMock.mock.calls[2];
+        // grammy install runs immediately after onboard and before channel setup.
+        const [cmd, args] = spawnMock.mock.calls[1];
         expect(cmd).toMatch(/^npm/);
         expect(args).toContain('install');
         expect(args).toContain('grammy');
@@ -803,14 +874,116 @@ describe('Step 1.5 — plugin dependency repair', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        // plugins disable is the 2nd spawn call (index 1); local binary, no npx/openclaw@latest prefix
-        const [cmd, args] = spawnMock.mock.calls[1];
+        // plugins disable runs after onboard and grammy bootstrap.
+        const [cmd, args] = spawnMock.mock.calls[2];
         expect(cmd).toMatch(/openclaw/);
         expect(cmd).not.toMatch(/^npx/);
         expect(args).not.toContain('openclaw@latest');
         expect(args).toContain('plugins');
         expect(args).toContain('disable');
         expect(args).toContain('amazon-bedrock');
+    });
+
+    it('enables memory-core before the first openclaw onboard spawn', async () => {
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const writeCalls = fsMock().writeFileSync.mock.calls as [string, string, string][];
+        const configWrite = writeCalls.find(([filePath]) => filePath.endsWith('openclaw.json'));
+        expect(configWrite).toBeDefined();
+        const config = JSON.parse(configWrite![1]);
+        expect(config.plugins.entries['memory-core']).toMatchObject({ enabled: true });
+
+        const [cmd0, args0] = spawnMock.mock.calls[0];
+        expect(cmd0).toMatch(/openclaw/);
+        expect(args0).toContain('onboard');
+    });
+
+    it('grammy bootstrap runs after onboard and before channels add', async () => {
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        const event = makeMockEvent();
+
+        const p = service.deploy(event, BASE_PAYLOAD);
+        await vi.runAllTimersAsync();
+        await p;
+
+        const [cmd1] = spawnMock.mock.calls[1];
+        const [, args3] = spawnMock.mock.calls[3];
+        expect(cmd1).toMatch(/^npm/);
+        expect(args3).toContain('channels');
+    });
+});
+
+describe('OpenClawService.authenticate()', () => {
+    let spawnMock: MockInstance;
+    let service: OpenClawService;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        spawnMock = vi.mocked(childProcess.spawn);
+        spawnMock.mockReset();
+        service = new OpenClawService();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.mocked(fs.existsSync).mockReset().mockReturnValue(false);
+        vi.mocked(fs.statSync).mockReset().mockReturnValue({ mtimeMs: 0 } as ReturnType<typeof fs.statSync>);
+    });
+
+    it('selects the ChatGPT OAuth method for OpenAI Codex without showing the auth-method picker', async () => {
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.statSync)
+            .mockReturnValueOnce({ mtimeMs: 1 } as ReturnType<typeof fs.statSync>)
+            .mockReturnValueOnce({ mtimeMs: 1 } as ReturnType<typeof fs.statSync>)
+            .mockReturnValueOnce({ mtimeMs: 2 } as ReturnType<typeof fs.statSync>);
+        spawnMock.mockImplementation(() => makeFakeProcess(0));
+        const event = makeMockEvent();
+
+        const authPromise = service.authenticate(event, 'openai-codex');
+        await vi.runAllTimersAsync();
+        await authPromise;
+
+        const [cmd, args] = spawnMock.mock.calls[0];
+        expect(cmd).toBe('expect');
+        const script = (args as string[])[1];
+        expect(script).toContain('models auth login --provider openai-codex');
+        expect(script).toContain('--method oauth');
+        expect(script).toContain('--set-default');
+        expect(script).not.toContain('Device Pairing');
+        expect(event.reply).toHaveBeenCalledWith('auth:oauth:complete', { success: true });
+    });
+
+    it('emits OAuth success when auth files update even if the helper process is still open', async () => {
+        let configMtime = 1;
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.statSync).mockImplementation((pathname: fs.PathLike) => {
+            const pathText = String(pathname);
+            if (pathText.endsWith('openclaw.json')) {
+                return { mtimeMs: configMtime } as ReturnType<typeof fs.statSync>;
+            }
+            return { mtimeMs: 1 } as ReturnType<typeof fs.statSync>;
+        });
+        const proc = makePersistentProcess(0);
+        spawnMock.mockReturnValue(proc);
+        const event = makeMockEvent();
+
+        const authPromise = service.authenticate(event, 'openai-codex');
+        await vi.advanceTimersByTimeAsync(499);
+        expect(event.reply).not.toHaveBeenCalledWith('auth:oauth:complete', { success: true });
+
+        configMtime = 2;
+        await vi.advanceTimersByTimeAsync(1);
+
+        expect(event.reply).toHaveBeenCalledWith('auth:oauth:complete', { success: true });
+        expect(proc.kill).toHaveBeenCalled();
+
+        await vi.runAllTimersAsync();
+        await authPromise;
     });
 });
 
@@ -841,7 +1014,7 @@ describe('buildCliEnv — NODE_PATH injection', () => {
         await vi.runAllTimersAsync();
         await p;
 
-        // onboard is calls[0] — inspect its env
+        // onboard is the first spawned command; inspect its env.
         const [, , opts] = spawnMock.mock.calls[0];
         const env = (opts as { env: NodeJS.ProcessEnv }).env;
         expect(env).toHaveProperty('NODE_PATH');
