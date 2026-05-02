@@ -2,6 +2,7 @@ import { IpcMainEvent } from 'electron';
 import { spawn, type ChildProcess } from 'child_process';
 import dns from 'dns';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 import { DeploymentPayload } from '../../src/types/ai';
@@ -12,6 +13,7 @@ import {
     getOpenClawWorkspacePath,
     getOpenClawPluginDepsDir,
     resolveOpenClawBinary,
+    resolveOpenClawTemplateDir,
     getResourcesPath,
     updateOpenClawConfig,
     markSwiftClawSetupComplete,
@@ -634,7 +636,7 @@ exit [lindex $result 3]
      * Replaces runNpxCommand for all openclaw subcommands — no npx overhead,
      * no remote package resolution, uses the pinned version from package.json.
      */
-    private async runLocalOpenClawCommand(args: string[], env: NodeJS.ProcessEnv, onData?: (chunk: string) => void): Promise<{ stdout: string; stderr: string }> {
+    private async runLocalOpenClawCommand(args: string[], env: NodeJS.ProcessEnv): Promise<{ stdout: string; stderr: string }> {
         return new Promise((resolve, reject) => {
             const binary = resolveOpenClawBinary();
             const sanitizedArgs = this.sanitizeArgs(args);
@@ -650,9 +652,7 @@ exit [lindex $result 3]
             let stderr = '';
 
             this.cliProcess.stdout?.on('data', (data) => {
-                const chunk = data.toString();
-                stdout += chunk;
-                onData?.(chunk);
+                stdout += data.toString();
             });
 
             this.cliProcess.stderr?.on('data', (data) => {
@@ -831,12 +831,13 @@ exit [lindex $result 3]
                 ];
             }
 
-            // Disable ALL plugins before onboard in one atomic write — no daemon
-            // running yet so no ConfigMutationConflictError is possible. Every
-            // subsequent agents add invocation loads zero plugins (fastest possible).
+            // Single atomic config write before onboard — no daemon running yet so
+            // no ConfigMutationConflictError is possible.
+            // 1) Disables all plugins so onboard loads zero plugins (fastest path).
+            // 2) Batch-adds all agents to agents.list so we can bypass `agents add`
+            //    entirely — gateway discovers agents exclusively from this list.
             // Runtime plugins are re-enabled after all agents are created, just
-            // before gateway restart. Gateway startup handles chokidar staging for
-            // memory-core so we no longer need to keep it enabled throughout.
+            // before gateway restart.
             updateOpenClawConfig((config) => {
                 const plugins = (config.plugins ?? {}) as Record<string, unknown>;
                 const entries = (plugins.entries ?? {}) as Record<string, unknown>;
@@ -852,7 +853,56 @@ exit [lindex $result 3]
                 }
                 plugins.entries = entries;
                 config.plugins = plugins;
+
+                const agents = (config.agents ?? {}) as Record<string, unknown>;
+                const list = (agents.list ?? []) as Array<Record<string, unknown>>;
+                for (const agentId of payload.agentTemplateIds) {
+                    if (!list.find(e => e.id === agentId)) {
+                        list.push({ id: agentId, workspace: getOpenClawWorkspacePath(agentId) });
+                    }
+                }
+                agents.list = list;
+                config.agents = agents;
             });
+
+            // Pre-create all workspace dirs and support files in parallel before
+            // onboard runs. Setting setupCompletedAt in workspace-state.json causes
+            // onboard's ensureAgentWorkspace() to skip bootstrap, eliminating the
+            // per-agent CLI process startup + plugin manifest scanning entirely.
+            const templateDir = resolveOpenClawTemplateDir();
+            const now = new Date().toISOString();
+            await Promise.all(payload.agentTemplateIds.map(async (agentId) => {
+                const workspacePath = getOpenClawWorkspacePath(agentId);
+                const agentStateDir = path.join(os.homedir(), '.openclaw', 'agents', agentId);
+
+                await fs.promises.mkdir(path.join(workspacePath, '.openclaw'), { recursive: true });
+                await fs.promises.mkdir(path.join(agentStateDir, 'sessions'), { recursive: true });
+                await fs.promises.mkdir(path.join(agentStateDir, 'agent'), { recursive: true });
+
+                await fs.promises.writeFile(
+                    path.join(workspacePath, '.openclaw', 'workspace-state.json'),
+                    JSON.stringify({ version: 1, bootstrapSeededAt: now, setupCompletedAt: now }, null, 2),
+                    'utf-8'
+                );
+
+                await fs.promises.writeFile(
+                    path.join(agentStateDir, 'agent', 'auth-profiles.json'),
+                    JSON.stringify({ version: 1, profiles: {} }, null, 2),
+                    'utf-8'
+                );
+
+                for (const tmpl of ['TOOLS.md', 'IDENTITY.md']) {
+                    try {
+                        await fs.promises.copyFile(path.join(templateDir, tmpl), path.join(workspacePath, tmpl));
+                    } catch { /* template missing — non-fatal */ }
+                }
+
+                await new Promise<void>((resolve) => {
+                    const git = spawn('git', ['init', workspacePath], { stdio: 'ignore' });
+                    git.on('close', () => resolve());
+                    git.on('error', () => resolve());
+                });
+            }));
 
             const { stdout, stderr } = await this.runLocalOpenClawCommand(onboardArgs, cliEnv);
             if (stderr && stderr.trim()) {
@@ -892,30 +942,9 @@ exit [lindex $result 3]
                 throw new Error(`Unsupported channel: ${payload.selectedChannel}`);
             }
 
-            // Steps 3–N: Create agent workspaces (one step per agent)
-            let stepCounter = 3;
-            for (const agentId of payload.agentTemplateIds) {
-                const displayName = agentId.charAt(0).toUpperCase() + agentId.slice(1);
-                this.emitProgress(event, stepCounter, `Bringing ${displayName} online...`);
-                const workspacePath = getOpenClawWorkspacePath(agentId);
-                let lineBuffer = '';
-                await this.runLocalOpenClawCommand(
-                    ['agents', 'add', agentId, '--workspace', workspacePath, '--non-interactive'],
-                    cliEnv,
-                    (chunk) => {
-                        lineBuffer += chunk;
-                        const newlineIdx = lineBuffer.lastIndexOf('\n');
-                        if (newlineIdx === -1) return;
-                        const lines = lineBuffer.slice(0, newlineIdx).split('\n');
-                        lineBuffer = lineBuffer.slice(newlineIdx + 1);
-                        const lastLine = stripAnsi(lines[lines.length - 1]).trim();
-                        if (lastLine) {
-                            this.emitProgress(event, stepCounter, `Bringing ${displayName} online...\n${lastLine.slice(0, 60)}`);
-                        }
-                    }
-                );
-                stepCounter++;
-            }
+            // Agent workspaces were created pre-onboard (above). Skip directly to
+            // finalizing agent configuration files.
+            const stepCounter = 3;
 
             // Final step: Write USER.md, AGENTS.md, copy SOUL.md (combined)
             this.emitProgress(event, stepCounter, 'Finalizing agent configuration...');
@@ -969,13 +998,7 @@ exit [lindex $result 3]
                 ));
             }
 
-            // Register staggered heartbeat crons (non-fatal if any fail)
-            await this.setupCronJobs(event, payload.agentTemplateIds, stepCounter + 1, cliEnv);
-
-            // Write all direct config mutations AFTER all OpenClaw CLI commands complete.
-            // Interleaving updateOpenClawConfig() with CLI commands causes
-            // ConfigMutationConflictError because OpenClaw detects the file changed
-            // between its own reads/writes within the same command session.
+            // Write model + channel config after finalizing but before gateway restart.
             updateOpenClawConfig((config) => {
                 const agents = (config.agents ?? {}) as Record<string, unknown>;
                 const defaults = (agents.defaults ?? {}) as Record<string, unknown>;
@@ -1028,6 +1051,10 @@ exit [lindex $result 3]
                 } catch { /* non-fatal */ }
             }
             await this.restartGateway(cliEnv);
+
+            // Register heartbeat crons AFTER gateway restart so the gateway is fully
+            // operational with plugins loaded when cron add connects via WebSocket.
+            await this.setupCronJobs(event, payload.agentTemplateIds, stepCounter + 3, cliEnv);
 
             markSwiftClawSetupComplete();
             event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });

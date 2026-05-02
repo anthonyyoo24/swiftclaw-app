@@ -93,3 +93,10 @@ export function clearSwiftClawSetupComplete(): void {
 export function isSwiftClawSetupComplete(): boolean {
     return fs.existsSync(getSwiftClawSetupMarkerPath());
 }
+
+export function resolveOpenClawTemplateDir(): string {
+    if (app.isPackaged) {
+        return path.join(app.getAppPath(), 'node_modules', 'openclaw', 'docs', 'reference', 'templates');
+    }
+    return path.join(__dirname, '..', '..', 'node_modules', 'openclaw', 'docs', 'reference', 'templates');
+}
