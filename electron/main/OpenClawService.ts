@@ -993,6 +993,17 @@ exit [lindex $result 3]
                 ));
             }
 
+            // Step 4: Write model, plugin enables, and channel config in one pass.
+            // Enabling plugins via direct config write (no CLI) is instant and safe —
+            // the daemon watches but never mutates config, so no conflict is possible.
+            const AI_PROVIDER_TO_PLUGIN: Record<string, string> = {
+                'openai-api':      'openai',
+                'openai-codex':    'openai',
+                'anthropic-api':   'anthropic',
+                'anthropic-oauth': 'anthropic',
+            };
+            const runtimeAiPlugin = AI_PROVIDER_TO_PLUGIN[payload.aiProvider] ?? payload.aiProvider;
+
             this.emitProgress(event, 4, 'Saving settings...');
             updateOpenClawConfig((config) => {
                 const agents = (config.agents ?? {}) as Record<string, unknown>;
@@ -1002,6 +1013,16 @@ exit [lindex $result 3]
                 defaults.model = model;
                 agents.defaults = defaults;
                 config.agents = agents;
+
+                const plugins = (config.plugins ?? {}) as Record<string, unknown>;
+                const entries = (plugins.entries ?? {}) as Record<string, unknown>;
+                for (const id of [runtimeAiPlugin, payload.selectedChannel, 'memory-core']) {
+                    const entry = (entries[id] ?? {}) as Record<string, unknown>;
+                    entry.enabled = true;
+                    entries[id] = entry;
+                }
+                plugins.entries = entries;
+                config.plugins = plugins;
             });
             console.log(`[OpenClawService] Set default model to: ${modelPrimary}`);
 
@@ -1030,26 +1051,12 @@ exit [lindex $result 3]
                 await this.verifyProviderDns(payload.aiProvider);
             }
 
-            this.emitProgress(event, 6, 'Enabling plugins...');
-            const AI_PROVIDER_TO_PLUGIN: Record<string, string> = {
-                'openai-api':      'openai',
-                'openai-codex':    'openai',
-                'anthropic-api':   'anthropic',
-                'anthropic-oauth': 'anthropic',
-            };
-            const runtimeAiPlugin = AI_PROVIDER_TO_PLUGIN[payload.aiProvider] ?? payload.aiProvider;
-            for (const plugin of [runtimeAiPlugin, payload.selectedChannel, 'memory-core']) {
-                try {
-                    await this.runLocalOpenClawCommand(['plugins', 'enable', plugin], cliEnv);
-                } catch { /* non-fatal */ }
-            }
-
-            this.emitProgress(event, 7, 'Restarting gateway...');
+            this.emitProgress(event, 6, 'Restarting gateway...');
             await this.restartGateway(cliEnv);
 
             // Register heartbeat crons AFTER gateway restart so the gateway is fully
             // operational with plugins loaded when cron add connects via WebSocket.
-            await this.setupCronJobs(event, payload.agentTemplateIds, 8, cliEnv);
+            await this.setupCronJobs(event, payload.agentTemplateIds, 7, cliEnv);
 
             markSwiftClawSetupComplete();
             event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });
