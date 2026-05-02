@@ -370,7 +370,7 @@ export function SetupWizard() {
                 if (deployState === 'loading') return (
                     <DeployProgressView
                         currentStep={deployProgress.step}
-                        totalSteps={6}
+                        totalSteps={8}
                         progressLabel={deployProgress.label}
                         backendComplete={backendDone}
                         onVisualComplete={() => setDeployState('success')}

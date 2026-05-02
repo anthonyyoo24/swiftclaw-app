@@ -922,11 +922,7 @@ exit [lindex $result 3]
             const prefix = providerPrefix[payload.aiProvider] || payload.aiProvider;
             const modelPrimary = `${prefix}/${payload.aiModel}`;
 
-            // Step 1.5: Plugin cleanup and peer-dep bootstrap.
             this.emitProgress(event, 1, 'Getting things ready...');
-            // Install grammy for the telegram plugin into an isolated directory.
-            // buildCliEnv() adds that directory to NODE_PATH so all subsequent
-            // openclaw child processes resolve require('grammy') from there.
             await this.ensureGrammyInstalled(cliEnv);
 
             // Step 2: Channels
@@ -946,7 +942,6 @@ exit [lindex $result 3]
             // finalizing agent configuration files.
             const stepCounter = 3;
 
-            // Final step: Write USER.md, AGENTS.md, copy SOUL.md (combined)
             this.emitProgress(event, stepCounter, 'Finalizing agent configuration...');
             const userMdContent = generateUserMd(payload);
             await Promise.all(payload.agentTemplateIds.map(agentId =>
@@ -998,7 +993,7 @@ exit [lindex $result 3]
                 ));
             }
 
-            // Write model + channel config after finalizing but before gateway restart.
+            this.emitProgress(event, 4, 'Saving settings...');
             updateOpenClawConfig((config) => {
                 const agents = (config.agents ?? {}) as Record<string, unknown>;
                 const defaults = (agents.defaults ?? {}) as Record<string, unknown>;
@@ -1035,9 +1030,7 @@ exit [lindex $result 3]
                 await this.verifyProviderDns(payload.aiProvider);
             }
 
-            // Re-enable the three runtime plugins under the "Restarting gateway..."
-            // label so the user sees one clean step covering enables + restart.
-            this.emitProgress(event, stepCounter + 3, 'Restarting gateway...');
+            this.emitProgress(event, 6, 'Enabling plugins...');
             const AI_PROVIDER_TO_PLUGIN: Record<string, string> = {
                 'openai-api':      'openai',
                 'openai-codex':    'openai',
@@ -1050,11 +1043,13 @@ exit [lindex $result 3]
                     await this.runLocalOpenClawCommand(['plugins', 'enable', plugin], cliEnv);
                 } catch { /* non-fatal */ }
             }
+
+            this.emitProgress(event, 7, 'Restarting gateway...');
             await this.restartGateway(cliEnv);
 
             // Register heartbeat crons AFTER gateway restart so the gateway is fully
             // operational with plugins loaded when cron add connects via WebSocket.
-            await this.setupCronJobs(event, payload.agentTemplateIds, stepCounter + 3, cliEnv);
+            await this.setupCronJobs(event, payload.agentTemplateIds, 8, cliEnv);
 
             markSwiftClawSetupComplete();
             event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });
