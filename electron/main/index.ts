@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
 import log from 'electron-log'
+import serve from 'electron-serve'
 import { setupIpcHandlers } from './ipc-handlers'
 
 log.transports.file.level = 'info'
@@ -8,6 +9,7 @@ log.transports.console.level = 'debug'
 Object.assign(console, log.functions)
 
 const isDev = !app.isPackaged
+const loadURL = serve({ directory: join(__dirname, '../../out') })
 
 function createWindow() {
     const mainWindow = new BrowserWindow({
@@ -33,7 +35,7 @@ function createWindow() {
     if (isDev) {
         mainWindow.loadURL('http://localhost:3000')
     } else {
-        mainWindow.loadFile(join(__dirname, '../../out/index.html'))
+        loadURL(mainWindow)
     }
 }
 
