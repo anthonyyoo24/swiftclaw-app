@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useGatewayStore } from "@/store/gatewayStore";
 
@@ -14,8 +14,10 @@ const DEFAULT_PORT = 18789;
  * - On connect, fetches sessions and upserts each into Convex
  */
 export function GatewaySyncManager() {
+    const { isAuthenticated } = useConvexAuth();
+
     // Pre-warm tasks cache so TaskBoard never hits the undefined loading state
-    useQuery(api.tasks.list, {});
+    useQuery(api.tasks.list, isAuthenticated ? {} : "skip");
 
     const status = useGatewayStore((s) => s.status);
     const connect = useGatewayStore((s) => s.connect);
@@ -66,7 +68,7 @@ export function GatewaySyncManager() {
 
     // Sync agents whenever the connection transitions to "connected"
     useEffect(() => {
-        if (status !== "connected") {
+        if (!isAuthenticated || status !== "connected") {
             hasSynced.current = false;
             return;
         }
@@ -90,14 +92,15 @@ export function GatewaySyncManager() {
                 // Non-fatal: sync will retry on next reconnect
             }
         })();
-    }, [status, listSessions, syncAgent]);
+    }, [status, listSessions, syncAgent, isAuthenticated]);
 
     // Mark all agents idle when the gateway disconnects
     useEffect(() => {
+        if (!isAuthenticated) return;
         if (status === "offline" || status === "error") {
             void setAllIdle({});
         }
-    }, [status, setAllIdle]);
+    }, [status, setAllIdle, isAuthenticated]);
 
     return null;
 }

@@ -14,6 +14,20 @@ export const dispatchOnboardingStatusChanged = () => {
     }
 };
 
+export const clearOnboardingCompleteCookie = () => {
+    if (typeof document === "undefined") return;
+    const isSecure = typeof window !== "undefined" && window.isSecureContext;
+    document.cookie = `${ONBOARDING_COOKIE}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${isSecure ? "; Secure" : ""}`;
+    dispatchOnboardingStatusChanged();
+};
+
+export const setOnboardingCompleteCookie = () => {
+    if (typeof document === "undefined") return;
+    const isSecure = typeof window !== "undefined" && window.isSecureContext;
+    document.cookie = `${ONBOARDING_COOKIE}=true; path=/; max-age=31536000; SameSite=Lax${isSecure ? "; Secure" : ""}`;
+    dispatchOnboardingStatusChanged();
+};
+
 const subscribe = (callback: () => void) => {
     if (typeof window === "undefined") return () => { };
 
@@ -42,6 +56,9 @@ export function useOnboardingStatus(): OnboardingStatus {
         return "loading";
     }
     
-    const hasCookie = cookieStr.split(";").some((c) => c.trim().startsWith(`${ONBOARDING_COOKIE}=`));
-    return hasCookie ? "complete" : "incomplete";
+    const cookie = cookieStr
+        .split(";")
+        .map((c) => c.trim())
+        .find((c) => c.startsWith(`${ONBOARDING_COOKIE}=`));
+    return cookie === `${ONBOARDING_COOKIE}=true` ? "complete" : "incomplete";
 }

@@ -20,7 +20,8 @@
     "appId": "com.anthonyyoo.swiftclaw",
     "productName": "SwiftClaw",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "buildResources"
     },
     "files": [
       "dist/main/**/*",
@@ -32,7 +33,24 @@
         "from": "resources/",
         "to": "."
       }
-    ]
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "buildResources/entitlements.mac.plist",
+      "entitlementsInherit": "buildResources/entitlements.mac.plist",
+      "notarize": true,
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] },
+        { "target": "zip", "arch": ["arm64", "x64"] }
+      ]
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "anthonyyoo24",
+      "repo": "swiftclaw-app"
+    }
   },
   "dependencies": {
     "@auth/core": "^0.37.4",
@@ -53,7 +71,7 @@
     "lucide-react": "^0.575.0",
     "next": "^16.2.2",
     "next-themes": "^0.4.6",
-    "openclaw": "^2026.4.14",
+    "openclaw": "^2026.4.27",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",

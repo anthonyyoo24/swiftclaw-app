@@ -1,6 +1,8 @@
 import { IpcMainEvent } from 'electron';
 import { spawn, type ChildProcess } from 'child_process';
+import dns from 'dns';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 import { DeploymentPayload } from '../../src/types/ai';
@@ -11,8 +13,11 @@ import {
     getOpenClawWorkspacePath,
     getOpenClawPluginDepsDir,
     resolveOpenClawBinary,
+    resolveOpenClawTemplateDir,
     getResourcesPath,
     updateOpenClawConfig,
+    markSwiftClawSetupComplete,
+    clearSwiftClawSetupComplete,
 } from './openclaw-helpers';
 
 
@@ -52,8 +57,30 @@ ${workflowList}
 }
 
 
-function generateHeartbeatMd(agentId: string): string {
-    return `# Heartbeat Checklist\n\nWhen you wake up, strictly follow this procedure in order:\n\n1. Check for assigned tasks:\n   \`npx convex run tasks:getAssigned '{"agentName": "${agentId}"}'\`\n\n2. If a task exists, mark it in_progress:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "in_progress", "agentName": "${agentId}"}'\`\n\n3. Use your tools to complete the work.\n\n4. Publish results:\n   \`npx convex run documents:create '{"taskId": "<taskId>", "title": "<title>", "content": "<full markdown>", "type": "deliverable", "agentName": "${agentId}"}'\`\n\n5. Mark the task done:\n   \`npx convex run tasks:update '{"id": "<taskId>", "status": "done", "agentName": "${agentId}"}'\`\n\n6. If no tasks exist, reply HEARTBEAT_OK and stand down.\n`;
+function generateHeartbeatMd(agentId: string, workspaceSecret: string): string {
+    const assignedArgs = JSON.stringify({ agentName: agentId, workspaceSecret });
+    const progressArgs = JSON.stringify({
+        id: '<taskId>',
+        status: 'in_progress',
+        agentName: agentId,
+        workspaceSecret,
+    });
+    const documentArgs = JSON.stringify({
+        taskId: '<taskId>',
+        title: '<title>',
+        content: '<full markdown>',
+        type: 'deliverable',
+        agentName: agentId,
+        workspaceSecret,
+    });
+    const doneArgs = JSON.stringify({
+        id: '<taskId>',
+        status: 'done',
+        agentName: agentId,
+        workspaceSecret,
+    });
+
+    return `# Heartbeat Checklist\n\nWhen you wake up, strictly follow this procedure in order:\n\n1. Check for assigned tasks:\n   \`npx convex run tasks:getAssigned '${assignedArgs}'\`\n\n2. If a task exists, mark it in_progress:\n   \`npx convex run tasks:update '${progressArgs}'\`\n\n3. Use your tools to complete the work.\n\n4. Publish results:\n   \`npx convex run documents:create '${documentArgs}'\`\n\n5. Mark the task done:\n   \`npx convex run tasks:update '${doneArgs}'\`\n\n6. If no tasks exist, reply HEARTBEAT_OK and stand down.\n`;
 }
 
 
@@ -203,6 +230,23 @@ export class OpenClawService {
         }
     }
 
+    async resetOpenClaw(): Promise<{ success: boolean; error?: string }> {
+        const cliEnv = this.buildCliEnv();
+        try {
+            clearSwiftClawSetupComplete();
+            await this.runLocalOpenClawCommand(
+                ['reset', '--scope', 'full', '--yes', '--non-interactive'],
+                cliEnv,
+            );
+            console.log('[OpenClawService] Full reset completed');
+            return { success: true };
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[OpenClawService] reset failed: ${msg}`);
+            return { success: false, error: msg };
+        }
+    }
+
     /**
      * Reads the correct AGENTS.md template for the given agent from resources/agent-templates/,
      * then appends a Selected Tools section if tools were provided.
@@ -229,6 +273,11 @@ export class OpenClawService {
             ? `${pluginDepsModules}${path.delimiter}${env.NODE_PATH}`
             : pluginDepsModules;
         return env;
+    }
+
+    private readMtime(pathname: string): number {
+        if (!fs.existsSync(pathname)) return 0;
+        return fs.statSync(pathname).mtimeMs;
     }
 
     /**
@@ -261,10 +310,10 @@ export class OpenClawService {
             console.log(`[OAuth] Starting native Expect-driven TTY flow for provider: ${entry.provider}`);
 
             const configPath = getOpenClawConfigPath();
-            let beforeMtime = 0;
-            if (fs.existsSync(configPath)) {
-                beforeMtime = fs.statSync(configPath).mtimeMs;
-            }
+            const authProfilesPath = path.join(path.dirname(configPath), 'auth-profiles.json');
+            const beforeConfigMtime = this.readMtime(configPath);
+            const beforeAuthProfilesMtime = this.readMtime(authProfilesPath);
+            let completionSent = false;
 
             const envForCli = this.buildCliEnv();
 
@@ -284,6 +333,11 @@ export class OpenClawService {
             let tclSpawnArgs = `models auth login --provider ${entry.provider}`;
             if (entry.method) {
                 tclSpawnArgs += ` --method ${entry.method}`;
+            }
+            // Set openai-codex as the default model immediately after auth so the
+            // gateway has a correct primary route before SwiftClaw's later config write.
+            if (provider === 'openai-codex') {
+                tclSpawnArgs += ' --set-default';
             }
 
             // macOS / Linux: Route through 'expect' to simulate a TTY invisibly in the background.
@@ -321,20 +375,44 @@ exit [lindex $result 3]
                 }
             });
 
+            const hasAuthFilesChanged = () => {
+                return this.readMtime(configPath) > beforeConfigMtime ||
+                    this.readMtime(authProfilesPath) > beforeAuthProfilesMtime;
+            };
+
+            const sendSuccess = () => {
+                if (completionSent || this.wasCancelled) return;
+                completionSent = true;
+                console.log(`[OAuth] Auth files updated – authentication complete`);
+                event.reply(IPC_EVENTS.AUTH_OAUTH_COMPLETE, { success: true });
+                if (this.cliProcess && !this.cliProcess.killed) {
+                    this.cliProcess.kill();
+                }
+            };
+
+            let completionPoll: ReturnType<typeof setInterval> | undefined;
+            completionPoll = setInterval(() => {
+                if (hasAuthFilesChanged()) {
+                    sendSuccess();
+                }
+            }, 500);
+
             const exitCode = await new Promise<number>((resolve) => {
                 this.cliProcess!.on('close', (code) => {
+                    if (completionPoll) {
+                        clearInterval(completionPoll);
+                        completionPoll = undefined;
+                    }
                     resolve(code ?? 1);
                 });
             });
 
-            let afterMtime = 0;
-            if (fs.existsSync(configPath)) {
-                afterMtime = fs.statSync(configPath).mtimeMs;
+            if (completionSent) {
+                return;
             }
 
-            if (afterMtime > 0 && afterMtime > beforeMtime) {
-                console.log(`[OAuth] CLI exited successfully – authentication complete`);
-                event.reply(IPC_EVENTS.AUTH_OAUTH_COMPLETE, { success: true });
+            if (hasAuthFilesChanged()) {
+                sendSuccess();
             } else if (!this.wasCancelled) {
                 console.log(`[OAuth] CLI exited but config.json was not updated. Code: ${exitCode}`);
                 throw new Error(`Authentication cancelled or failed.`);
@@ -363,10 +441,9 @@ exit [lindex $result 3]
             console.log('[OAuth/Anthropic] Starting two-stage automated flow');
 
             const configPath = getOpenClawConfigPath();
-            let beforeMtime = 0;
-            if (fs.existsSync(configPath)) {
-                beforeMtime = fs.statSync(configPath).mtimeMs;
-            }
+            const authProfilesPath = path.join(path.dirname(configPath), 'auth-profiles.json');
+            const beforeConfigMtime = this.readMtime(configPath);
+            const beforeAuthProfilesMtime = this.readMtime(authProfilesPath);
 
             // ── Stage 1: Run `claude setup-token` and capture the token ──
             console.log('[OAuth/Anthropic] Stage 1: Running `claude setup-token` to open browser...');
@@ -456,8 +533,33 @@ exit [lindex $result 3]
                 if (line) console.error(`[OAuth/Anthropic Stage2 stderr]: ${line}`);
             });
 
+            let completionSent = false;
+            const hasAuthFilesChanged = () => {
+                return this.readMtime(configPath) > beforeConfigMtime ||
+                    this.readMtime(authProfilesPath) > beforeAuthProfilesMtime;
+            };
+            const sendSuccess = () => {
+                if (completionSent || this.wasCancelled) return;
+                completionSent = true;
+                console.log('[OAuth/Anthropic] Auth files updated – authentication complete');
+                event.reply(IPC_EVENTS.AUTH_OAUTH_COMPLETE, { success: true });
+                if (this.cliProcess && !this.cliProcess.killed) {
+                    this.cliProcess.kill();
+                }
+            };
+            let completionPoll: ReturnType<typeof setInterval> | undefined;
+            completionPoll = setInterval(() => {
+                if (hasAuthFilesChanged()) {
+                    sendSuccess();
+                }
+            }, 500);
+
             const exitCode = await new Promise<number>((resolve, reject) => {
                 this.cliProcess!.on('close', (code) => {
+                    if (completionPoll) {
+                        clearInterval(completionPoll);
+                        completionPoll = undefined;
+                    }
                     this.isPastingToken = false;
                     if (this.wasCancelled) { reject(new Error('Cancelled')); return; }
                     resolve(code ?? 1);
@@ -468,17 +570,14 @@ exit [lindex $result 3]
                 console.warn(`[OAuth/Anthropic] Stage 2 exited with code ${exitCode}`);
             }
 
-            // ── Verify config was updated ──
-            let afterMtime = 0;
-            if (fs.existsSync(configPath)) {
-                afterMtime = fs.statSync(configPath).mtimeMs;
+            if (completionSent) {
+                return;
             }
 
-            if (afterMtime > 0 && afterMtime > beforeMtime) {
-                console.log('[OAuth/Anthropic] Config updated – authentication complete');
-                event.reply(IPC_EVENTS.AUTH_OAUTH_COMPLETE, { success: true });
+            if (hasAuthFilesChanged()) {
+                sendSuccess();
             } else if (!this.wasCancelled) {
-                throw new Error('Authentication completed but config was not updated.');
+                throw new Error('Authentication completed but auth files were not updated.');
             }
 
         } catch (error: unknown) {
@@ -576,6 +675,26 @@ exit [lindex $result 3]
         });
     }
 
+    private async npmInstallInto(packages: string[], prefix: string, env: NodeJS.ProcessEnv): Promise<void> {
+        fs.mkdirSync(prefix, { recursive: true });
+        await new Promise<void>((resolve, reject) => {
+            const command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+            const proc = spawn(command, [
+                'install', '--no-save', '--no-audit', '--no-fund',
+                '--legacy-peer-deps', '--ignore-scripts',
+                '--prefix', prefix,
+                ...packages,
+            ], { env, shell: false, stdio: ['ignore', 'pipe', 'pipe'] });
+            let stderr = '';
+            proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
+            proc.on('close', (code) => {
+                if (code === 0) resolve();
+                else reject(new Error(`npm install [${packages.join(', ')}] failed (code ${code}): ${stderr.trim()}`));
+            });
+            proc.on('error', reject);
+        });
+    }
+
     /**
      * Installs grammy into ~/.openclaw/plugin-deps/ if not already present.
      * The directory is added to NODE_PATH in buildCliEnv() so every openclaw
@@ -585,34 +704,66 @@ exit [lindex $result 3]
     private async ensureGrammyInstalled(env: NodeJS.ProcessEnv): Promise<void> {
         const depsDir = getOpenClawPluginDepsDir();
         const grammyDir = path.join(depsDir, 'node_modules', 'grammy');
-        if (fs.existsSync(grammyDir)) {
+        if (!fs.existsSync(grammyDir)) {
+            console.log(`[OpenClawService] Installing grammy into ${depsDir}...`);
+            await this.npmInstallInto(['grammy'], depsDir, env);
+            console.log('[OpenClawService] grammy installed successfully.');
+        } else {
             console.log('[OpenClawService] grammy already present; skipping install.');
-            return;
         }
+    }
 
-        fs.mkdirSync(depsDir, { recursive: true });
-        console.log(`[OpenClawService] Installing grammy into ${depsDir}...`);
+    private async restartGateway(cliEnv: NodeJS.ProcessEnv): Promise<void> {
+        await this.runLocalOpenClawCommand(['gateway', 'restart'], cliEnv);
+        console.log('[OpenClawService] Gateway restarted successfully.');
+    }
 
+    private verifyModelRoute(aiProvider: string, modelPrimary: string): void {
+        if (aiProvider === 'openai-codex') {
+            if (!modelPrimary.startsWith('openai-codex/')) {
+                throw new Error(
+                    'ChatGPT OAuth requires an openai-codex model route. Select OpenAI Codex (Browser Login) and redeploy.'
+                );
+            }
+        }
+    }
+
+    private async verifyProviderDns(aiProvider: string): Promise<void> {
+        if (aiProvider !== 'openai-codex') return;
         await new Promise<void>((resolve, reject) => {
-            const command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-            const proc = spawn(command, [
-                'install', '--no-save', '--no-audit', '--no-fund',
-                '--legacy-peer-deps', '--ignore-scripts',
-                '--prefix', depsDir,
-                'grammy',
-            ], { env, shell: false, stdio: ['ignore', 'pipe', 'pipe'] });
-            let stderr = '';
-            proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
-            proc.on('close', (code) => {
-                if (code === 0) {
-                    console.log('[OpenClawService] grammy installed successfully.');
-                    resolve();
+            dns.lookup('chatgpt.com', (err) => {
+                if (err) {
+                    reject(new Error(
+                        'ChatGPT OAuth is connected, but this machine cannot resolve chatgpt.com. Check network/DNS/VPN/firewall.'
+                    ));
                 } else {
-                    reject(new Error(`grammy install failed (code ${code}): ${stderr.trim()}`));
+                    resolve();
                 }
             });
-            proc.on('error', reject);
         });
+    }
+
+    private verifyOAuthProfile(provider: string): void {
+        const configPath = getOpenClawConfigPath();
+        if (!fs.existsSync(configPath)) {
+            throw new Error(
+                'ChatGPT OAuth did not finish successfully. Reconnect OpenAI Codex and try deployment again.'
+            );
+        }
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
+        const auth = (config.auth ?? {}) as Record<string, unknown>;
+        const rawProfiles = auth.profiles;
+        const profiles = Array.isArray(rawProfiles)
+            ? (rawProfiles as Array<Record<string, unknown>>)
+            : rawProfiles && typeof rawProfiles === 'object'
+                ? Object.values(rawProfiles as Record<string, Record<string, unknown>>)
+                : [];
+        const hasProfile = profiles.some(p => p.provider === provider && p.mode === 'oauth');
+        if (!hasProfile) {
+            throw new Error(
+                'ChatGPT OAuth did not finish successfully. Reconnect OpenAI Codex and try deployment again.'
+            );
+        }
     }
 
     async deploy(event: IpcMainEvent, payload: DeploymentPayload) {
@@ -623,6 +774,10 @@ exit [lindex $result 3]
         }
         this.resetState();
         try {
+            clearSwiftClawSetupComplete();
+            if (!payload.workspaceSecret) {
+                throw new Error("Workspace credential is missing. Please restart setup.");
+            }
             console.log('Orchestrating deployment for:', payload.agentTemplateIds);
             const cliEnv = this.buildCliEnv();
 
@@ -637,12 +792,14 @@ exit [lindex $result 3]
                 if (!payload.isAiAuthenticated) {
                     throw new Error("OAuth authentication was not completed successfully.");
                 }
-                const entry = OAUTH_PROVIDER_MAP[payload.aiProvider];
-                const authChoice = entry?.provider || payload.aiProvider;
 
+                // OAuth providers are authenticated through the separate
+                // `models auth login` flow. Non-interactive onboard cannot run
+                // those browser-login provider plugins, so only bootstrap the
+                // workspace/daemon here and preserve the existing auth profile.
                 onboardArgs = [
                     ...baseArgs,
-                    '--auth-choice', authChoice,
+                    '--auth-choice', 'skip',
                     '--install-daemon', '--skip-channels', '--skip-skills', '--skip-health'
                 ];
             } else {
@@ -674,15 +831,88 @@ exit [lindex $result 3]
                 ];
             }
 
+            // Single atomic config write before onboard — no daemon running yet so
+            // no ConfigMutationConflictError is possible.
+            // 1) Disables all plugins so onboard loads zero plugins (fastest path).
+            // 2) Batch-adds all agents to agents.list so we can bypass `agents add`
+            //    entirely — gateway discovers agents exclusively from this list.
+            // Runtime plugins are re-enabled after all agents are created, just
+            // before gateway restart.
+            updateOpenClawConfig((config) => {
+                const plugins = (config.plugins ?? {}) as Record<string, unknown>;
+                const entries = (plugins.entries ?? {}) as Record<string, unknown>;
+                for (const id of [
+                    'amazon-bedrock', 'amazon-bedrock-mantle', 'anthropic-vertex',
+                    'acpx', 'browser', 'microsoft',
+                    'openai', 'anthropic', 'telegram', 'discord',
+                    'memory-core',
+                ]) {
+                    const entry = (entries[id] ?? {}) as Record<string, unknown>;
+                    entry.enabled = false;
+                    entries[id] = entry;
+                }
+                plugins.entries = entries;
+                config.plugins = plugins;
+
+                const agents = (config.agents ?? {}) as Record<string, unknown>;
+                const list = (agents.list ?? []) as Array<Record<string, unknown>>;
+                for (const agentId of payload.agentTemplateIds) {
+                    if (!list.find(e => e.id === agentId)) {
+                        list.push({ id: agentId, workspace: getOpenClawWorkspacePath(agentId) });
+                    }
+                }
+                agents.list = list;
+                config.agents = agents;
+            });
+
+            // Pre-create all workspace dirs and support files in parallel before
+            // onboard runs. Setting setupCompletedAt in workspace-state.json causes
+            // onboard's ensureAgentWorkspace() to skip bootstrap, eliminating the
+            // per-agent CLI process startup + plugin manifest scanning entirely.
+            const templateDir = resolveOpenClawTemplateDir();
+            const now = new Date().toISOString();
+            await Promise.all(payload.agentTemplateIds.map(async (agentId) => {
+                const workspacePath = getOpenClawWorkspacePath(agentId);
+                const agentStateDir = path.join(os.homedir(), '.openclaw', 'agents', agentId);
+
+                await fs.promises.mkdir(path.join(workspacePath, '.openclaw'), { recursive: true });
+                await fs.promises.mkdir(path.join(agentStateDir, 'sessions'), { recursive: true });
+                await fs.promises.mkdir(path.join(agentStateDir, 'agent'), { recursive: true });
+
+                await fs.promises.writeFile(
+                    path.join(workspacePath, '.openclaw', 'workspace-state.json'),
+                    JSON.stringify({ version: 1, bootstrapSeededAt: now, setupCompletedAt: now }, null, 2),
+                    'utf-8'
+                );
+
+                await fs.promises.writeFile(
+                    path.join(agentStateDir, 'agent', 'auth-profiles.json'),
+                    JSON.stringify({ version: 1, profiles: {} }, null, 2),
+                    'utf-8'
+                );
+
+                for (const tmpl of ['TOOLS.md', 'IDENTITY.md']) {
+                    try {
+                        await fs.promises.copyFile(path.join(templateDir, tmpl), path.join(workspacePath, tmpl));
+                    } catch { /* template missing — non-fatal */ }
+                }
+
+                await new Promise<void>((resolve) => {
+                    const git = spawn('git', ['init', workspacePath], { stdio: 'ignore' });
+                    git.on('close', () => resolve());
+                    git.on('error', () => resolve());
+                });
+            }));
+
             const { stdout, stderr } = await this.runLocalOpenClawCommand(onboardArgs, cliEnv);
             if (stderr && stderr.trim()) {
                 console.warn(`Command stderr: ${stderr}`);
             }
             console.log(`Command stdout: ${stdout}`);
 
-            // Write the selected model to ~/.openclaw/openclaw.json
-            // openclaw onboard doesn't accept a --model flag; the default model
-            // must be written directly to the config file.
+            // Compute modelPrimary now so readiness checks later can reference it.
+            // The actual config write is deferred until after all OpenClaw CLI
+            // commands complete to avoid ConfigMutationConflictError.
             const providerPrefix: Record<string, string> = {
                 'openai-api': 'openai',
                 'openai-codex': 'openai-codex',
@@ -692,28 +922,7 @@ exit [lindex $result 3]
             const prefix = providerPrefix[payload.aiProvider] || payload.aiProvider;
             const modelPrimary = `${prefix}/${payload.aiModel}`;
 
-            updateOpenClawConfig((config) => {
-                const agents = (config.agents ?? {}) as Record<string, unknown>;
-                const defaults = (agents.defaults ?? {}) as Record<string, unknown>;
-                const model = (defaults.model ?? {}) as Record<string, unknown>;
-                model.primary = modelPrimary;
-                defaults.model = model;
-                agents.defaults = defaults;
-                config.agents = agents;
-            });
-            console.log(`[OpenClawService] Set default model to: ${modelPrimary}`);
-
-            // Step 1.5: Fix bundled plugin peer-dep failures before any command
-            // that triggers a full plugin registry load (scope="all").
             this.emitProgress(event, 1, 'Getting things ready...');
-            // Disable amazon-bedrock — its peer dep (@aws-sdk/client-bedrock) is
-            // absent from the npx cache and is not needed; skip the install.
-            try {
-                await this.runLocalOpenClawCommand(['plugins', 'disable', 'amazon-bedrock'], cliEnv);
-            } catch { /* may already be disabled; non-fatal */ }
-            // Install grammy for the telegram plugin into an isolated directory.
-            // buildCliEnv() adds that directory to NODE_PATH so all subsequent
-            // openclaw child processes resolve require('grammy') from there.
             await this.ensureGrammyInstalled(cliEnv);
 
             // Step 2: Channels
@@ -729,21 +938,10 @@ exit [lindex $result 3]
                 throw new Error(`Unsupported channel: ${payload.selectedChannel}`);
             }
 
-            // Steps 3–N: Create agent workspaces (one step per agent)
-            let stepCounter = 3;
-            for (const agentId of payload.agentTemplateIds) {
-                const displayName = agentId.charAt(0).toUpperCase() + agentId.slice(1);
-                this.emitProgress(event, stepCounter, `Bringing ${displayName} online...`);
-                const workspacePath = getOpenClawWorkspacePath(agentId);
-                await this.runLocalOpenClawCommand([
-                    'agents', 'add', agentId,
-                    '--workspace', workspacePath,
-                    '--non-interactive',
-                ], cliEnv);
-                stepCounter++;
-            }
+            // Agent workspaces were created pre-onboard (above). Skip directly to
+            // finalizing agent configuration files.
+            const stepCounter = 3;
 
-            // Final step: Write USER.md, AGENTS.md, copy SOUL.md (combined)
             this.emitProgress(event, stepCounter, 'Finalizing agent configuration...');
             const userMdContent = generateUserMd(payload);
             await Promise.all(payload.agentTemplateIds.map(agentId =>
@@ -774,7 +972,7 @@ exit [lindex $result 3]
             await Promise.all(payload.agentTemplateIds.map(agentId =>
                 fs.promises.writeFile(
                     path.join(getOpenClawWorkspacePath(agentId), 'HEARTBEAT.md'),
-                    generateHeartbeatMd(agentId),
+                    generateHeartbeatMd(agentId, payload.workspaceSecret),
                     'utf-8'
                 )
             ));
@@ -795,12 +993,76 @@ exit [lindex $result 3]
                 ));
             }
 
-            // Register staggered heartbeat crons (non-fatal if any fail)
-            await this.setupCronJobs(event, payload.agentTemplateIds, stepCounter + 1, cliEnv);
+            // Step 4: Write model, plugin enables, and channel config in one pass.
+            // Enabling plugins via direct config write (no CLI) is instant and safe —
+            // the daemon watches but never mutates config, so no conflict is possible.
+            const AI_PROVIDER_TO_PLUGIN: Record<string, string> = {
+                'openai-api':      'openai',
+                'openai-codex':    'openai',
+                'anthropic-api':   'anthropic',
+                'anthropic-oauth': 'anthropic',
+            };
+            const runtimeAiPlugin = AI_PROVIDER_TO_PLUGIN[payload.aiProvider] ?? payload.aiProvider;
 
+            this.emitProgress(event, 4, 'Saving settings...');
+            updateOpenClawConfig((config) => {
+                const agents = (config.agents ?? {}) as Record<string, unknown>;
+                const defaults = (agents.defaults ?? {}) as Record<string, unknown>;
+                const model = (defaults.model ?? {}) as Record<string, unknown>;
+                model.primary = modelPrimary;
+                defaults.model = model;
+                agents.defaults = defaults;
+                config.agents = agents;
+
+                const plugins = (config.plugins ?? {}) as Record<string, unknown>;
+                const entries = (plugins.entries ?? {}) as Record<string, unknown>;
+                for (const id of [runtimeAiPlugin, payload.selectedChannel, 'memory-core']) {
+                    const entry = (entries[id] ?? {}) as Record<string, unknown>;
+                    entry.enabled = true;
+                    entries[id] = entry;
+                }
+                plugins.entries = entries;
+                config.plugins = plugins;
+            });
+            console.log(`[OpenClawService] Set default model to: ${modelPrimary}`);
+
+            if (payload.selectedChannel === 'telegram' && payload.telegramOwnerUserId?.trim()) {
+                const ownerId = payload.telegramOwnerUserId.trim();
+                updateOpenClawConfig((config) => {
+                    const channels = (config.channels ?? {}) as Record<string, unknown>;
+                    const telegram = (channels.telegram ?? {}) as Record<string, unknown>;
+                    telegram.dmPolicy = 'allowlist';
+                    const existing = Array.isArray(telegram.allowFrom) ? (telegram.allowFrom as string[]) : [];
+                    if (!existing.includes(ownerId)) {
+                        existing.push(ownerId);
+                    }
+                    telegram.allowFrom = existing;
+                    channels.telegram = telegram;
+                    config.channels = channels;
+                });
+                console.log(`[OpenClawService] Configured Telegram allowlist for owner ID: ${ownerId}`);
+            }
+
+            // Readiness checks: verify OAuth profile, model route, and DNS before success.
+            if (payload.aiProvider === 'openai-codex') {
+                this.emitProgress(event, stepCounter + 2, 'Checking ChatGPT route...');
+                this.verifyOAuthProfile('openai-codex');
+                this.verifyModelRoute(payload.aiProvider, modelPrimary);
+                await this.verifyProviderDns(payload.aiProvider);
+            }
+
+            this.emitProgress(event, 6, 'Restarting gateway...');
+            await this.restartGateway(cliEnv);
+
+            // Register heartbeat crons AFTER gateway restart so the gateway is fully
+            // operational with plugins loaded when cron add connects via WebSocket.
+            await this.setupCronJobs(event, payload.agentTemplateIds, 7, cliEnv);
+
+            markSwiftClawSetupComplete();
             event.reply(IPC_EVENTS.DEPLOYMENT_SUCCESS, { success: true });
 
         } catch (error: unknown) {
+            clearSwiftClawSetupComplete();
             const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during deployment.';
             event.reply(IPC_EVENTS.DEPLOYMENT_ERROR, { message: errorMessage });
         }

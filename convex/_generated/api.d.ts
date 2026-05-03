@@ -14,8 +14,10 @@ import type * as auth from "../auth.js";
 import type * as documents from "../documents.js";
 import type * as http from "../http.js";
 import type * as notifications from "../notifications.js";
+import type * as reset from "../reset.js";
 import type * as taskMessages from "../taskMessages.js";
 import type * as tasks from "../tasks.js";
+import type * as workspaceAuth from "../workspaceAuth.js";
 
 import type {
   ApiFromModules,
@@ -30,8 +32,10 @@ declare const fullApi: ApiFromModules<{
   documents: typeof documents;
   http: typeof http;
   notifications: typeof notifications;
+  reset: typeof reset;
   taskMessages: typeof taskMessages;
   tasks: typeof tasks;
+  workspaceAuth: typeof workspaceAuth;
 }>;
 
 /**

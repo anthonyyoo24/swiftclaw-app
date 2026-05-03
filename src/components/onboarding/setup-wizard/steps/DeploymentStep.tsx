@@ -14,6 +14,7 @@ interface DeploymentStepProps {
     aiModel?: string;
     selectedChannel?: string | null;
     agentTemplateIds?: AgentTemplateId[];
+    telegramOwnerUserId?: string;
 }
 
 const PROVIDER_ICONS: Record<string, React.ReactNode> = {
@@ -22,7 +23,7 @@ const PROVIDER_ICONS: Record<string, React.ReactNode> = {
     google: <Google size={18} className="text-[#4285F4]" />,
 };
 
-export function DeploymentStep({ aiProvider, aiModel, selectedChannel, agentTemplateIds }: DeploymentStepProps) {
+export function DeploymentStep({ aiProvider, aiModel, selectedChannel, agentTemplateIds, telegramOwnerUserId }: DeploymentStepProps) {
     const providerBase = aiProvider?.split('-')[0];
     const providerOption = aiProvider ? PROVIDER_OPTIONS.find((p) => p.id === aiProvider) : undefined;
     const modelOption = aiProvider ? MODEL_OPTIONS[aiProvider]?.find((m) => m.id === aiModel) : undefined;
@@ -134,6 +135,11 @@ export function DeploymentStep({ aiProvider, aiModel, selectedChannel, agentTemp
                                     <p className="text-xs text-neutral-400">
                                         {channelOption ? `${channelOption.name} — ${channelOption.description}` : "Not selected"}
                                     </p>
+                                    {selectedChannel === "telegram" && telegramOwnerUserId && (
+                                        <p className="text-xs text-emerald-400/80 mt-0.5">
+                                            Owner ID configured · Ready to chat immediately
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-500/20">

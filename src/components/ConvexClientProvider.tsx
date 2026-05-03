@@ -1,35 +1,34 @@
 "use client";
 
-import { ConvexAuthProvider } from "@convex-dev/auth/react";
-import { ConvexReactClient } from "convex/react";
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useConvexAuth } from "convex/react";
 import { useEffect } from "react";
+import { ConvexAuthProvider, useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
+import { ConvexReactClient } from "convex/react";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 function AutoSignIn() {
-  const { isLoading, isAuthenticated } = useConvexAuth();
-  const { signIn } = useAuthActions();
+    const { signIn } = useAuthActions();
+    const { isAuthenticated, isLoading } = useConvexAuth();
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      signIn("anonymous");
-    }
-  }, [isLoading, isAuthenticated, signIn]);
+    useEffect(() => {
+        if (!isLoading && !isAuthenticated) {
+            void signIn("anonymous");
+        }
+    }, [isAuthenticated, isLoading, signIn]);
 
-  return null;
+    return null;
 }
 
 export function ConvexClientProvider({
-  children,
+    children,
 }: {
-  children: React.ReactNode;
+    children: React.ReactNode;
 }) {
-  return (
-    <ConvexAuthProvider client={convex}>
-      <AutoSignIn />
-      {children}
-    </ConvexAuthProvider>
-  );
+    return (
+        <ConvexAuthProvider client={convex}>
+            <AutoSignIn />
+            {children}
+        </ConvexAuthProvider>
+    );
 }

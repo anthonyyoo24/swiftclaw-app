@@ -13,6 +13,8 @@ export interface ElectronAPI {
         getGatewayAuth: () => Promise<{ token?: string; password?: string }>;
         pauseAgent: (agentName: string) => Promise<{ success: boolean; error?: string }>;
         resumeAgent: (agentName: string) => Promise<{ success: boolean; error?: string }>;
+        resetOpenClaw: () => Promise<{ success: boolean; error?: string }>;
+        getOpenClawSetupStatus: () => Promise<{ isInstalled: boolean; isConfigured: boolean; configPath: string }>;
     };
 }
 

@@ -2,10 +2,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { TaskDetailPanel } from '../TaskDetailPanel';
-import { Doc } from "@convex/_generated/dataModel";
+import { Doc, Id } from "@convex/_generated/dataModel";
 
 let mockMessagesQueryResponse: any[] | null | undefined;
 const mockRemoveTask = vi.fn();
+const userId = "user_1" as Id<"users">;
 
 vi.mock("convex/react", () => ({
     useQuery: () => mockMessagesQueryResponse,
@@ -30,6 +31,7 @@ const mockTask: Doc<"tasks"> = {
     description: "A test description",
     status: "inbox",
     assigneeIds: [],
+    userId,
     createdAt: Date.now(),
     updatedAt: Date.now(),
 };

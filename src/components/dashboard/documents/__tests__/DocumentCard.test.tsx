@@ -20,9 +20,10 @@ vi.mock("@/components/ui/ConfirmDialog", () => ({
     ConfirmDialog: (props: any) => mockConfirmDialog(props),
 }));
 
-const mockConfirmDialog = vi.fn(() => null);
+const mockConfirmDialog: (props: unknown) => null = vi.fn(() => null);
 
 const agentId = "agent_1" as Id<"agents">;
+const userId = "user_1" as Id<"users">;
 
 const baseAgent: Doc<"agents"> = {
     _id: agentId,
@@ -31,6 +32,7 @@ const baseAgent: Doc<"agents"> = {
     role: "Support",
     status: "idle",
     sessionKey: "key-1",
+    userId,
     createdAt: Date.now(),
     updatedAt: Date.now(),
 };
@@ -42,6 +44,7 @@ const baseDoc: Doc<"documents"> = {
     content: "# Report",
     type: "deliverable",
     createdById: agentId,
+    userId,
     createdAt: Date.now(),
     updatedAt: Date.now(),
 };
@@ -101,16 +104,16 @@ describe("DocumentCard", () => {
         const { container } = render(
             <DocumentCard document={baseDoc} agentMap={{}} isSelected={true} onClick={vi.fn()} onDelete={vi.fn()} />
         );
-        const button = container.querySelector("button");
-        expect(button?.className).toMatch(/border-blue-500/);
+        const card = container.querySelector('[role="button"]');
+        expect(card?.className).toMatch(/border-blue-500/);
     });
 
     it("does not apply the selected border class when isSelected is false", () => {
         const { container } = render(
             <DocumentCard document={baseDoc} agentMap={{}} isSelected={false} onClick={vi.fn()} onDelete={vi.fn()} />
         );
-        const button = container.querySelector("button");
-        expect(button?.className).not.toMatch(/border-blue-500/);
+        const card = container.querySelector('[role="button"]');
+        expect(card?.className).not.toMatch(/border-blue-500/);
     });
 
     it("calls onClick when the card is clicked", async () => {

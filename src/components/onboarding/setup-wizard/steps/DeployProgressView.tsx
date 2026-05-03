@@ -63,11 +63,11 @@ export function DeployProgressView({ currentStep, totalSteps, progressLabel, bac
             <h2 className="text-xl font-medium text-white mb-2">Deploying Agent</h2>
 
             <div
-                className="h-6 mb-8 relative font-mono text-sm w-full text-center"
+                className="h-12 mb-8 relative font-mono text-sm w-full text-center"
                 role="status"
                 aria-live="polite"
             >
-                <p className="text-neutral-400 transition-opacity duration-300">
+                <p className="text-neutral-400 transition-opacity duration-300 whitespace-pre-line">
                     {progressLabel}
                 </p>
             </div>

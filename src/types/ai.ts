@@ -8,6 +8,7 @@ export interface DeploymentPayload {
     aiApiKey?: string;
     selectedChannel: 'discord' | 'telegram';
     channelToken: string;
+    telegramOwnerUserId?: string;
     agentTemplateIds: string[];
     userName: string;
     timezone: string;
@@ -18,6 +19,7 @@ export interface DeploymentPayload {
     workflows: string[];
     tools?: string[];
     convexUrl: string;
+    workspaceSecret: string;
 }
 
 export interface OAuthProviderEntry {

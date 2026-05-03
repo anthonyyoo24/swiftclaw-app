@@ -3,12 +3,13 @@ import type { IpcMainEvent } from 'electron';
 import type { DeploymentPayload } from '../../../src/types/ai';
 
 // ── Hoist mocks so factory closures can reference them ───────────────────────
-const { mockDeploy, mockAuthenticate, mockCancel, mockPauseAgent, mockResumeAgent, mockExistsSync, mockReadFileSync, mockSpawn, mockSpawnSync } = vi.hoisted(() => ({
+const { mockDeploy, mockAuthenticate, mockCancel, mockPauseAgent, mockResumeAgent, mockResetOpenClaw, mockExistsSync, mockReadFileSync, mockSpawn, mockSpawnSync } = vi.hoisted(() => ({
     mockDeploy: vi.fn(),
     mockAuthenticate: vi.fn(),
     mockCancel: vi.fn(),
     mockPauseAgent: vi.fn(),
     mockResumeAgent: vi.fn(),
+    mockResetOpenClaw: vi.fn(),
     mockExistsSync: vi.fn<(path: string) => boolean>(),
     mockReadFileSync: vi.fn<(path: string, encoding: string) => string>(),
     mockSpawn: vi.fn(() => ({ unref: vi.fn(), on: vi.fn() })),
@@ -57,6 +58,7 @@ vi.mock('../OpenClawService', () => ({
         this.cancel = mockCancel;
         this.pauseAgent = mockPauseAgent;
         this.resumeAgent = mockResumeAgent;
+        this.resetOpenClaw = mockResetOpenClaw;
     }),
 }));
 
@@ -82,6 +84,7 @@ const VALID_PAYLOAD: DeploymentPayload = {
     goals: 'Build amazing software',
     workflows: ['write-code', 'review-prs'],
     convexUrl: 'https://test-deployment.convex.cloud',
+    workspaceSecret: 'test-workspace-secret',
 };
 
 describe('setupIpcHandlers', () => {
@@ -91,6 +94,7 @@ describe('setupIpcHandlers', () => {
         mockCancel.mockReset();
         mockPauseAgent.mockReset();
         mockResumeAgent.mockReset();
+        mockResetOpenClaw.mockReset();
         mockExistsSync.mockReset();
         mockReadFileSync.mockReset();
         mockSpawn.mockReset().mockReturnValue({ unref: vi.fn(), on: vi.fn() });
@@ -233,6 +237,77 @@ describe('setupIpcHandlers', () => {
 
             expect(mockResumeAgent).toHaveBeenCalledOnce();
             expect(mockResumeAgent).toHaveBeenCalledWith('maya');
+        });
+    });
+
+    describe('openclaw:reset handler', () => {
+        it('registers a handler for openclaw:reset', () => {
+            expect(ipcInvokeHandlers['openclaw:reset']).toBeDefined();
+        });
+
+        it('calls service.resetOpenClaw and returns success when it resolves', async () => {
+            mockResetOpenClaw.mockResolvedValue({ success: true });
+
+            const result = await ipcInvokeHandlers['openclaw:reset']();
+
+            expect(mockResetOpenClaw).toHaveBeenCalledOnce();
+            expect(result).toEqual({ success: true });
+        });
+
+        it('returns the error from service.resetOpenClaw when it fails', async () => {
+            mockResetOpenClaw.mockResolvedValue({ success: false, error: 'binary not found' });
+
+            const result = await ipcInvokeHandlers['openclaw:reset']();
+
+            expect(result).toEqual({ success: false, error: 'binary not found' });
+        });
+    });
+
+    describe('openclaw:get-setup-status handler', () => {
+        it('registers a handler for openclaw:get-setup-status', () => {
+            expect(ipcInvokeHandlers['openclaw:get-setup-status']).toBeDefined();
+        });
+
+        it('reports OpenClaw configured when binary, config, and SwiftClaw completion marker are present', () => {
+            mockExistsSync.mockImplementation((path) =>
+                path.endsWith('node_modules/.bin/openclaw') ||
+                path.endsWith('.openclaw/openclaw.json') ||
+                path.endsWith('.openclaw/swiftclaw-setup-complete.json')
+            );
+
+            const result = ipcInvokeHandlers['openclaw:get-setup-status']();
+
+            expect(result).toEqual({
+                isInstalled: true,
+                isConfigured: true,
+                configPath: expect.stringContaining('.openclaw/openclaw.json'),
+            });
+        });
+
+        it('reports OpenClaw missing when config exists but SwiftClaw completion marker is absent', () => {
+            mockExistsSync.mockImplementation((path) =>
+                path.endsWith('node_modules/.bin/openclaw') || path.endsWith('.openclaw/openclaw.json')
+            );
+
+            const result = ipcInvokeHandlers['openclaw:get-setup-status']();
+
+            expect(result).toEqual({
+                isInstalled: true,
+                isConfigured: false,
+                configPath: expect.stringContaining('.openclaw/openclaw.json'),
+            });
+        });
+
+        it('reports OpenClaw missing when the config is absent', () => {
+            mockExistsSync.mockImplementation((path) => path.endsWith('node_modules/.bin/openclaw'));
+
+            const result = ipcInvokeHandlers['openclaw:get-setup-status']();
+
+            expect(result).toEqual({
+                isInstalled: true,
+                isConfigured: false,
+                configPath: expect.stringContaining('.openclaw/openclaw.json'),
+            });
         });
     });
 });

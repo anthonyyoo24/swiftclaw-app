@@ -21,6 +21,10 @@ export function getOpenClawPluginDepsDir(): string {
     return path.join(getOpenClawHome(), 'plugin-deps');
 }
 
+export function getSwiftClawSetupMarkerPath(): string {
+    return path.join(getOpenClawHome(), 'swiftclaw-setup-complete.json');
+}
+
 /**
  * Resolves the path to the locally installed openclaw binary.
  * In production, electron-vite's externalizeDepsPlugin keeps node_modules intact
@@ -62,4 +66,37 @@ export function updateOpenClawConfig(updater: (config: Record<string, unknown>) 
     updater(config);
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+}
+
+export function markSwiftClawSetupComplete(): void {
+    const markerPath = getSwiftClawSetupMarkerPath();
+    fs.mkdirSync(path.dirname(markerPath), { recursive: true });
+    fs.writeFileSync(
+        markerPath,
+        JSON.stringify({ completedAt: new Date().toISOString() }, null, 2),
+        'utf-8',
+    );
+}
+
+export function clearSwiftClawSetupComplete(): void {
+    const markerPath = getSwiftClawSetupMarkerPath();
+    try {
+        if (fs.existsSync(markerPath)) {
+            fs.unlinkSync(markerPath);
+        }
+    } catch {
+        // Best-effort cleanup; the next deploy/status check will still rely on
+        // the marker being present and readable.
+    }
+}
+
+export function isSwiftClawSetupComplete(): boolean {
+    return fs.existsSync(getSwiftClawSetupMarkerPath());
+}
+
+export function resolveOpenClawTemplateDir(): string {
+    if (app.isPackaged) {
+        return path.join(app.getAppPath(), 'node_modules', 'openclaw', 'docs', 'reference', 'templates');
+    }
+    return path.join(__dirname, '..', '..', 'node_modules', 'openclaw', 'docs', 'reference', 'templates');
 }

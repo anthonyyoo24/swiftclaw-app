@@ -20,6 +20,7 @@ const VALID_PERSONAL = {
     aiApiKey: 'sk-test-12345',
     selectedChannel: 'telegram',
     channelToken: 'tg-token',
+    telegramOwnerUserId: '6700687035',
 } as const;
 
 // ── onboardingSchema (final deploy-gate validation) ───────────────────────────
@@ -183,15 +184,39 @@ describe('STEP_SCHEMAS["ai-brain"]', () => {
 });
 
 describe('STEP_SCHEMAS["channel-setup"]', () => {
-    it('accepts a valid telegram token of sufficient length', () => {
+    it('accepts a valid telegram payload with numeric owner user ID', () => {
         expect(
-            STEP_SCHEMAS['channel-setup'].safeParse({ selectedChannel: 'telegram', channelToken: 'valid-token' }).success
+            STEP_SCHEMAS['channel-setup'].safeParse({ selectedChannel: 'telegram', channelToken: 'valid-token', telegramOwnerUserId: '6700687035' }).success
+        ).toBe(true);
+    });
+
+    it('rejects telegram when telegramOwnerUserId is missing', () => {
+        const result = STEP_SCHEMAS['channel-setup'].safeParse({ selectedChannel: 'telegram', channelToken: 'valid-token' });
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toContain('telegramOwnerUserId');
+    });
+
+    it('rejects telegram when telegramOwnerUserId is empty string', () => {
+        const result = STEP_SCHEMAS['channel-setup'].safeParse({ selectedChannel: 'telegram', channelToken: 'valid-token', telegramOwnerUserId: '' });
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toContain('telegramOwnerUserId');
+    });
+
+    it('rejects telegram when telegramOwnerUserId is non-numeric', () => {
+        const result = STEP_SCHEMAS['channel-setup'].safeParse({ selectedChannel: 'telegram', channelToken: 'valid-token', telegramOwnerUserId: 'abc123' });
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toContain('telegramOwnerUserId');
+    });
+
+    it('accepts discord without telegramOwnerUserId', () => {
+        expect(
+            STEP_SCHEMAS['channel-setup'].safeParse({ selectedChannel: 'discord', channelToken: 'valid-token' }).success
         ).toBe(true);
     });
 
     it('rejects when channelToken is too short', () => {
         expect(
-            STEP_SCHEMAS['channel-setup'].safeParse({ selectedChannel: 'telegram', channelToken: 'abc' }).success
+            STEP_SCHEMAS['channel-setup'].safeParse({ selectedChannel: 'telegram', channelToken: 'abc', telegramOwnerUserId: '6700687035' }).success
         ).toBe(false);
     });
 
@@ -199,5 +224,32 @@ describe('STEP_SCHEMAS["channel-setup"]', () => {
         expect(
             STEP_SCHEMAS['channel-setup'].safeParse({ selectedChannel: 'slack', channelToken: 'valid-token' }).success
         ).toBe(false);
+    });
+});
+
+describe('onboardingSchema — telegramOwnerUserId', () => {
+    it('rejects telegram when telegramOwnerUserId is missing', () => {
+        const result = onboardingSchema.safeParse({ ...VALID_PERSONAL, telegramOwnerUserId: undefined });
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toContain('telegramOwnerUserId');
+    });
+
+    it('rejects telegram when telegramOwnerUserId is non-numeric', () => {
+        const result = onboardingSchema.safeParse({ ...VALID_PERSONAL, telegramOwnerUserId: 'not-a-number' });
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].path).toContain('telegramOwnerUserId');
+    });
+
+    it('accepts telegram when telegramOwnerUserId is a valid numeric string', () => {
+        expect(onboardingSchema.safeParse({ ...VALID_PERSONAL, telegramOwnerUserId: '6700687035' }).success).toBe(true);
+    });
+
+    it('accepts discord without telegramOwnerUserId', () => {
+        const result = onboardingSchema.safeParse({
+            ...VALID_PERSONAL,
+            selectedChannel: 'discord',
+            telegramOwnerUserId: undefined,
+        });
+        expect(result.success).toBe(true);
     });
 });

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TaskCard } from '../TaskCard';
-import { Doc } from "@convex/_generated/dataModel";
+import { Doc, Id } from "@convex/_generated/dataModel";
 
 const mockRemoveTask = vi.fn();
 vi.mock("convex/react", () => ({
@@ -23,6 +23,8 @@ describe('TaskCard', () => {
         vi.clearAllMocks();
     });
 
+    const userId = "user_1" as Id<"users">;
+
     const mockTask: Doc<"tasks"> = {
         _id: "test_task_id" as any,
         _creationTime: Date.now(),
@@ -30,6 +32,7 @@ describe('TaskCard', () => {
         description: "",
         status: "inbox",
         assigneeIds: [],
+        userId,
         createdAt: Date.now(),
         updatedAt: Date.now(),
     };
@@ -79,6 +82,7 @@ describe('TaskCard', () => {
                 role: "agent",
                 sessionKey: "key-1",
                 status: "active",
+                userId,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             }
@@ -99,6 +103,7 @@ describe('TaskCard', () => {
                 role: "agent",
                 sessionKey: "key-maya",
                 status: "active",
+                userId,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             }
@@ -122,6 +127,7 @@ describe('TaskCard', () => {
                 role: "agent",
                 sessionKey: `key-${id}`,
                 status: "active",
+                userId,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             };
