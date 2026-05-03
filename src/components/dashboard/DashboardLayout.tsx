@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from "react";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/Resizable";
 import { ImperativePanelHandle } from "react-resizable-panels";
 import { AppSidebar } from "./AppSidebar";
 import { Icon } from "@iconify/react";
